@@ -4,6 +4,8 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from skimage.draw import rectangle
+from skimage.filters import gaussian
 
 
 def unison_shuffled_copies(a, b, seed=42):
@@ -82,20 +84,24 @@ def load_keypoints_data(
     model_output_shape: Tuple[int, int],
     image_size=(224, 224),
     split="train",
+    gaussian_target: bool = False,
 ):
     downsample_factor = image_size[0] / model_output_shape[0]
     df = pd.read_csv(source)
+    labels_df = pd.read_csv(source.parent / f"labels_{split}.csv")
     data = df[df["split"] == split]
     all_masks = []
     all_images = []
+    all_labels = []
     for image_name, data in data.groupby("image_name"):
         image_path = source.parent / split / image_name
         img = tf.keras.preprocessing.image.load_img(
             image_path, "rgb", target_size=image_size, interpolation="bicubic"
         )
+        label = labels_df[labels_df["filename"] == image_name].iloc[0]
+        time = (label["hour"], label["minute"])
+        all_labels.append(time)
 
-        # plt.imshow(img)
-        # plt.show()
         image_np = tf.keras.preprocessing.image.img_to_array(img)
         all_images.append(image_np)
         points = []
@@ -111,9 +117,19 @@ def load_keypoints_data(
                 point[1] *= image_size[1]
                 fm_point = point / downsample_factor
                 int_point = np.floor(fm_point).astype(int)
-                matched[int_point[1], int_point[0]] = 1
+                if gaussian_target:
+                    extent = (1, 1)
+                    rr, cc = rectangle(
+                        tuple(int_point), extent=extent, shape=matched.shape
+                    )
+                    matched[rr, cc] = 1
+                    matched = gaussian(matched, sigma=0.75)
+                    matched /= matched.max()
+                else:
+
+                    matched[int_point[1], int_point[0]] = 1
             points.append(matched)
         masks = np.array(points).transpose((1, 2, 0))
 
         all_masks.append(masks)
-    return np.array(all_images), np.array(all_masks)
+    return np.array(all_images), np.array(all_masks), np.array(all_labels)

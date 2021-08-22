@@ -1,5 +1,6 @@
 import functools
 
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Dropout, Flatten, Input, MaxPooling2D
 from tensorflow.keras.models import Model
@@ -161,3 +162,104 @@ def build_backbone(image_size):
         for layer_name in ["block3b_project_conv"]
     ]
     return tf.keras.Model(inputs=[base_model.inputs], outputs=outputs)
+
+
+def decode_batch_predictions(predicted):
+    output_2d_shape = predicted.shape[1:3]
+    minutes = []
+    hours = []
+    for row in range(predicted.shape[0]):
+        # TODO take argmax for all outputs at once instead of for loop
+        # center
+        center = np.array(
+            np.unravel_index(np.argmax(predicted[row, :, :, 0]), output_2d_shape)
+        )[::-1]
+        # top
+        top = (
+            np.array(
+                np.unravel_index(np.argmax(predicted[row, :, :, 1]), output_2d_shape)
+            )[::-1]
+            - center
+        )
+
+        # hour
+        hour = (
+            np.array(
+                np.unravel_index(np.argmax(predicted[row, :, :, 2]), output_2d_shape)
+            )[::-1]
+            - center
+        )
+        # minute
+        minute = (
+            np.array(
+                np.unravel_index(np.argmax(predicted[row, :, :, 3]), output_2d_shape)
+            )[::-1]
+            - center
+        )
+
+        read_hour = (
+            np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1]))
+            / 360
+            * 12
+        )
+        read_minute = (
+            np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(minute[0], minute[1]))
+            / 360
+            * 60
+        )
+        hours.append(read_hour)
+        minutes.append(read_minute)
+    read_hour = np.array(hours)
+    read_hour = np.floor(read_hour.reshape(-1, 1)).astype(int)
+    read_minute = np.array(minutes)
+    read_minute = np.round(read_minute.reshape(-1, 1)).astype(int)
+    read_hour = read_hour % 12
+    read_hour = np.where(read_hour == 0, 12, read_hour)
+    read_minute = read_minute % 60
+
+    return np.hstack((read_hour, read_minute))
+
+
+def decode_predictions(predicted):
+    center = np.array(
+        np.unravel_index(np.argmax(predicted[0, :, :, 0]), predicted.shape[1:3])
+    )[::-1]
+    hour = (
+        np.array(
+            np.unravel_index(np.argmax(predicted[0, :, :, 1]), predicted.shape[1:3])
+        )[::-1]
+        - center
+    )
+    minute = (
+        np.array(
+            np.unravel_index(np.argmax(predicted[0, :, :, 2]), predicted.shape[1:3])
+        )[::-1]
+        - center
+    )
+    top = (
+        np.array(
+            np.unravel_index(np.argmax(predicted[0, :, :, 3]), predicted.shape[1:3])
+        )[::-1]
+        - center
+    )
+    read_hour = (
+        np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1])) / 360 * 12
+    )
+    if read_hour < 0:
+        read_hour += 12
+    read_minute = (
+        np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(minute[0], minute[1]))
+        / 360
+        * 60
+    )
+    if read_minute < 0:
+        read_minute += 60
+    return read_hour, read_minute
+
+
+def custom_focal_loss(target, output, gamma=4, alpha=0.25):
+    epsilon_ = tf.keras.backend.epsilon()
+    output = tf.clip_by_value(output, epsilon_, 1.0 - epsilon_)
+    bce = tf.pow(target, gamma) * tf.math.log(output + epsilon_) * (1 - alpha)
+    bce += tf.pow(1 - target, gamma) * tf.math.log(1 - output + epsilon_) * alpha
+    return -bce
