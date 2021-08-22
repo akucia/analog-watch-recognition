@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -74,3 +75,45 @@ def load_synthethic_data(path, image_size, n_samples=200):
     X_synth = np.array(X)
     y = data[["hour", "minute"]][:n_samples]
     return X_synth, y
+
+
+def load_keypoints_data(
+    source: Path,
+    model_output_shape: Tuple[int, int],
+    image_size=(224, 224),
+    split="train",
+):
+    downsample_factor = image_size[0] / model_output_shape[0]
+    df = pd.read_csv(source)
+    data = df[df["split"] == split]
+    all_masks = []
+    all_images = []
+    for image_name, data in data.groupby("image_name"):
+        image_path = source.parent / split / image_name
+        img = tf.keras.preprocessing.image.load_img(
+            image_path, "rgb", target_size=image_size, interpolation="bicubic"
+        )
+
+        # plt.imshow(img)
+        # plt.show()
+        image_np = tf.keras.preprocessing.image.img_to_array(img)
+        all_images.append(image_np)
+        points = []
+        for tag in ["Center", "Top", "Hour", "Minute"]:
+            tag_data = data[data["tag_name"] == tag]
+            # print(tag_data)
+            matched = np.zeros((28, 28))
+            # matched += 1e-6
+            if not tag_data.empty:
+                point = np.array((tag_data["x"].values[0], tag_data["y"].values[0]))
+                # print(point)
+                point[0] *= image_size[0]
+                point[1] *= image_size[1]
+                fm_point = point / downsample_factor
+                int_point = np.floor(fm_point).astype(int)
+                matched[int_point[1], int_point[0]] = 1
+            points.append(matched)
+        masks = np.array(points).transpose((1, 2, 0))
+
+        all_masks.append(masks)
+    return np.array(all_images), np.array(all_masks)

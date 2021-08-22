@@ -148,3 +148,16 @@ def export_tflite(model, export_path, quantize: bool = False, test_image=None):
     with tf.io.gfile.GFile(export_path, "wb") as f:
         f.write(tflite_model)
     print(f"model exported to {export_path}")
+
+
+def build_backbone(image_size):
+    base_model = tf.keras.applications.EfficientNetB0(
+        weights="imagenet",  # Load weights pre-trained on ImageNet.
+        input_shape=(*image_size, 3),
+        include_top=False,
+    )
+    outputs = [
+        base_model.get_layer(layer_name).output
+        for layer_name in ["block3b_project_conv"]
+    ]
+    return tf.keras.Model(inputs=[base_model.inputs], outputs=outputs)
