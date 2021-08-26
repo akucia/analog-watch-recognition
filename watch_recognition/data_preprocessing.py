@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,7 +16,6 @@ def unison_shuffled_copies(a, b, seed=42):
 
 def load_data(path: Path, IMAGE_SIZE):
     data = pd.read_csv(path)
-    # n_samples = 32*5
     n_samples = len(data)
     print(n_samples)
     y = data.head(n_samples)
@@ -81,12 +79,14 @@ def load_synthethic_data(path, image_size, n_samples=200):
 
 def load_keypoints_data(
     source: Path,
-    model_output_shape: Tuple[int, int],
     image_size=(224, 224),
+    mask_size=(14, 14),
+    extent=(2, 2),
     split="train",
     gaussian_target: bool = False,
 ):
-    downsample_factor = image_size[0] / model_output_shape[0]
+    print("deprecated, use load_keypoints_data_2")
+    downsample_factor = image_size[0] / mask_size[0]
     df = pd.read_csv(source)
     labels_df = pd.read_csv(source.parent / f"labels_{split}.csv")
     data = df[df["split"] == split]
@@ -103,33 +103,86 @@ def load_keypoints_data(
         all_labels.append(time)
 
         image_np = tf.keras.preprocessing.image.img_to_array(img)
+        mean = np.zeros_like(image_np)
+        mean[:, :, :] = 128
+        image_np = np.where(image_np < 1, mean, image_np)
         all_images.append(image_np)
         points = []
         for tag in ["Center", "Top", "Hour", "Minute"]:
             tag_data = data[data["tag_name"] == tag]
-            # print(tag_data)
-            matched = np.zeros((28, 28))
-            # matched += 1e-6
+
+            matched = np.zeros(mask_size)
             if not tag_data.empty:
                 point = np.array((tag_data["x"].values[0], tag_data["y"].values[0]))
-                # print(point)
                 point[0] *= image_size[0]
                 point[1] *= image_size[1]
                 fm_point = point / downsample_factor
                 int_point = np.floor(fm_point).astype(int)
                 if gaussian_target:
-                    extent = (1, 1)
                     rr, cc = rectangle(
-                        tuple(int_point), extent=extent, shape=matched.shape
+                        tuple(int_point - 1), extent=extent, shape=matched.shape
                     )
-                    matched[rr, cc] = 1
-                    matched = gaussian(matched, sigma=0.75)
+                    matched[cc, rr] = 1
+                    matched = gaussian(matched, sigma=1)
                     matched /= matched.max()
                 else:
 
-                    matched[int_point[1], int_point[0]] = 1
+                    rr, cc = rectangle(
+                        tuple(int_point - 1), extent=extent, shape=matched.shape
+                    )
+                    matched[cc, rr] = 1
             points.append(matched)
         masks = np.array(points).transpose((1, 2, 0))
 
         all_masks.append(masks)
     return np.array(all_images), np.array(all_masks), np.array(all_labels)
+
+
+def load_keypoints_data_2(
+    source: Path,
+    image_size=(224, 224),
+    mask_size=(14, 14),
+    extent=(2, 2),
+    gaussian_target: bool = False,
+):
+    downsample_factor = image_size[0] / mask_size[0]
+    labels_df = pd.read_csv(source / f"tags.csv")
+    all_masks = []
+    all_images = []
+    for image_name, data in labels_df.groupby("crop_file"):
+        image_path = source / image_name
+        img = tf.keras.preprocessing.image.load_img(
+            image_path, "rgb", target_size=image_size, interpolation="bicubic"
+        )
+
+        image_np = tf.keras.preprocessing.image.img_to_array(img)
+        all_images.append(image_np)
+        points = []
+        for tag in ["Center", "Top", "Hour", "Minute"]:
+            tag_data = data[data["label"] == tag]
+            matched = np.zeros(mask_size)
+
+            if not tag_data.empty:
+                point = np.array((tag_data["x"].values[0], tag_data["y"].values[0]))
+                point[0] *= image_size[0]
+                point[1] *= image_size[1]
+                fm_point = point / downsample_factor
+                int_point = np.floor(fm_point).astype(int)
+                if gaussian_target:
+                    rr, cc = rectangle(
+                        tuple(int_point - 1), extent=extent, shape=matched.shape
+                    )
+                    matched[cc, rr] = 1
+                    matched = gaussian(matched, sigma=1)
+                    matched /= matched.max()
+                else:
+
+                    rr, cc = rectangle(
+                        tuple(int_point - 1), extent=extent, shape=matched.shape
+                    )
+                    matched[cc, rr] = 1
+            points.append(matched)
+        masks = np.array(points).transpose((1, 2, 0))
+
+        all_masks.append(masks)
+    return np.array(all_images), np.array(all_masks)

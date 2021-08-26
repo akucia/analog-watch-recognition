@@ -290,3 +290,8 @@ tensorboard_logs/
 .python-version
 example_data/
 runs.json
+
+/download_data/test/*
+/download_data/train/*
+/download_data/validation/*
+/download_data/keypoints/

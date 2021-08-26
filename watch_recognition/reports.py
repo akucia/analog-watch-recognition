@@ -278,17 +278,19 @@ def run_on_image_debug(model, image, targets=None, show_grid=True):
     print(f"{read_time[0]}:{read_time[1]}")
 
 
-def generate_report_for_keypoints(model, X, y_keypoints, y_labels, show_top_n_errors=0):
+def generate_report_for_keypoints(model, X, y, show_top_n_errors=0):
     y_pred = model.predict(X)
     y_pred_decoded = decode_batch_predictions(y_pred)
-    h_diff = np.abs(y_pred_decoded[:, 0] - y_labels[:, 0])
-    m_diff = np.abs(y_pred_decoded[:, 1] - y_labels[:, 1])
+    y_target_decoded = decode_batch_predictions(y)
+
+    h_diff = np.abs(y_pred_decoded[:, 0] - y_target_decoded[:, 0])
+    m_diff = np.abs(y_pred_decoded[:, 1] - y_target_decoded[:, 1])
     df = pd.DataFrame(
         {
             "h_pred": y_pred_decoded[:, 0],
             "m_pred": y_pred_decoded[:, 1],
-            "h_target": y_labels[:, 0],
-            "m_target": y_labels[:, 1],
+            "h_target": y_target_decoded[:, 0],
+            "m_target": y_target_decoded[:, 1],
             "h_diff": h_diff,
             "m_diff": m_diff,
             "total_diff": h_diff * 60 + m_diff,
@@ -299,7 +301,10 @@ def generate_report_for_keypoints(model, X, y_keypoints, y_labels, show_top_n_er
         df[["h_target", "m_target"]].values,
     )
     df = df.sort_values("total_diff", ascending=False)
-    df_head = df.head(show_top_n_errors)
+    if show_top_n_errors > 0:
+        df_head = df.head(show_top_n_errors)
+    else:
+        df_head = df.tail((-1) * show_top_n_errors)
     print(f"average of lost minutes: {df.total_diff.mean()}")
     for i, row in df_head.iterrows():
         print(i)
@@ -330,7 +335,10 @@ def log_distances(epoch, logs, X, y, file_writer, model):
             gt = np.array(
                 np.unravel_index(np.argmax(y[row, :, :, i]), output_2d_shape)
             )[::-1]
-            distances.append(np.sqrt((pred[0] - gt[0]) ** 2 + (pred[1] - gt[1]) ** 2))
+            distances.append(
+                np.sqrt((pred[0] - gt[0]) ** 2 + (pred[1] - gt[1]) ** 2)
+                / predicted.shape[1]
+            )
         mean_distance = np.mean(distances)
         mean_distances.append(mean_distance)
         with file_writer.as_default():

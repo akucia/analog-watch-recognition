@@ -157,9 +157,13 @@ def build_backbone(image_size):
         input_shape=(*image_size, 3),
         include_top=False,
     )
+    # outputs = [
+    #     base_model.get_layer(layer_name).output
+    #     for layer_name in ["block3b_project_conv"]
+    # ]
     outputs = [
         base_model.get_layer(layer_name).output
-        for layer_name in ["block3b_project_conv"]
+        for layer_name in ["block5c_project_conv"]
     ]
     return tf.keras.Model(inputs=[base_model.inputs], outputs=outputs)
 
@@ -263,3 +267,110 @@ def custom_focal_loss(target, output, gamma=4, alpha=0.25):
     bce = tf.pow(target, gamma) * tf.math.log(output + epsilon_) * (1 - alpha)
     bce += tf.pow(1 - target, gamma) * tf.math.log(1 - output + epsilon_) * alpha
     return -bce
+
+
+class Involution(tf.keras.layers.Layer):
+    """https://keras.io/examples/vision/involution/"""
+
+    def __init__(
+        self, channel, group_number, kernel_size, stride, reduction_ratio, name
+    ):
+        super().__init__(name=name)
+
+        # Initialize the parameters.
+        self.channel = channel
+        self.group_number = group_number
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.reduction_ratio = reduction_ratio
+
+    def build(self, input_shape):
+        # Get the shape of the input.
+        (_, height, width, num_channels) = input_shape
+
+        # Scale the height and width with respect to the strides.
+        height = height // self.stride
+        width = width // self.stride
+
+        # Define a layer that average pools the input tensor
+        # if stride is more than 1.
+        self.stride_layer = (
+            tf.keras.layers.AveragePooling2D(
+                pool_size=self.stride, strides=self.stride, padding="same"
+            )
+            if self.stride > 1
+            else tf.identity
+        )
+        # Define the kernel generation layer.
+        self.kernel_gen = tf.keras.Sequential(
+            [
+                tf.keras.layers.Conv2D(
+                    filters=self.channel // self.reduction_ratio, kernel_size=1
+                ),
+                tf.keras.layers.BatchNormalization(),
+                tf.keras.layers.ReLU(),
+                tf.keras.layers.Conv2D(
+                    filters=self.kernel_size * self.kernel_size * self.group_number,
+                    kernel_size=1,
+                ),
+            ]
+        )
+        # Define reshape layers
+        self.kernel_reshape = tf.keras.layers.Reshape(
+            target_shape=(
+                height,
+                width,
+                self.kernel_size * self.kernel_size,
+                1,
+                self.group_number,
+            )
+        )
+        self.input_patches_reshape = tf.keras.layers.Reshape(
+            target_shape=(
+                height,
+                width,
+                self.kernel_size * self.kernel_size,
+                num_channels // self.group_number,
+                self.group_number,
+            )
+        )
+        self.output_reshape = tf.keras.layers.Reshape(
+            target_shape=(height, width, num_channels)
+        )
+
+    def call(self, x):
+        # Generate the kernel with respect to the input tensor.
+        # B, H, W, K*K*G
+        kernel_input = self.stride_layer(x)
+        kernel = self.kernel_gen(kernel_input)
+
+        # reshape the kerenl
+        # B, H, W, K*K, 1, G
+        kernel = self.kernel_reshape(kernel)
+
+        # Extract input patches.
+        # B, H, W, K*K*C
+        input_patches = tf.image.extract_patches(
+            images=x,
+            sizes=[1, self.kernel_size, self.kernel_size, 1],
+            strides=[1, self.stride, self.stride, 1],
+            rates=[1, 1, 1, 1],
+            padding="SAME",
+        )
+
+        # Reshape the input patches to align with later operations.
+        # B, H, W, K*K, C//G, G
+        input_patches = self.input_patches_reshape(input_patches)
+
+        # Compute the multiply-add operation of kernels and patches.
+        # B, H, W, K*K, C//G, G
+        output = tf.multiply(kernel, input_patches)
+        # B, H, W, C//G, G
+        output = tf.reduce_sum(output, axis=3)
+
+        # Reshape the output kernel.
+        # B, H, W, C
+        output = self.output_reshape(output)
+
+        # Return the output tensor and the kernel.
+        return output, kernel
