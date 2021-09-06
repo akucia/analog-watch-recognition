@@ -179,85 +179,47 @@ def decode_batch_predictions(predicted):
             np.unravel_index(np.argmax(predicted[row, :, :, 0]), output_2d_shape)
         )[::-1]
         # top
-        top = (
-            np.array(
-                np.unravel_index(np.argmax(predicted[row, :, :, 1]), output_2d_shape)
-            )[::-1]
-            - center
-        )
+        top = np.array(
+            np.unravel_index(np.argmax(predicted[row, :, :, 1]), output_2d_shape)
+        )[::-1]
 
         # hour
-        hour = (
-            np.array(
-                np.unravel_index(np.argmax(predicted[row, :, :, 2]), output_2d_shape)
-            )[::-1]
-            - center
-        )
+        hour = np.array(
+            np.unravel_index(np.argmax(predicted[row, :, :, 2]), output_2d_shape)
+        )[::-1]
         # minute
-        minute = (
-            np.array(
-                np.unravel_index(np.argmax(predicted[row, :, :, 3]), output_2d_shape)
-            )[::-1]
-            - center
-        )
-
-        read_hour = (
-            np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1]))
-            / 360
-            * 12
-        )
-        read_minute = (
-            np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(minute[0], minute[1]))
-            / 360
-            * 60
-        )
+        minute = np.array(
+            np.unravel_index(np.argmax(predicted[row, :, :, 3]), output_2d_shape)
+        )[::-1]
+        read_hour, read_minute = points_to_time(center, hour, minute, top)
         hours.append(read_hour)
         minutes.append(read_minute)
-    read_hour = np.array(hours)
-    read_hour = np.floor(read_hour.reshape(-1, 1)).astype(int)
-    read_minute = np.array(minutes)
-    read_minute = np.round(read_minute.reshape(-1, 1)).astype(int)
-    read_hour = read_hour % 12
-    read_hour = np.where(read_hour == 0, 12, read_hour)
-    read_minute = read_minute % 60
 
+    read_hour = np.array(hours)
+    read_hour = np.floor(read_hour.reshape(-1, 1))
+    read_minute = np.array(minutes)
+    read_minute = np.round(read_minute.reshape(-1, 1))
     return np.hstack((read_hour, read_minute))
 
 
-def decode_predictions(predicted):
-    center = np.array(
-        np.unravel_index(np.argmax(predicted[0, :, :, 0]), predicted.shape[1:3])
-    )[::-1]
-    hour = (
-        np.array(
-            np.unravel_index(np.argmax(predicted[0, :, :, 1]), predicted.shape[1:3])
-        )[::-1]
-        - center
-    )
-    minute = (
-        np.array(
-            np.unravel_index(np.argmax(predicted[0, :, :, 2]), predicted.shape[1:3])
-        )[::-1]
-        - center
-    )
-    top = (
-        np.array(
-            np.unravel_index(np.argmax(predicted[0, :, :, 3]), predicted.shape[1:3])
-        )[::-1]
-        - center
-    )
+def points_to_time(center, hour, minute, top):
+    hour = hour - center
+    minute = minute - center
+    top = top - center
     read_hour = (
         np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1])) / 360 * 12
     )
-    if read_hour < 0:
-        read_hour += 12
+    read_hour = np.floor(read_hour).astype(int)
+    read_hour = read_hour % 12
+    if read_hour == 0:
+        read_hour = 12
     read_minute = (
         np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(minute[0], minute[1]))
         / 360
         * 60
     )
-    if read_minute < 0:
-        read_minute += 60
+    read_minute = np.floor(read_minute).astype(int)
+    read_minute = read_minute % 60
     return read_hour, read_minute
 
 

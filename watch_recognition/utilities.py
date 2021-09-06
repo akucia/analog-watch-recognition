@@ -1,6 +1,8 @@
 import dataclasses
 from typing import Tuple
 
+from matplotlib import pyplot as plt
+
 
 @dataclasses.dataclass(frozen=True)
 class Point:

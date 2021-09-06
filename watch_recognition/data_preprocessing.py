@@ -102,7 +102,7 @@ def load_keypoints_data(
         time = (label["hour"], label["minute"])
         all_labels.append(time)
 
-        image_np = tf.keras.preprocessing.image.img_to_array(img)
+        image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
         mean = np.zeros_like(image_np)
         mean[:, :, :] = 128
         image_np = np.where(image_np < 1, mean, image_np)
@@ -186,3 +186,39 @@ def load_keypoints_data_2(
 
         all_masks.append(masks)
     return np.array(all_images), np.array(all_masks)
+
+
+def load_keypoints_data_as_kp(
+    source: Path,
+    image_size=(224, 224),
+):
+    labels_df = pd.read_csv(source / f"tags.csv")
+    all_keypoints = []
+    all_images = []
+    for image_name, data in labels_df.groupby("crop_file"):
+        image_path = source / image_name
+        img = tf.keras.preprocessing.image.load_img(
+            image_path, "rgb", target_size=image_size, interpolation="bicubic"
+        )
+
+        image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
+        all_images.append(image_np)
+        points = []
+        for tag in ["Center", "Top", "Hour", "Minute"]:
+            tag_data = data[data["label"] == tag]
+            kp = (0, 0, 0, 0)  # two last values are ignored
+
+            if not tag_data.empty:
+                point = np.array(
+                    (tag_data["x"].values[0], tag_data["y"].values[0], 0, 0)
+                )
+                point[0] *= image_size[0]
+                point[1] *= image_size[1]
+                int_point = np.floor(point).astype(int)
+                kp = tuple(int_point)
+
+            points.append(kp)
+        points = np.array(points)
+
+        all_keypoints.append(points)
+    return np.array(all_images), np.array(all_keypoints)

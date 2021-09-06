@@ -10,7 +10,7 @@ import tensorflow as tf
 from IPython.core.display import display
 from matplotlib import patches
 
-from watch_recognition.models import decode_batch_predictions
+from watch_recognition.models import decode_batch_predictions, points_to_time
 
 
 def predict_on_image(path, model, image_size=(100, 100)):
@@ -232,6 +232,7 @@ def run_on_image_debug(model, image, targets=None, show_grid=True):
     downsample_factor = image.shape[1] / predicted.shape[1]
     tags = ["Center", "Top", "Hour", "Minute"]
     for i, (point, tag) in enumerate(zip(predicted.transpose((2, 1, 0)), tags)):
+        # point = point > 0.05
         print(tag)
         extent = [0, predicted.shape[1], predicted.shape[1], 0]
         if targets is not None:
@@ -241,6 +242,64 @@ def run_on_image_debug(model, image, targets=None, show_grid=True):
         else:
             fig, ax = plt.subplots(1, 2)
         point = point.T
+        ax[0].imshow(point, extent=extent)
+        ax[0].title.set_text(f"Output|{tag}")
+
+        ax[1].imshow(
+            image.astype("uint8"), extent=[0, image.shape[0], image.shape[1], 0]
+        )
+        ax[1].title.set_text(f"Image|{tag}")
+        ax[1].axis("off")
+        if show_grid:
+            for j in range(predicted.shape[0]):
+                ax[1].axvline(j * downsample_factor)
+            for j in range(predicted.shape[1]):
+                ax[1].axhline(j * downsample_factor)
+        grid_predicted = np.unravel_index(
+            np.argmax(predicted[:, :, i]), predicted[:, :, i].shape
+        )
+
+        rectangle_predicted = (
+            grid_predicted[1] * downsample_factor,
+            grid_predicted[0] * downsample_factor,
+        )
+
+        rect_pred = patches.Rectangle(
+            rectangle_predicted,
+            downsample_factor,
+            downsample_factor,
+            linewidth=1,
+            edgecolor="r",
+            facecolor="red",
+        )
+
+        ax[1].add_patch(rect_pred)
+        plt.show()
+    read_time = decode_batch_predictions(np.expand_dims(predicted, 0))[0]
+    print(f"{read_time[0]:.0f}:{read_time[1]:.0f}")
+
+
+def run_on_image_debug_2(model, image, targets=None, show_grid=True):
+    predicted = model(np.expand_dims(image, 0)).numpy()[0]
+    # print(predicted[:,:,-1])
+    predicted[:, :, -1] /= 10
+    # print(predicted[:,:,-1])
+    maxed_predicted = np.argmax(predicted, axis=-1)
+    # print(maxed_predicted)
+    # for i in np.unique(indices):
+    #     mask = indices == i
+    downsample_factor = image.shape[1] / predicted.shape[1]
+    tags = ["Center", "Top", "Hour", "Minute"]
+    for i, tag in enumerate(tags):
+        print(tag)
+        extent = [0, predicted.shape[1], predicted.shape[1], 0]
+        if targets is not None:
+            fig, ax = plt.subplots(1, 3)
+            ax[2].title.set_text(f"Target|{tag}")
+            ax[2].imshow(targets[:, :, i], extent=extent)
+        else:
+            fig, ax = plt.subplots(1, 2)
+        point = (maxed_predicted == i).astype("int")
         ax[0].imshow(point, extent=extent)
         ax[0].title.set_text(f"Output|{tag}")
 
@@ -320,7 +379,34 @@ def generate_report_for_keypoints(model, X, y, show_top_n_errors=0):
     return df
 
 
-def log_distances(epoch, logs, X, y, file_writer, model):
+def visualize_high_loss_examples(epoch, logs, dataset, file_writer, model):
+    iterator = dataset.as_numpy_iterator()
+    batch = next(iterator)
+    X_batch, y_batch = batch
+    predictions = model.predict(X_batch)
+    loss = tf.keras.metrics.categorical_crossentropy(y_batch, predictions).numpy()
+    loss_for_example = loss.sum(axis=-1).sum(axis=-1)
+    worst_examples = np.argsort(loss_for_example)[::-1][:5]
+
+    fig, axarr = plt.subplots(1, 5)
+    for i, idx in enumerate(worst_examples):
+        axarr[i].set_xticks([])
+        axarr[i].set_yticks([])
+        axarr[i].grid(False)
+        axarr[i].imshow(X_batch[idx])
+        axarr[i].set_title(str(loss_for_example[idx]))
+    plt.tight_layout()
+    img = plot_to_image(fig)
+
+    with file_writer.as_default():
+        tf.summary.image(
+            "top_5_high_loss_examples",
+            img,
+            step=epoch,
+        )
+
+
+def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
     # Use the model to predict the values from the validation dataset.
     predicted = model.predict(X)
     output_2d_shape = predicted.shape[1:3]
@@ -329,12 +415,16 @@ def log_distances(epoch, logs, X, y, file_writer, model):
         distances = []
         for row in range(predicted.shape[0]):
             # TODO take argmax for all outputs at once instead of for loop
-            pred = np.array(
-                np.unravel_index(np.argmax(predicted[row, :, :, i]), output_2d_shape)
-            )[::-1]
-            gt = np.array(
-                np.unravel_index(np.argmax(y[row, :, :, i]), output_2d_shape)
-            )[::-1]
+            pred = (
+                np.array(
+                    np.unravel_index(
+                        np.argmax(predicted[row, :, :, i]), output_2d_shape
+                    )
+                )[::-1]
+                / predicted.shape[1:3]
+            )
+            gt = y[row, i, :2] / X.shape[1:3]
+
             distances.append(
                 np.sqrt((pred[0] - gt[0]) ** 2 + (pred[1] - gt[1]) ** 2)
                 / predicted.shape[1]
@@ -349,3 +439,20 @@ def log_distances(epoch, logs, X, y, file_writer, model):
         tf.summary.scalar(
             f"maximum_point_distance_mean", np.mean(mean_distances), step=epoch
         )
+
+    y_pred_decoded = decode_batch_predictions(predicted)
+    targets_decoded = []
+    for row in range(predicted.shape[0]):
+        center = y[row, 0, :2]
+        # top
+        top = y[row, 1, :2]
+        # hour
+        hour = y[row, 2, :2]
+        # minute
+        minute = y[row, 3, :2]
+        read_hour, read_minute = points_to_time(center, hour, minute, top)
+        targets_decoded.append((read_hour, read_minute))
+    targets_decoded = np.array(targets_decoded)
+    time_diff = time_diff_np(y_pred_decoded, targets_decoded)
+    with file_writer.as_default():
+        tf.summary.scalar(f"time_diff_mean", np.mean(time_diff), step=epoch)
