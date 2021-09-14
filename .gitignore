@@ -294,4 +294,6 @@ runs.json
 /download_data/test/*
 /download_data/train/*
 /download_data/validation/*
-/download_data/keypoints/
+/download_data/keypoints/*
+/download_data/watch-face-detection-train/*
+/download_data/watch-face-detection-val/*

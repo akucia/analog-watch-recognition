@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -190,7 +191,7 @@ def load_keypoints_data_2(
 
 def load_keypoints_data_as_kp(
     source: Path,
-    image_size=(224, 224),
+    image_size: Tuple[int, int] = (224, 224),
 ):
     labels_df = pd.read_csv(source / f"tags.csv")
     all_keypoints = []
@@ -206,7 +207,13 @@ def load_keypoints_data_as_kp(
         points = []
         for tag in ["Center", "Top", "Hour", "Minute"]:
             tag_data = data[data["label"] == tag]
-            kp = (0, 0, 0, 0)  # two last values are ignored
+            # if tag is missing, negative values will throw it outside the image
+            kp = (
+                -1,
+                -1,
+                -1,
+                -1,
+            )  # two last values are ignored, 4 values are required to correctly use albumentations for keypoints with tf.Data
 
             if not tag_data.empty:
                 point = np.array(
