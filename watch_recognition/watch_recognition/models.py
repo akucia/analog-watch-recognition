@@ -1,3 +1,4 @@
+import dataclasses
 from typing import List, Optional, Tuple
 
 import cv2
@@ -100,7 +101,7 @@ def extract_points_from_map(
         if size < size_threshold:
             continue
 
-        mean_score = np.mean(predicted_map[labels == component_id])
+        mean_score = np.max(predicted_map[labels == component_id])
         if mean_score < detection_threshold:
             continue
 
@@ -115,35 +116,51 @@ def extract_points_from_map(
 
 def convert_outputs_to_keypoints(
     predicted,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> Tuple[Point, Point, Point, Point]:
+    # classes = np.argmax(predicted, axis=-1)
+    # labels = np.unique(classes)
+    # masks = []
+    # for label in labels:
+    #     zeros = np.zeros_like(classes)
+    #     mask = np.where(classes == label, predicted[:, :, label], zeros)
+    #     masks.append(mask)
+    # predicted = np.stack(masks, axis=-1)
     masks = predicted.transpose((2, 0, 1))
     center_points = extract_points_from_map(masks[0])
     if not center_points:
-        center_points = [Point(0, 0, "", 0)]
-    center_point = sorted(center_points, key=lambda x: x.score)[-1]
-    center = np.array(center_point.as_coordinates_tuple)
+        center_points = [Point.none()]
+    center = sorted(center_points, key=lambda x: x.score)[-1]
+    center = dataclasses.replace(center, name="Center")
+
     # Top
     top_points = extract_points_from_map(masks[1])
     if not top_points:
-        top_points = [Point(0, 0, "", 0)]
-    top_point = sorted(top_points, key=lambda x: x.score)[-1]
-    top = np.array(top_point.as_coordinates_tuple)
+        top_points = [Point.none()]
+    top = sorted(top_points, key=lambda x: x.score)[-1]
+    top = dataclasses.replace(top, name="Top")
     # Hands
 
     hands_points = extract_points_from_map(masks[2])
     if not hands_points:
-        hands_points = [Point(0, 0, "", 0), Point(0, 0, "", 0)]
+        hands_points = [Point.none(), Point.none()]
     hands_points = sorted(hands_points, key=lambda x: x.score)[-2:]
-    hands_points = np.array([p.as_coordinates_tuple for p in hands_points])
-    hour, minute = get_minute_and_hour_points(center, hands_points)
+
+    hour, minute = get_minute_and_hour_points(center, tuple(hands_points))
+    hour = dataclasses.replace(hour, name="Hour")
+    minute = dataclasses.replace(minute, name="Minute")
+
     return center, hour, minute, top
 
 
-def get_minute_and_hour_points(center, hand_points):
-    distances = euclidean_distances(hand_points, [center])
-    hour_index = np.argmin(distances)
-    hour = hand_points[hour_index]
-    minute = hand_points[np.argmax(distances)]
+def get_minute_and_hour_points(
+    center: Point, hand_points: Tuple[Point, Point]
+) -> Tuple[Point, Point]:
+    assert len(hand_points) < 3, "expected max 2 points for hands"
+    hand_points_np = np.array([p.as_coordinates_tuple for p in hand_points])
+    center = np.array(center.as_coordinates_tuple)
+    distances = euclidean_distances(hand_points_np, [center])
+    hour = hand_points[int(np.argmin(distances))]
+    minute = hand_points[int(np.argmax(distances))]
     return hour, minute
 
 

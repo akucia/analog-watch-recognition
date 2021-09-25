@@ -127,7 +127,12 @@ def time_diff_np(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 def run_on_image_debug(model, image):
     # TODO Cleanup and refactor this
     predicted = model(np.expand_dims(image, 0)).numpy()[0]
+
     center, hour, minute, top = convert_outputs_to_keypoints(predicted)
+    center, hour, minute, top = [
+        np.array(p.as_coordinates_tuple).astype(float)
+        for p in (center, hour, minute, top)
+    ]
     downsample_factor = image.shape[1] / predicted.shape[1]
     masks = predicted.transpose((2, 1, 0))
     extent = [0, predicted.shape[1], predicted.shape[1], 0]
@@ -211,27 +216,12 @@ def euclidean_distance(x_1, y_1, x_2, y_2) -> float:
 
 def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
     predicted = model.predict(X)
-    center_distances = np.zeros(predicted.shape[0])
-    top_distances = np.zeros(predicted.shape[0])
-    minute_distances = np.zeros(predicted.shape[0])
-    hour_distances = np.zeros(predicted.shape[0])
-    for row in range(predicted.shape[0]):
-        center_hat, hour_hat, minute_hat, top_hat = convert_outputs_to_keypoints(
-            predicted[row]
-        )
-
-        center = y[row, 0, :2]
-        top = y[row, 1, :2]
-        hour = y[row, 2, :2]
-        minute = y[row, 3, :2]
-        center_distance = euclidean_distance(*center_hat, *center)
-        top_distance = euclidean_distance(*top_hat, *top)
-        hour_distance = euclidean_distance(*hour_hat, *hour)
-        minute_distance = euclidean_distance(*minute_hat, *minute)
-        center_distances[row] = center_distance
-        top_distances[row] = top_distance
-        hour_distances[row] = hour_distance
-        minute_distances[row] = minute_distance
+    (
+        center_distances,
+        hour_distances,
+        minute_distances,
+        top_distances,
+    ) = calculate_distances_between_points(X, predicted, y)
     distances = [
         center_distances,
         top_distances,
@@ -247,3 +237,39 @@ def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
             tf.summary.scalar(f"point_distance_{tag}", mean, step=epoch)
     with file_writer.as_default():
         tf.summary.scalar(f"point_distance_mean", np.mean(means), step=epoch)
+
+
+def calculate_distances_between_points(X, predicted, y):
+    center_distances = np.zeros(predicted.shape[0])
+    top_distances = np.zeros(predicted.shape[0])
+    minute_distances = np.zeros(predicted.shape[0])
+    hour_distances = np.zeros(predicted.shape[0])
+    scale_factor = X.shape[1] / predicted.shape[1]
+    for row in range(predicted.shape[0]):
+        center_hat, hour_hat, minute_hat, top_hat = convert_outputs_to_keypoints(
+            predicted[row]
+        )
+        center_hat = center_hat.scale(scale_factor, scale_factor).as_coordinates_tuple
+        top_hat = top_hat.scale(scale_factor, scale_factor).as_coordinates_tuple
+        hour_hat = hour_hat.scale(scale_factor, scale_factor).as_coordinates_tuple
+        minute_hat = minute_hat.scale(scale_factor, scale_factor).as_coordinates_tuple
+
+        center = y[row, 0, :2]
+        top = y[row, 1, :2]
+        hour = y[row, 2, :2]
+        minute = y[row, 3, :2]
+
+        center = np.where(center < 0, np.zeros_like(center), center)
+        top = np.where(top < 0, np.zeros_like(top), top)
+        hour = np.where(hour < 0, np.zeros_like(hour), hour)
+        minute = np.where(minute < 0, np.zeros_like(minute), minute)
+
+        center_distance = euclidean_distance(*center_hat, *center)
+        top_distance = euclidean_distance(*top_hat, *top)
+        hour_distance = euclidean_distance(*hour_hat, *hour)
+        minute_distance = euclidean_distance(*minute_hat, *minute)
+        center_distances[row] = center_distance
+        top_distances[row] = top_distance
+        hour_distances[row] = hour_distance
+        minute_distances[row] = minute_distance
+    return center_distances, hour_distances, minute_distances, top_distances

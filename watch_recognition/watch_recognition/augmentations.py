@@ -1,18 +1,14 @@
 import albumentations as A
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from skimage.draw import rectangle
+from skimage.draw import rectangle, rectangle_perimeter
 
-transforms = A.Compose(
+DEFAULT_TRANSFORMS = A.Compose(
     [
         A.RandomSizedCrop(min_max_height=(200, 224), height=224, width=224, p=0.5),
-        A.HorizontalFlip(p=0.5),
-        A.VerticalFlip(p=0.5),
         A.ShiftScaleRotate(
-            p=0.5,
-            rotate_limit=180,
+            p=0.8,
         ),
         A.OneOf(
             [
@@ -25,38 +21,11 @@ transforms = A.Compose(
         A.Blur(blur_limit=5, p=0.5),
         A.RandomBrightnessContrast(p=0.5),
     ],
+    # format="xyas" is required while using tf.Data pipielines, otherwise
+    # tf cannot validate the output shapes # TODO check if this is correct
+    # remove_invisible=False is required to preserve the order and number of keypoints
+    keypoint_params=A.KeypointParams(format="xyas", remove_invisible=False),
 )
-
-
-def aug_fn(image, masks, mask_size=(28, 28), image_size=(224, 224)):
-    data = {
-        "image": image,
-    }
-    for i in range(4):
-        mask = masks[:, :, i]
-
-        mask = cv2.resize(mask, image_size, interpolation=cv2.INTER_AREA)
-        data[f"mask{i}"] = mask
-    aug_data = transforms(**data)
-    aug_img = aug_data["image"]
-
-    aug_masks = [
-        cv2.resize(aug_data[f"mask{i}"], mask_size, interpolation=cv2.INTER_AREA)
-        for i in range(4)
-    ]
-
-    aug_masks = np.stack(aug_masks, axis=-1)
-    aug_masks = tf.cast(aug_masks, tf.float32)
-    return aug_img, aug_masks
-
-
-def process_mask_data(image, masks, mask_size=(28, 28), image_size=(224, 224)):
-    image, masks = tf.numpy_function(
-        func=aug_fn,
-        inp=[image, masks, mask_size, image_size],
-        Tout=(tf.float32, tf.float32),
-    )
-    return image, masks
 
 
 def kp_aug_fn(image, keypoints):
@@ -64,7 +33,7 @@ def kp_aug_fn(image, keypoints):
         "image": image,
         "keypoints": keypoints,
     }
-    aug_data = transforms(**data)
+    aug_data = DEFAULT_TRANSFORMS(**data)
     aug_img = aug_data["image"]
     aug_kp = aug_data["keypoints"]
     aug_kp = tf.cast(aug_kp, tf.float32)
@@ -113,6 +82,7 @@ def encode_keypoints_to_mask_np(
     extent=(2, 2),
     include_background=True,
     separate_hour_and_minute_hands: bool = True,
+    add_perimeter: bool = False,
 ):
     downsample_factor = image_size[0] / mask_size[0]
     all_masks = []
@@ -137,10 +107,13 @@ def encode_keypoints_to_mask_np(
                 coords = tuple(int_point)
             rr, cc = rectangle(coords, extent=extent, shape=mask.shape)
             mask[cc, rr] = 1
+            if add_perimeter:
+                rr, cc = rectangle_perimeter(coords, extent=extent, shape=mask.shape)
+                mask[cc, rr] = 0.5
         all_masks.append(mask)
 
     masks = np.array(all_masks).transpose((1, 2, 0))
-    # background
+    # background mask
     if include_background:
         background_mask = ((np.ones(mask_size) - masks.sum(axis=-1)) > 0).astype(
             "float32"

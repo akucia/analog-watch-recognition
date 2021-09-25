@@ -11,6 +11,10 @@ class Point:
     name: str = ""
     score: Optional[float] = None
 
+    @classmethod
+    def none(cls) -> "Point":
+        return Point(0.0, 0.0, "", 0.0)
+
     def scale(self, x: float, y: float) -> "Point":
         return Point(self.x * x, self.y * y, self.name, self.score)
 
@@ -31,8 +35,8 @@ class Point:
             # upper left corner coordinates
             "x": self.x * 100,
             "y": self.y * 100,
-            "width": 0.3943217665615142,
-            # TODO add score?
+            "width": 0.3943217665615142,  # magic value used in label studio
+            "score": self.score,
         }
 
 
