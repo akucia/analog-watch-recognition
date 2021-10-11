@@ -67,3 +67,22 @@ def load_keypoints_data_as_kp(
         points = np.array(points)
         all_keypoints.append(points)
     return np.array(all_images), np.array(all_keypoints), np.array(all_filenames)
+
+
+def keypoints_to_angle(center, top):
+    top = top - center
+    top = top / np.linalg.norm(top)
+
+    reference_vector = np.array([0, -0.5])
+    reference_vector = reference_vector / np.linalg.norm(reference_vector)
+    angle = np.rad2deg(np.arctan2(*top) - np.arctan2(*reference_vector))
+    return int(angle)
+
+
+def binarize(value, bin_size):
+    if value < 0:
+        value += 360
+    n_bins = 360 // bin_size
+    b = (value + bin_size / 2) / bin_size
+    b = int(b)
+    return b % n_bins

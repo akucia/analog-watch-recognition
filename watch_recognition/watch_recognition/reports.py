@@ -211,26 +211,26 @@ def visualize_high_loss_examples(epoch, logs, dataset, file_writer, model):
 
 
 def euclidean_distance(x_1, y_1, x_2, y_2) -> float:
-    return np.sqrt((x_1 - x_2) ** 2 + (y_1 - y_2) ** 2)
+    return np.sqrt(((x_1 - x_2) ** 2) + ((y_1 - y_2) ** 2))
 
 
 def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
     predicted = model.predict(X)
     (
         center_distances,
-        hour_distances,
-        minute_distances,
         top_distances,
+        minute_distances,
+        hour_distances,
     ) = calculate_distances_between_points(X, predicted, y)
     distances = [
         center_distances,
         top_distances,
-        hour_distances,
         minute_distances,
+        hour_distances,
     ]
     with file_writer.as_default():
         means = []
-        for tag, array in zip(["Center", "Top", "Hour", "Minute"], distances):
+        for tag, array in zip(["Center", "Top", "Minute", "Hour"], distances):
 
             mean = np.mean(array)
             means.append(mean)
@@ -256,8 +256,8 @@ def calculate_distances_between_points(X, predicted, y):
 
         center = y[row, 0, :2]
         top = y[row, 1, :2]
-        hour = y[row, 2, :2]
-        minute = y[row, 3, :2]
+        minute = y[row, 2, :2]
+        hour = y[row, 3, :2]
 
         center = np.where(center < 0, np.zeros_like(center), center)
         top = np.where(top < 0, np.zeros_like(top), top)
@@ -272,4 +272,6 @@ def calculate_distances_between_points(X, predicted, y):
         top_distances[row] = top_distance
         hour_distances[row] = hour_distance
         minute_distances[row] = minute_distance
-    return center_distances, hour_distances, minute_distances, top_distances
+    # TODO return as dict to make sure user of this function doesn't make and error
+    # on the metrics names
+    return center_distances, top_distances, minute_distances, hour_distances

@@ -1,14 +1,20 @@
+from functools import partial
+
 import albumentations as A
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from skimage.draw import rectangle, rectangle_perimeter
+from tensorflow.python.keras.utils.np_utils import to_categorical
+
+from watch_recognition.data_preprocessing import binarize, keypoints_to_angle
 
 DEFAULT_TRANSFORMS = A.Compose(
     [
         A.RandomSizedCrop(min_max_height=(200, 224), height=224, width=224, p=0.5),
         A.ShiftScaleRotate(
             p=0.8,
+            rotate_limit=180,
         ),
         A.OneOf(
             [
@@ -18,8 +24,8 @@ DEFAULT_TRANSFORMS = A.Compose(
             ],
             p=1,
         ),
-        A.Blur(blur_limit=5, p=0.5),
-        A.RandomBrightnessContrast(p=0.5),
+        A.MotionBlur(blur_limit=20),
+        A.RandomBrightnessContrast(),
     ],
     # format="xyas" is required while using tf.Data pipielines, otherwise
     # tf cannot validate the output shapes # TODO check if this is correct
@@ -64,7 +70,6 @@ def view_image(ds):
         ax = axarr[i]
         img = image[i]
         ax_idx = 0
-        ax[ax_idx].imshow(img)
         ax[ax_idx].imshow(img.astype("uint8"))
         ax[ax_idx].set_xticks([])
         ax[ax_idx].set_yticks([])
@@ -99,17 +104,9 @@ def encode_keypoints_to_mask_np(
             mask = _encode_point_to_mask(extent, int_point, mask_size)
             all_masks.append(mask)
     else:
-        mask = np.zeros(mask_size, dtype=np.float32)
-        for int_point in int_points[2:]:
-            if extent[0] > 1:
-                coords = tuple(int_point - 1)
-            else:
-                coords = tuple(int_point)
-            rr, cc = rectangle(coords, extent=extent, shape=mask.shape)
-            mask[cc, rr] = 1
-            if add_perimeter:
-                rr, cc = rectangle_perimeter(coords, extent=extent, shape=mask.shape)
-                mask[cc, rr] = 0.5
+        mask = _encode_multiple_points_to_mask(
+            add_perimeter, extent, int_points[2:], mask_size
+        )
         all_masks.append(mask)
 
     masks = np.array(all_masks).transpose((1, 2, 0))
@@ -121,6 +118,21 @@ def encode_keypoints_to_mask_np(
         background_mask = np.expand_dims(background_mask, axis=-1)
         masks = np.concatenate((masks, background_mask), axis=-1)
     return np.expand_dims(np.argmax(masks, axis=-1).astype("float32"), axis=-1)
+
+
+def _encode_multiple_points_to_mask(add_perimeter, extent, int_points, mask_size):
+    mask = np.zeros(mask_size, dtype=np.float32)
+    for int_point in int_points:
+        if extent[0] > 1:
+            coords = tuple(int_point - 1)
+        else:
+            coords = tuple(int_point)
+        rr, cc = rectangle(coords, extent=extent, shape=mask.shape)
+        mask[cc, rr] = 1
+        if add_perimeter:
+            rr, cc = rectangle_perimeter(coords, extent=extent, shape=mask.shape)
+            mask[cc, rr] = 0.5
+    return mask
 
 
 def _encode_point_to_mask(extent, int_point, mask_size):
@@ -156,3 +168,59 @@ def encode_keypoints_to_mask(
         Tout=tf.float32,
     )
     return image, mask
+
+
+def add_sample_weights(image, label):
+    # The weights for each class, with the constraint that:
+    #     sum(class_weights) == 1.0
+    class_weights = tf.constant([1, 1, 1, 5e-3])
+    class_weights = class_weights / tf.reduce_sum(class_weights)
+
+    # Create an image of `sample_weights` by using the label at each pixel as an
+    # index into the `class weights` .
+    sample_weights = tf.gather(class_weights, indices=tf.cast(label, tf.int32))
+
+    return image, label, sample_weights
+
+
+def encode_keypoints_to_angle(image, keypoints, bin_size=90):
+    angle = tf.numpy_function(
+        func=encode_keypoints_to_angle_np,
+        inp=[
+            keypoints,
+            bin_size,
+        ],
+        Tout=tf.float32,
+    )
+    return image, angle
+
+
+def encode_keypoints_to_angle_np(keypoints, bin_size=90):
+    center = keypoints[0, :2]
+    top = keypoints[1, :2]
+    angle = keypoints_to_angle(center, top)
+    angle = binarize(angle, bin_size)
+    return to_categorical(angle, num_classes=360 // bin_size)
+
+
+def get_augmented_watch_angle_dataset(X, y, bin_size=90):
+    encode_kp = partial(encode_keypoints_to_angle, bin_size=bin_size)
+    set_shape_f = partial(
+        set_shapes, img_shape=(224, 224, 3), target_shape=(360 // bin_size,)
+    )
+
+    dataset = tf.data.Dataset.from_tensor_slices((X, y))
+    AUTOTUNE = tf.data.experimental.AUTOTUNE
+
+    ds_alb = (
+        dataset.map(
+            process_kp_data,
+            num_parallel_calls=AUTOTUNE,
+        )
+        .map(encode_kp, num_parallel_calls=AUTOTUNE)
+        .map(set_shape_f, num_parallel_calls=AUTOTUNE)
+        .shuffle(8 * 32)
+        .batch(32)
+        .prefetch(AUTOTUNE)
+    )
+    return ds_alb

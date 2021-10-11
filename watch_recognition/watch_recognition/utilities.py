@@ -1,6 +1,7 @@
 import dataclasses
 from typing import Optional, Tuple
 
+import numpy as np
 from matplotlib import pyplot as plt
 
 
@@ -20,6 +21,15 @@ class Point:
 
     def translate(self, x: float, y: float) -> "Point":
         return Point(self.x + x, self.y + y, self.name, self.score)
+
+    def rotate_around_origin_point(self, origin: "Point", angle: float) -> "Point":
+        theta = np.radians(angle)
+        c, s = np.cos(theta), np.sin(theta)
+        R = np.array(((c, -s), (s, c)))
+        point = np.array([self.as_coordinates_tuple]).T
+        origin = np.array([origin.as_coordinates_tuple]).T
+        rotated = (R @ (point - origin) + origin).flatten()
+        return Point(rotated[0], rotated[1], self.name, self.score)
 
     @property
     def as_coordinates_tuple(self) -> Tuple[float, float]:
