@@ -117,14 +117,7 @@ def extract_points_from_map(
 def convert_outputs_to_keypoints(
     predicted,
 ) -> Tuple[Point, Point, Point, Point]:
-    # classes = np.argmax(predicted, axis=-1)
-    # labels = np.unique(classes)
-    # masks = []
-    # for label in labels:
-    #     zeros = np.zeros_like(classes)
-    #     mask = np.where(classes == label, predicted[:, :, label], zeros)
-    #     masks.append(mask)
-    # predicted = np.stack(masks, axis=-1)
+
     masks = predicted.transpose((2, 0, 1))
     center_points = extract_points_from_map(masks[0])
     if not center_points:
@@ -143,13 +136,14 @@ def convert_outputs_to_keypoints(
     hands_points = extract_points_from_map(masks[2])
     if not hands_points:
         hands_points = [Point.none(), Point.none()]
+    # TODO sort by distance to center instead of score?
     hands_points = sorted(hands_points, key=lambda x: x.score)[-2:]
 
     hour, minute = get_minute_and_hour_points(center, tuple(hands_points))
     hour = dataclasses.replace(hour, name="Hour")
     minute = dataclasses.replace(minute, name="Minute")
 
-    return center, hour, minute, top
+    return center, top, hour, minute
 
 
 def get_minute_and_hour_points(

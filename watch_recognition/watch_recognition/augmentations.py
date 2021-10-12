@@ -14,7 +14,7 @@ DEFAULT_TRANSFORMS = A.Compose(
         A.RandomSizedCrop(min_max_height=(200, 224), height=224, width=224, p=0.5),
         A.ShiftScaleRotate(
             p=0.8,
-            rotate_limit=180,
+            # rotate_limit=180, # TODO change to max 45 angle
         ),
         A.OneOf(
             [
@@ -101,11 +101,11 @@ def encode_keypoints_to_mask_np(
     # hour and minute hands
     if separate_hour_and_minute_hands:
         for int_point in int_points[2:]:
-            mask = _encode_point_to_mask(extent, int_point, mask_size)
+            mask = _encode_point_to_mask(extent, int_point, mask_size, add_perimeter)
             all_masks.append(mask)
     else:
         mask = _encode_multiple_points_to_mask(
-            add_perimeter, extent, int_points[2:], mask_size
+            extent, int_points[2:], mask_size, add_perimeter
         )
         all_masks.append(mask)
 
@@ -120,7 +120,7 @@ def encode_keypoints_to_mask_np(
     return np.expand_dims(np.argmax(masks, axis=-1).astype("float32"), axis=-1)
 
 
-def _encode_multiple_points_to_mask(add_perimeter, extent, int_points, mask_size):
+def _encode_multiple_points_to_mask(extent, int_points, mask_size, with_perimeter):
     mask = np.zeros(mask_size, dtype=np.float32)
     for int_point in int_points:
         if extent[0] > 1:
@@ -129,21 +129,44 @@ def _encode_multiple_points_to_mask(add_perimeter, extent, int_points, mask_size
             coords = tuple(int_point)
         rr, cc = rectangle(coords, extent=extent, shape=mask.shape)
         mask[cc, rr] = 1
-        if add_perimeter:
+        if with_perimeter:
             rr, cc = rectangle_perimeter(coords, extent=extent, shape=mask.shape)
-            mask[cc, rr] = 0.5
+            cc, rr = _select_rows_and_columns_inside_mask(cc, mask_size, rr)
+            mask[cc, rr] = 1
     return mask
 
 
-def _encode_point_to_mask(extent, int_point, mask_size):
-    matched = np.zeros(mask_size, dtype=np.float32)
+def _encode_point_to_mask(extent, int_point, mask_size, with_perimeter: bool = False):
+    mask = np.zeros(mask_size, dtype=np.float32)
     if extent[0] > 1:
         coords = tuple(int_point - 1)
     else:
         coords = tuple(int_point)
-    rr, cc = rectangle(coords, extent=extent, shape=matched.shape)
-    matched[cc, rr] = 1
-    return matched
+
+    rr, cc = rectangle(coords, extent=extent, shape=mask.shape)
+    mask[cc, rr] = 1
+    if with_perimeter:
+        rr, cc = rectangle_perimeter(coords, extent=extent)
+        cc, rr = _select_rows_and_columns_inside_mask(cc, mask_size, rr)
+        mask[cc, rr] = 1
+    return mask
+
+
+def _select_rows_and_columns_inside_mask(cc, mask_size, rr):
+    row_filter = np.where(
+        rr < mask_size[0],
+        np.ones_like(rr).astype(bool),
+        np.zeros_like(rr).astype(bool),
+    )
+    col_filter = np.where(
+        cc < mask_size[1],
+        np.ones_like(cc).astype(bool),
+        np.zeros_like(cc).astype(bool),
+    )
+    filter = row_filter & col_filter
+    cc = cc[filter]
+    rr = rr[filter]
+    return cc, rr
 
 
 def encode_keypoints_to_mask(

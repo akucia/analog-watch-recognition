@@ -4,6 +4,9 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from skimage.transform import rotate
+
+from watch_recognition.utilities import Point
 
 
 def load_single_kp_example(
@@ -25,6 +28,7 @@ def load_keypoints_data_as_kp(
     source: Path,
     image_size: Tuple[int, int] = (224, 224),
     skip_examples_without_all_keypoints: bool = True,
+    autorotate: bool = False,
 ):
     labels_df = pd.read_csv(source / f"tags.csv")
     all_keypoints = []
@@ -42,7 +46,6 @@ def load_keypoints_data_as_kp(
         )
 
         image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
-        all_images.append(image_np)
 
         points = []
         for tag in ["Center", "Top", "Hour", "Minute"]:
@@ -50,10 +53,9 @@ def load_keypoints_data_as_kp(
             # if tag is missing, negative values will throw it outside the image
             # TODO this should probably be handled better by using the keypoint
             #  labels explicitly
-            kp = (-1, -1, -1, -1)
-            # two last coordinate values are ignored, 4 values are required to
-            # correctly use albumentations for keypoints with tf.Data
             if not tag_data.empty:
+                # two last coordinate values are ignored, 4 values are required to
+                # correctly use albumentations for keypoints with tf.Data
                 point = np.array(
                     (tag_data["x"].values[0], tag_data["y"].values[0], 0, 0)
                 )
@@ -61,10 +63,26 @@ def load_keypoints_data_as_kp(
                 point[1] *= image_size[1]
                 int_point = np.floor(point).astype(int)
                 kp = tuple(int_point)
+            else:
+                raise ValueError(f"no keypoint data for {tag} on {image_name}")
 
             points.append(kp)
-        all_filenames.append(data["crop_file"].values[0])
         points = np.array(points)
+
+        if autorotate:
+            angle = keypoints_to_angle(points[0, :2], points[1, :2])
+            image_np = rotate(image_np.astype("float32"), -angle).astype("uint8")
+            origin_point = Point(image_size[0] / 2, image_size[1] / 2)
+            for i in range(4):
+                points[i, :2] = np.array(
+                    Point(*points[i, :2])
+                    .rotate_around_origin_point(origin_point, angle)
+                    .as_coordinates_tuple
+                )
+
+        all_images.append(image_np)
+        all_filenames.append(data["crop_file"].values[0])
+
         all_keypoints.append(points)
     return np.array(all_images), np.array(all_keypoints), np.array(all_filenames)
 

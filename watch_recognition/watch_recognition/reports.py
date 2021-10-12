@@ -128,10 +128,10 @@ def run_on_image_debug(model, image):
     # TODO Cleanup and refactor this
     predicted = model(np.expand_dims(image, 0)).numpy()[0]
 
-    center, hour, minute, top = convert_outputs_to_keypoints(predicted)
-    center, hour, minute, top = [
+    center, top, hour, minute = convert_outputs_to_keypoints(predicted)
+    center, top, hour, minute = [
         np.array(p.as_coordinates_tuple).astype(float)
-        for p in (center, hour, minute, top)
+        for p in (center, top, hour, minute)
     ]
     downsample_factor = image.shape[1] / predicted.shape[1]
     masks = predicted.transpose((2, 1, 0))
@@ -219,18 +219,13 @@ def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
     (
         center_distances,
         top_distances,
-        minute_distances,
         hour_distances,
+        minute_distances,
     ) = calculate_distances_between_points(X, predicted, y)
-    distances = [
-        center_distances,
-        top_distances,
-        minute_distances,
-        hour_distances,
-    ]
+    distances = [center_distances, top_distances, hour_distances, minute_distances]
     with file_writer.as_default():
         means = []
-        for tag, array in zip(["Center", "Top", "Minute", "Hour"], distances):
+        for tag, array in zip(["Center", "Top", "Hour", "Minute"], distances):
 
             mean = np.mean(array)
             means.append(mean)
@@ -246,7 +241,8 @@ def calculate_distances_between_points(X, predicted, y):
     hour_distances = np.zeros(predicted.shape[0])
     scale_factor = X.shape[1] / predicted.shape[1]
     for row in range(predicted.shape[0]):
-        center_hat, hour_hat, minute_hat, top_hat = convert_outputs_to_keypoints(
+
+        center_hat, top_hat, hour_hat, minute_hat = convert_outputs_to_keypoints(
             predicted[row]
         )
         center_hat = center_hat.scale(scale_factor, scale_factor).as_coordinates_tuple
@@ -256,8 +252,8 @@ def calculate_distances_between_points(X, predicted, y):
 
         center = y[row, 0, :2]
         top = y[row, 1, :2]
-        minute = y[row, 2, :2]
-        hour = y[row, 3, :2]
+        hour = y[row, 2, :2]
+        minute = y[row, 3, :2]
 
         center = np.where(center < 0, np.zeros_like(center), center)
         top = np.where(top < 0, np.zeros_like(top), top)
@@ -274,4 +270,4 @@ def calculate_distances_between_points(X, predicted, y):
         minute_distances[row] = minute_distance
     # TODO return as dict to make sure user of this function doesn't make and error
     # on the metrics names
-    return center_distances, top_distances, minute_distances, hour_distances
+    return center_distances, top_distances, hour_distances, minute_distances
