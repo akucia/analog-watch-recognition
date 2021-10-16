@@ -73,7 +73,7 @@ def extract_points_from_map(
     predicted_map,
     detection_threshold=0.5,
     text_threshold=0.5,
-    size_threshold=1,
+    size_threshold=2,
 ) -> List[Point]:
     """
     Inspired by keras-ocr segmentation to bboxes code
@@ -101,8 +101,8 @@ def extract_points_from_map(
         if size < size_threshold:
             continue
 
-        mean_score = np.max(predicted_map[labels == component_id])
-        if mean_score < detection_threshold:
+        score = np.max(predicted_map[labels == component_id])
+        if score < detection_threshold:
             continue
 
         segmap = np.where(
@@ -110,15 +110,22 @@ def extract_points_from_map(
         )
 
         box_center = np.array(decode_single_point(segmap))
-        points.append(Point(*box_center, score=float(mean_score)))
+        points.append(Point(*box_center, score=float(score)))
     return points
 
 
-def convert_outputs_to_keypoints(
-    predicted,
-) -> Tuple[Point, Point, Point, Point]:
-
-    masks = predicted.transpose((2, 0, 1))
+def convert_outputs_to_keypoints(predicted) -> Tuple[Point, Point, Point, Point]:
+    argmax_masks = predicted.argmax(axis=-1)
+    new_masks = []
+    for label in range(4):
+        new_mask = np.where(
+            argmax_masks == label,
+            predicted[:, :, label],
+            np.zeros_like(predicted[:, :, label]),
+        )
+        new_masks.append(new_mask)
+    masks = np.stack(new_masks, axis=-1)
+    masks = masks.transpose((2, 0, 1))
     center_points = extract_points_from_map(masks[0])
     if not center_points:
         center_points = [Point.none()]
@@ -132,11 +139,12 @@ def convert_outputs_to_keypoints(
     top = sorted(top_points, key=lambda x: x.score)[-1]
     top = dataclasses.replace(top, name="Top")
     # Hands
+    hands_points = extract_points_from_map(masks[2], size_threshold=3)
 
-    hands_points = extract_points_from_map(masks[2])
     if not hands_points:
         hands_points = [Point.none(), Point.none()]
-    # TODO sort by distance to center instead of score?
+    if len(hands_points) == 1:
+        hands_points = (hands_points[0], hands_points[0])
     hands_points = sorted(hands_points, key=lambda x: x.score)[-2:]
 
     hour, minute = get_minute_and_hour_points(center, tuple(hands_points))

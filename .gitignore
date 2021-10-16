@@ -282,6 +282,7 @@ data/
 # trained models
 models/
 *.tflite
+*.h5
 
 # logs
 tensorboard_logs/
@@ -297,3 +298,6 @@ runs.json
 /download_data/keypoints/*
 /download_data/watch-face-detection-train/*
 /download_data/watch-face-detection-val/*
+
+*.mov
+*.avi

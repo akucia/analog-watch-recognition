@@ -2,7 +2,6 @@ import dataclasses
 from typing import Optional, Tuple
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 
 @dataclasses.dataclass(frozen=True)
@@ -21,6 +20,12 @@ class Point:
 
     def translate(self, x: float, y: float) -> "Point":
         return Point(self.x + x, self.y + y, self.name, self.score)
+
+    def distance(self, other: "Point") -> float:
+        diff = np.array(self.as_coordinates_tuple) - np.array(
+            other.as_coordinates_tuple
+        )
+        return float(np.sqrt((diff ** 2).sum()))
 
     def rotate_around_origin_point(self, origin: "Point", angle: float) -> "Point":
         theta = np.radians(angle)
@@ -67,6 +72,24 @@ class BBox:
     def scale(self, x: float, y: float) -> "BBox":
         return BBox(
             self.x_min * x, self.y_min * y, self.x_max * x, self.y_max * y, self.name
+        )
+
+    @property
+    def center(self) -> "Point":
+        return Point((self.x_max + self.x_min) / 2, (self.y_max + self.y_min) / 2)
+
+    def center_scale(self, x: float, y: float) -> "BBox":
+        w, h = self.width * x, self.height * y
+        cx, cy = self.center.x, self.center.y
+
+        x_min = cx - w / 2
+        x_max = cx + w / 2
+
+        y_min = cy - h / 2
+        y_max = cy + h / 2
+
+        return dataclasses.replace(
+            self, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
         )
 
     @property

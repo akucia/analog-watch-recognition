@@ -14,18 +14,18 @@ DEFAULT_TRANSFORMS = A.Compose(
         A.RandomSizedCrop(min_max_height=(200, 224), height=224, width=224, p=0.5),
         A.ShiftScaleRotate(
             p=0.8,
-            # rotate_limit=180, # TODO change to max 45 angle
+            rotate_limit=90,
         ),
         A.OneOf(
             [
                 A.HueSaturationValue(p=0.7),
                 A.RGBShift(p=0.7),
                 A.ChannelShuffle(p=0.7),
+                A.RandomBrightnessContrast(p=0.7),
             ],
             p=1,
         ),
-        A.MotionBlur(blur_limit=20),
-        A.RandomBrightnessContrast(),
+        A.MotionBlur(),
     ],
     # format="xyas" is required while using tf.Data pipielines, otherwise
     # tf cannot validate the output shapes # TODO check if this is correct
@@ -196,7 +196,7 @@ def encode_keypoints_to_mask(
 def add_sample_weights(image, label):
     # The weights for each class, with the constraint that:
     #     sum(class_weights) == 1.0
-    class_weights = tf.constant([1, 1, 1, 5e-3])
+    class_weights = tf.constant([1, 1, 1, 1e-3])
     class_weights = class_weights / tf.reduce_sum(class_weights)
 
     # Create an image of `sample_weights` by using the label at each pixel as an

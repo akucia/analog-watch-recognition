@@ -5,24 +5,8 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from IPython.core.display import display
 
 from watch_recognition.models import convert_outputs_to_keypoints, points_to_time
-
-
-def predict_on_image(path, model, image_size=(100, 100)):
-    test_image = tf.keras.preprocessing.image.load_img(
-        path, "rgb", target_size=image_size, interpolation="bicubic"
-    )
-    test_image = tf.keras.preprocessing.image.img_to_array(test_image)
-    test_image = np.array([test_image])
-    pred = model.predict(test_image)
-    pred["minute"] = np.zeros_like(pred["hour"])
-    for i, (h_pred, m_pred) in enumerate(zip(pred["hour"], pred["minute"])):
-        pred_hour = np.round((h_pred * 20) + 6)[0]
-        pred_minutes = 0  # np.round((m_pred + 0.5) * 60)[0]
-        print(pred_hour, ":", pred_minutes)
-    display(tf.keras.preprocessing.image.array_to_img(test_image[0]))
 
 
 def plot_to_image(figure):
@@ -134,7 +118,18 @@ def run_on_image_debug(model, image):
         for p in (center, top, hour, minute)
     ]
     downsample_factor = image.shape[1] / predicted.shape[1]
-    masks = predicted.transpose((2, 1, 0))
+    argmax_masks = predicted.argmax(axis=-1)
+    new_masks = []
+    for label in np.unique(argmax_masks):
+        new_mask = np.where(
+            argmax_masks == label,
+            predicted[:, :, label],
+            np.zeros_like(predicted[:, :, label]),
+        )
+        new_masks.append(new_mask)
+    masks = np.stack(new_masks, axis=-1)
+
+    masks = masks.transpose((2, 1, 0))
     extent = [0, predicted.shape[1], predicted.shape[1], 0]
     fig, ax = plt.subplots(3, 2, figsize=(5, 10))
     # Center
