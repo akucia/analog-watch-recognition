@@ -10,4 +10,18 @@ setuptools.setup(
     url="",
     packages=setuptools.find_packages(),
     python_requires=">=3.7.11",
+    install_requires=[
+        "tensorflow==2.6.*",
+        "pandas==1.3.1",
+        "numpy==1.19.5",
+        "albumentations==1.0.3",
+        "tqdm~=4.62.1",
+        "matplotlib~=3.4.3",
+        "scikit-image~=0.18.2",
+        "Pillow==8.3.2",
+        "scikit-learn~=0.24.1",
+        "pycocotools",
+        "click==8.0.1",
+        "requests",
+    ],
 )

@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from PIL import Image
 from skimage.transform import rotate
 
 from watch_recognition.utilities import Point
@@ -28,6 +29,7 @@ def load_keypoints_data_as_kp(
     source: Path,
     image_size: Tuple[int, int] = (224, 224),
     skip_examples_without_all_keypoints: bool = True,
+    min_image_size: Optional[Tuple[int, int]] = (100, 100),
     autorotate: bool = False,
 ):
     labels_df = pd.read_csv(source / f"tags.csv")
@@ -41,6 +43,14 @@ def load_keypoints_data_as_kp(
             # print(data)
             print(f"{image_name} keypoints are not unique")
         image_path = source / image_name
+
+        if min_image_size is not None:
+            with Image.open(image_path) as img:
+                image_too_small = (
+                    img.size[0] < min_image_size[0] or img.size[1] < min_image_size[1]
+                )
+                if image_too_small:
+                    continue
         img = tf.keras.preprocessing.image.load_img(
             image_path, "rgb", target_size=image_size, interpolation="bicubic"
         )

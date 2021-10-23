@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from watch_recognition.models import convert_outputs_to_keypoints, points_to_time
+from watch_recognition.models import points_to_time
+from watch_recognition.targets_encoding import convert_mask_outputs_to_keypoints
 
 
 def plot_to_image(figure):
@@ -108,28 +109,34 @@ def time_diff_np(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return deltas.astype(int)
 
 
+import cv2
+
+
 def run_on_image_debug(model, image):
     # TODO Cleanup and refactor this
     predicted = model(np.expand_dims(image, 0)).numpy()[0]
 
-    center, top, hour, minute = convert_outputs_to_keypoints(predicted)
-    center, top, hour, minute = [
-        np.array(p.as_coordinates_tuple).astype(float)
-        for p in (center, top, hour, minute)
-    ]
-    downsample_factor = image.shape[1] / predicted.shape[1]
-    argmax_masks = predicted.argmax(axis=-1)
-    new_masks = []
-    for label in np.unique(argmax_masks):
-        new_mask = np.where(
-            argmax_masks == label,
-            predicted[:, :, label],
-            np.zeros_like(predicted[:, :, label]),
-        )
-        new_masks.append(new_mask)
-    masks = np.stack(new_masks, axis=-1)
+    keypoints = convert_mask_outputs_to_keypoints(predicted)
 
-    masks = masks.transpose((2, 1, 0))
+    keypoints = [np.array(p.as_coordinates_tuple).astype(float) for p in keypoints]
+    center = keypoints[0]
+    top = keypoints[1]
+    hands = keypoints[2:]
+    downsample_factor = image.shape[1] / predicted.shape[1]
+    # argmax_masks = predicted.argmax(axis=-1)
+    new_masks = []
+    n_outputs = predicted.shape[-1]
+
+    # for label in range(n_outputs):
+    #     new_mask = np.where(
+    #         argmax_masks == label,
+    #         predicted[:, :, label],
+    #         np.zeros_like(predicted[:, :, label]),
+    #     )
+    #     new_masks.append(new_mask)
+    # masks = np.stack(new_masks, axis=-1)
+
+    masks = predicted.transpose((2, 1, 0))
     extent = [0, predicted.shape[1], predicted.shape[1], 0]
     fig, ax = plt.subplots(3, 2, figsize=(5, 10))
     # Center
@@ -156,25 +163,24 @@ def run_on_image_debug(model, image):
     ax[1][1].scatter(*(top * downsample_factor), marker="x", color="red")
 
     # Hands
+    hand_map = masks[2].T
+    # hand_map = np.clip(hand_map * 5, 0, 1)
 
-    ax[2][0].imshow(masks[2].T, extent=extent, cmap="gray", vmin=0, vmax=1)
+    ax[2][0].imshow(hand_map, extent=extent, cmap="gray", vmin=0, vmax=1)
     ax[2][0].title.set_text(f"Output|Hands")
     ax[2][1].imshow(
         image.astype("uint8"), extent=[0, image.shape[0], image.shape[1], 0]
     )
     ax[2][1].title.set_text(f"Image|Hands")
     ax[2][1].axis("off")
-    ax[2][0].scatter(*minute, marker="x", color="red")
-    ax[2][1].scatter(*(minute * downsample_factor), marker="x", color="red")
-    ax[2][0].scatter(*minute, marker="x", color="red")
-    ax[2][1].scatter(*(minute * downsample_factor), marker="x", color="red")
+    for hand in hands:
+        ax[2][0].scatter(*hand, marker="x", color="red")
+        ax[2][1].scatter(*(hand * downsample_factor), marker="x", color="red")
+        ax[2][0].scatter(*hand, marker="x", color="red")
+        ax[2][1].scatter(*(hand * downsample_factor), marker="x", color="red")
 
-    ax[2][0].scatter(*hour, marker="x", color="red")
-    ax[2][1].scatter(*(hour * downsample_factor), marker="x", color="red")
-    ax[2][0].scatter(*hour, marker="x", color="red")
-    ax[2][1].scatter(*(hour * downsample_factor), marker="x", color="red")
     plt.show()
-    read_hour, read_minute = points_to_time(center, hour, minute, top)
+    read_hour, read_minute = points_to_time(center, hands[0], hands[1], top)
     print(f"{read_hour:.0f}:{read_minute:.0f}")
 
 
@@ -228,6 +234,43 @@ def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
     with file_writer.as_default():
         tf.summary.scalar(f"point_distance_mean", np.mean(means), step=epoch)
 
+    # time_diff = calculate_time_lost(X, predicted, y)
+    # with file_writer.as_default():
+    #     tf.summary.scalar(f"time_lost", np.mean(time_diff), step=epoch)
+
+
+def calculate_time_lost(X, predicted, y):
+    predicted_hours = np.zeros(predicted.shape[0])
+    predicted_minutes = np.zeros(predicted.shape[0])
+    target_hours = np.zeros(predicted.shape[0])
+    target_minutes = np.zeros(predicted.shape[0])
+
+    for row in range(predicted.shape[0]):
+        center_hat, top_hat, hour_hat, minute_hat = convert_mask_outputs_to_keypoints(
+            predicted[row]
+        )
+        pred_hour, pred_minute = points_to_time(
+            np.array(center_hat.as_coordinates_tuple),
+            np.array(hour_hat.as_coordinates_tuple),
+            np.array(minute_hat.as_coordinates_tuple),
+            np.array(top_hat.as_coordinates_tuple),
+        )
+        predicted_hours[row] = pred_hour
+        predicted_minutes[row] = pred_minute
+
+        center = y[row, 0, :2]
+        top = y[row, 1, :2]
+        hour = y[row, 2, :2]
+        minute = y[row, 3, :2]
+
+        target_hour, target_minute = points_to_time(center, hour, minute, top)
+        target_hours[row] = target_hour
+        target_minutes[row] = target_minute
+    pred = np.vstack((predicted_hours.reshape(-1, 1), predicted_minutes.reshape(-1, 1)))
+    target = np.vstack((target_hours.reshape(-1, 1), target_minutes.reshape(-1, 1)))
+    time_diffs = time_diff_np(pred, target)
+    return time_diffs
+
 
 def calculate_distances_between_points(X, predicted, y):
     center_distances = np.zeros(predicted.shape[0])
@@ -237,7 +280,7 @@ def calculate_distances_between_points(X, predicted, y):
     scale_factor = X.shape[1] / predicted.shape[1]
     for row in range(predicted.shape[0]):
 
-        center_hat, top_hat, hour_hat, minute_hat = convert_outputs_to_keypoints(
+        center_hat, top_hat, hour_hat, minute_hat = convert_mask_outputs_to_keypoints(
             predicted[row]
         )
         center_hat = center_hat.scale(scale_factor, scale_factor).as_coordinates_tuple
@@ -265,4 +308,13 @@ def calculate_distances_between_points(X, predicted, y):
         minute_distances[row] = minute_distance
     # TODO return as dict to make sure user of this function doesn't make and error
     # on the metrics names
+    center_distances, top_distances, hour_distances, minute_distances = [
+        distance / X.shape[1]
+        for distance in [
+            center_distances,
+            top_distances,
+            hour_distances,
+            minute_distances,
+        ]
+    ]
     return center_distances, top_distances, hour_distances, minute_distances

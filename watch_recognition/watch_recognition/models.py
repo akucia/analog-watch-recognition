@@ -1,12 +1,11 @@
-import dataclasses
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
-import cv2
 import numpy as np
+import segmentation_models as sm
 import tensorflow as tf
-from sklearn.metrics import euclidean_distances
-
-from watch_recognition.utilities import Point
+from segmentation_models.base import Loss
+from segmentation_models.base.functional import average, get_reduce_axes
+from segmentation_models.losses import SMOOTH
 
 
 def hour_diff(y_true, y_pred):
@@ -50,7 +49,7 @@ def export_tflite(model, export_path, quantize: bool = False, test_image=None):
 
 def build_backbone(image_size, backbone_layer="block5c_project_conv"):
     base_model = tf.keras.applications.EfficientNetB0(
-        weights="imagenet",  # Load weights pre-trained on ImageNet.
+        weights="imagenet",
         input_shape=(*image_size, 3),
         include_top=False,
     )
@@ -60,110 +59,84 @@ def build_backbone(image_size, backbone_layer="block5c_project_conv"):
     return tf.keras.Model(inputs=[base_model.inputs], outputs=outputs)
 
 
-def decode_single_point(mask) -> Optional[Tuple[float, float]]:
-    if mask.sum() == 0:
-        mask = np.ones_like(mask)
-    y_idx, x_idx = np.indices(mask.shape) + 0.5
-    x_mask = np.average(x_idx.flatten(), weights=mask.flatten())
-    y_mask = np.average(y_idx.flatten(), weights=mask.flatten())
-    return x_mask, y_mask
-
-
-def extract_points_from_map(
-    predicted_map,
-    detection_threshold=0.5,
-    text_threshold=0.5,
-    size_threshold=2,
-) -> List[Point]:
+# class IoULoss(nn.Module):
+#     """
+#     Intersection over Union Loss.
+#     IoU = Area of Overlap / Area of Union
+#     IoU loss is modified to use for heatmaps.
+#     """
+#
+#     def __init__(self):
+#         super(IoULoss, self).__init__()
+#         self.EPSILON = 1e-6
+#
+#     def _op_sum(self, x):
+#         return x.sum(-1).sum(-1)
+#
+#     def forward(self, y_pred, y_true):
+#         inter = self._op_sum(y_true * y_pred)
+#         union = (
+#             self._op_sum(y_true ** 2)
+#             + self._op_sum(y_pred ** 2)
+#             - self._op_sum(y_true * y_pred)
+#         )
+#         iou = (inter + self.EPSILON) / (union + self.EPSILON)
+#         iou = torch.mean(iou)
+#         return 1 - iou
+#
+#
+class IouLoss2(Loss):
     """
-    Inspired by keras-ocr segmentation to bboxes code
-    https://github.com/faustomorales/keras-ocr/blob/6473e146dc3fc2c386c595efccb55abe558b2529/keras_ocr/detection.py#L207
-    Args:
-        predicted_map:
-        detection_threshold:
-        text_threshold:
-        size_threshold:
-
-    Returns:
-
+    Inspired by
+    https://github.com/OlgaChernytska/2D-Hand-Pose-Estimation-RGB/blob/c9f201ca114129fa750f4bac2adf0f87c08533eb/utils/prep_utils.py#L88
     """
 
-    _, text_score = cv2.threshold(
-        predicted_map, thresh=text_threshold, maxval=1, type=cv2.THRESH_BINARY
-    )
-    n_components, labels, stats, _ = cv2.connectedComponentsWithStats(
-        np.clip(text_score, 0, 1).astype("uint8"), connectivity=4
-    )
-    points = []
-    for component_id in range(1, n_components):
-        # Filter by size
-        size = stats[component_id, cv2.CC_STAT_AREA]
-        if size < size_threshold:
-            continue
+    def __init__(
+        self, class_weights=None, class_indexes=None, per_image=False, smooth=SMOOTH
+    ):
+        super().__init__(name="IOULoss")
+        self.class_weights = class_weights if class_weights is not None else 1
+        self.class_indexes = class_indexes
+        self.per_image = per_image
+        self.smooth = smooth
 
-        score = np.max(predicted_map[labels == component_id])
-        if score < detection_threshold:
-            continue
+    def iou_score(
+        self,
+        gt,
+        pr,
+        class_weights=1.0,
+        smooth=SMOOTH,
+        per_image=False,
+        **kwargs,
+    ):
 
-        segmap = np.where(
-            labels == component_id, predicted_map, np.zeros_like(predicted_map)
+        backend = kwargs["backend"]
+        # gt, pr = gather_channels(gt, pr, indexes=class_indexes, **kwargs)
+        # pr = round_if_needed(pr, threshold, **kwargs)
+        axes = get_reduce_axes(per_image, **kwargs)
+
+        # score calculation
+        intersection = backend.sum(gt * pr, axis=axes)
+        union = (
+            backend.sum(gt * gt, axis=axes)
+            + backend.sum(pr * pr, axis=axes)
+            - backend.sum(gt * pr, axis=axes)
         )
+        score = (intersection + smooth) / (union + smooth)
+        score = average(score, per_image, class_weights, **kwargs)
 
-        box_center = np.array(decode_single_point(segmap))
-        points.append(Point(*box_center, score=float(score)))
-    return points
+        return score
 
-
-def convert_outputs_to_keypoints(predicted) -> Tuple[Point, Point, Point, Point]:
-    argmax_masks = predicted.argmax(axis=-1)
-    new_masks = []
-    for label in range(4):
-        new_mask = np.where(
-            argmax_masks == label,
-            predicted[:, :, label],
-            np.zeros_like(predicted[:, :, label]),
+    def __call__(self, gt, pr):
+        return 1 - self.iou_score(
+            gt,
+            pr,
+            class_weights=self.class_weights,
+            smooth=self.smooth,
+            per_image=self.per_image,
+            threshold=None,
+            **self.submodules,
         )
-        new_masks.append(new_mask)
-    masks = np.stack(new_masks, axis=-1)
-    masks = masks.transpose((2, 0, 1))
-    center_points = extract_points_from_map(masks[0])
-    if not center_points:
-        center_points = [Point.none()]
-    center = sorted(center_points, key=lambda x: x.score)[-1]
-    center = dataclasses.replace(center, name="Center")
-
-    # Top
-    top_points = extract_points_from_map(masks[1])
-    if not top_points:
-        top_points = [Point.none()]
-    top = sorted(top_points, key=lambda x: x.score)[-1]
-    top = dataclasses.replace(top, name="Top")
-    # Hands
-    hands_points = extract_points_from_map(masks[2], size_threshold=3)
-
-    if not hands_points:
-        hands_points = [Point.none(), Point.none()]
-    if len(hands_points) == 1:
-        hands_points = (hands_points[0], hands_points[0])
-    hands_points = sorted(hands_points, key=lambda x: x.score)[-2:]
-
-    hour, minute = get_minute_and_hour_points(center, tuple(hands_points))
-    hour = dataclasses.replace(hour, name="Hour")
-    minute = dataclasses.replace(minute, name="Minute")
-
-    return center, top, hour, minute
-
-
-def get_minute_and_hour_points(
-    center: Point, hand_points: Tuple[Point, Point]
-) -> Tuple[Point, Point]:
-    assert len(hand_points) < 3, "expected max 2 points for hands"
-    hand_points_np = np.array([p.as_coordinates_tuple for p in hand_points])
-    center = np.array(center.as_coordinates_tuple)
-    distances = euclidean_distances(hand_points_np, [center])
-    hour = hand_points[int(np.argmin(distances))]
-    minute = hand_points[int(np.argmax(distances))]
-    return hour, minute
 
 
 def points_to_time(center, hour, minute, top):
@@ -193,3 +166,79 @@ def custom_focal_loss(target, output, gamma=4, alpha=0.25):
     bce = tf.pow(target, gamma) * tf.math.log(output + epsilon_) * (1 - alpha)
     bce += tf.pow(1 - target, gamma) * tf.math.log(1 - output + epsilon_) * alpha
     return -bce
+
+
+def get_model(image_size: Tuple[int, int] = (224, 224)) -> tf.keras.Model:
+    backbone = tf.keras.applications.EfficientNetB0(
+        weights="imagenet",
+        input_shape=(*image_size, 3),
+        include_top=False,
+    )
+    outputs = [
+        backbone.get_layer(layer_name).output for layer_name in ["block7a_project_conv"]
+    ]
+    base_model = tf.keras.Model(inputs=[backbone.inputs], outputs=outputs)
+    for layer in backbone.layers:
+        if "project_conv" in layer.name:
+            print(layer.name, layer.output.shape)
+    inputs = tf.keras.Input(
+        shape=(*image_size, 3),
+    )
+    x = base_model(inputs)
+    for i in range(2):
+        x = tf.keras.layers.Conv2D(
+            filters=256, kernel_size=3, padding="same", activation=None
+        )(x)
+        x = tf.keras.layers.Activation(tf.keras.activations.swish)(x)
+
+    x = tf.keras.layers.UpSampling2D()(x)
+    for i in range(2):
+        x = tf.keras.layers.MaxPool2D(padding="same", strides=1)(x)
+        x = tf.keras.layers.Conv2D(
+            filters=256, kernel_size=3, padding="same", activation=None
+        )(x)
+        x = tf.keras.layers.Activation(tf.keras.activations.swish)(x)
+    output = tf.keras.layers.Conv2D(
+        filters=4, kernel_size=1, strides=1, padding="same", activation="softmax"
+    )(x)
+    model = tf.keras.models.Model(inputs=inputs, outputs=output)
+    return model
+
+
+def get_unet_model(
+    image_size: Tuple[int, int] = (224, 224),
+    n_outputs: int = 4,
+    unet_output_layer: Optional[str] = "decoder_stage0b_relu",
+    output_activation: str = "softmax",
+) -> tf.keras.Model:
+    inputs = tf.keras.Input(
+        shape=(*image_size, 3),
+    )
+    sm_model = sm.Unet(
+        "efficientnetb0",
+        classes=n_outputs,
+        activation=output_activation,
+        input_shape=(*image_size, 3),
+    )
+    if unet_output_layer is not None:
+        outputs = [sm_model.get_layer(unet_output_layer).output]
+    else:
+        outputs = sm_model.outputs
+
+    base_model = tf.keras.Model(inputs=sm_model.inputs, outputs=outputs)
+
+    x = base_model(inputs)
+    if unet_output_layer is not None:
+        output = tf.keras.layers.Conv2D(
+            filters=n_outputs,
+            kernel_size=1,
+            strides=1,
+            padding="same",
+            activation=output_activation,
+        )(x)
+    else:
+
+        output = x
+
+    model = tf.keras.models.Model(inputs=inputs, outputs=output)
+    return model

@@ -4,7 +4,7 @@ from unittest import TestCase
 import albumentations as A
 import numpy as np
 
-from watch_recognition.augmentations import DEFAULT_TRANSFORMS
+from watch_recognition.datasets import DEFAULT_TRANSFORMS
 
 
 class TestAugmentations(TestCase):
