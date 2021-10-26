@@ -114,7 +114,8 @@ import cv2
 
 def run_on_image_debug(model, image):
     # TODO Cleanup and refactor this
-    predicted = model(np.expand_dims(image, 0)).numpy()[0]
+    # TODO display masks as a single RGB image
+    predicted = model.predict(np.expand_dims(image, 0))[0]
 
     keypoints = convert_mask_outputs_to_keypoints(predicted)
 
@@ -123,18 +124,6 @@ def run_on_image_debug(model, image):
     top = keypoints[1]
     hands = keypoints[2:]
     downsample_factor = image.shape[1] / predicted.shape[1]
-    # argmax_masks = predicted.argmax(axis=-1)
-    new_masks = []
-    n_outputs = predicted.shape[-1]
-
-    # for label in range(n_outputs):
-    #     new_mask = np.where(
-    #         argmax_masks == label,
-    #         predicted[:, :, label],
-    #         np.zeros_like(predicted[:, :, label]),
-    #     )
-    #     new_masks.append(new_mask)
-    # masks = np.stack(new_masks, axis=-1)
 
     masks = predicted.transpose((2, 1, 0))
     extent = [0, predicted.shape[1], predicted.shape[1], 0]
@@ -164,7 +153,6 @@ def run_on_image_debug(model, image):
 
     # Hands
     hand_map = masks[2].T
-    # hand_map = np.clip(hand_map * 5, 0, 1)
 
     ax[2][0].imshow(hand_map, extent=extent, cmap="gray", vmin=0, vmax=1)
     ax[2][0].title.set_text(f"Output|Hands")
@@ -233,10 +221,6 @@ def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
             tf.summary.scalar(f"point_distance_{tag}", mean, step=epoch)
     with file_writer.as_default():
         tf.summary.scalar(f"point_distance_mean", np.mean(means), step=epoch)
-
-    # time_diff = calculate_time_lost(X, predicted, y)
-    # with file_writer.as_default():
-    #     tf.summary.scalar(f"time_lost", np.mean(time_diff), step=epoch)
 
 
 def calculate_time_lost(X, predicted, y):

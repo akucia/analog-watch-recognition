@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from PIL import Image
+from PIL.Image import BICUBIC
 from skimage.transform import rotate
 
 from watch_recognition.utilities import Point
@@ -32,7 +33,8 @@ def load_keypoints_data_as_kp(
     min_image_size: Optional[Tuple[int, int]] = (100, 100),
     autorotate: bool = False,
 ):
-    labels_df = pd.read_csv(source / f"tags.csv")
+    with tf.io.gfile.GFile(source / f"tags.csv", "r") as f:
+        labels_df = pd.read_csv(f)
     all_keypoints = []
     all_images = []
     all_filenames = []
@@ -40,22 +42,23 @@ def load_keypoints_data_as_kp(
         if skip_examples_without_all_keypoints and len(data) != 4:
             continue
         if len(data["label"].unique()) != 4:
-            # print(data)
             print(f"{image_name} keypoints are not unique")
         image_path = source / image_name
 
-        if min_image_size is not None:
-            with Image.open(image_path) as img:
+        with tf.io.gfile.GFile(image_path, "rb") as f:
+            with Image.open(f) as img:
                 image_too_small = (
                     img.size[0] < min_image_size[0] or img.size[1] < min_image_size[1]
                 )
-                if image_too_small:
+                if min_image_size is not None and image_too_small:
                     continue
-        img = tf.keras.preprocessing.image.load_img(
-            image_path, "rgb", target_size=image_size, interpolation="bicubic"
-        )
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                img = img.resize(image_size, BICUBIC)
 
-        image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
+                image_np = tf.keras.preprocessing.image.img_to_array(img).astype(
+                    "uint8"
+                )
 
         points = []
         for tag in ["Center", "Top", "Hour", "Minute"]:
@@ -94,7 +97,11 @@ def load_keypoints_data_as_kp(
         all_filenames.append(data["crop_file"].values[0])
 
         all_keypoints.append(points)
-    return np.array(all_images), np.array(all_keypoints), np.array(all_filenames)
+    all_images = np.array(all_images)
+    all_keypoints = np.array(all_keypoints)
+    all_filename = np.array(all_filenames)
+
+    return all_images, all_keypoints, all_filename
 
 
 def keypoints_to_angle(center, top):

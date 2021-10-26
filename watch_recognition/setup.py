@@ -23,5 +23,6 @@ setuptools.setup(
         "pycocotools",
         "click==8.0.1",
         "requests",
+        "segmentation_models==1.0.1",
     ],
 )

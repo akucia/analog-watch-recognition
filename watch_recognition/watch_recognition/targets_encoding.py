@@ -232,125 +232,16 @@ def extract_points_from_map(
     return points
 
 
-def extract_points_from_map_2(
-    predicted_map,
-    detection_threshold=0.5,
-    text_threshold=0.25,
-    size_threshold=2,
-    center=None,
-) -> List[Point]:
-    """
-    Inspired by keras-ocr segmentation to bboxes code
-    https://github.com/faustomorales/keras-ocr/blob/6473e146dc3fc2c386c595efccb55abe558b2529/keras_ocr/detection.py#L207
-    Args:
-        predicted_map:
-        detection_threshold:
-        text_threshold:
-        size_threshold:
-
-    Returns:
-
-    """
-
-    _, text_score = cv2.threshold(
-        predicted_map, thresh=text_threshold, maxval=1, type=cv2.THRESH_BINARY
-    )
-
-    n_components, labels, stats, _ = cv2.connectedComponentsWithStats(
-        np.clip(text_score, 0, 1).astype("uint8"), connectivity=4
-    )
-    if center is None:
-        center = (
-            np.array([[predicted_map.shape[0] // 2, predicted_map.shape[1] // 2]]),
-        )
-    points = []
-    for component_id in range(1, n_components):
-        # Filter by size
-        size = stats[component_id, cv2.CC_STAT_AREA]
-        if size < size_threshold:
-            continue
-
-        score = np.max(predicted_map[labels == component_id])
-        if score < detection_threshold:
-            continue
-
-        segmap = (
-            np.where(
-                labels == component_id, predicted_map, np.zeros_like(predicted_map)
-            )
-            * 255
-        ).astype("uint8")
-        segmap = np.stack((segmap, segmap, segmap), axis=-1)
-        # Make rotated box from contour
-        contours = cv2.findContours(
-            (labels == component_id).astype("uint8"),
-            mode=cv2.RETR_TREE,
-            method=cv2.CHAIN_APPROX_SIMPLE,
-        )[-2]
-        contour = contours[0]
-
-        [vx, vy, x, y] = cv2.fitLine(contour, cv2.DIST_L2, 0, 0.01, 0.01)
-        # print(vx, vy, x, y)
-        box = cv2.boxPoints(cv2.minAreaRect(contour))
-        box = np.vstack((box, center[0]))
-        # print(box)
-        distances = euclidean_distances(box, center)
-        segmap = cv2.polylines(
-            segmap, np.array([box]).astype("int32"), True, (255, 0, 0), 1
-        )
-        p = box[distances.argmax()]
-        contour = np.squeeze(contour)
-        a_min = min(contour[:, 0])
-        a_max = max(contour[:, 0])
-        x_i = p[0]
-        x_i = np.clip(x_i, a_min, a_max)  # .astype(int)
-        y_i = y[0] + (x_i - x[0]) * vy[0] / vx[0]
-        x_i = int(x_i)
-        y_i = int(y_i)
-        a_min = min(contour[:, 1])
-        a_max = max(contour[:, 1])
-        # print(a_min, a_max, y_i)
-        y_i = np.clip(y_i, a_min, a_max)  # .astype(int)
-        # print(y_i)
-        # cv2.drawMarker(
-        #     segmap, [x_i, y_i], (0, 255, 0), cv2.MARKER_CROSS, thickness=1, markerSize=2
-        # )
-        # plt.imshow(segmap)
-        # plt.show()
-        points.append(Point(x_i, float(y_i), score=float(score)))
-
-        # box_center = np.array(decode_single_point(segmap))
-        # points.append(Point(*box_center, score=float(score)))
-    return points
-
-
 def convert_mask_outputs_to_keypoints(predicted) -> Tuple[Point, Point, Point, Point]:
-    # argmax_masks = predicted.argmax(axis=-1)
-    # new_masks = []
-    # n_outputs = predicted.shape[-1]
-    #
-    # for label in range(n_outputs):
-    #     new_mask = np.where(
-    #         argmax_masks == label,
-    #         predicted[:, :, label],
-    #         np.zeros_like(predicted[:, :, label]),
-    #     )
-    #     new_masks.append(new_mask)
-    # masks = np.stack(new_masks, axis=-1)
+
     masks = predicted.transpose((2, 0, 1))
 
     center = decode_single_point(masks[0])
-    # if not center_points:
-    #     center_points = [Point.none()]
-    # center = sorted(center_points, key=lambda x: x.score)[-1]
     center = dataclasses.replace(center, name="Center")
 
     # Top
     top_points = extract_points_from_map(
         masks[1],
-        # size_threshold=4,
-        # detection_threshold=0.15,
-        # text_threshold=0.15,
     )
     if not top_points:
         top_points = [decode_single_point(masks[1])]
@@ -360,17 +251,12 @@ def convert_mask_outputs_to_keypoints(predicted) -> Tuple[Point, Point, Point, P
     # Hands
 
     hands_map = masks[2]
-    # hands_map = np.clip(hands_map * 5, 0, 1)
     hands_points = extract_points_from_map(
         predicted_map=hands_map,
         size_threshold=4,
         detection_threshold=0.15,
         text_threshold=0.15,
     )
-    # ints = extract_points_from_map_3(
-    #     predicted[:, :, 2]  # , size_threshold=1, detection_threshold=0.1
-    # )
-    # print(hands_points)
     if not hands_points:
         hands_points = [Point.none(), Point.none()]
     if len(hands_points) == 1:
@@ -402,7 +288,6 @@ def select_minute_and_hour_points(
     idx = sort[-1]
 
     return point_combinations[idx]
-    # return hour, minute
 
 
 def get_minute_and_hour_points(
@@ -421,12 +306,12 @@ def get_minute_and_hour_points(
 
 def select_rows_and_columns_inside_mask(cc, mask_size, rr):
     row_filter = np.where(
-        rr < mask_size[0],
+        (0 <= rr) & (rr < mask_size[0]),
         np.ones_like(rr).astype(bool),
         np.zeros_like(rr).astype(bool),
     )
     col_filter = np.where(
-        cc < mask_size[1],
+        (0 <= cc) & (cc < mask_size[1]),
         np.ones_like(cc).astype(bool),
         np.zeros_like(cc).astype(bool),
     )
