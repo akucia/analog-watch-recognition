@@ -10,22 +10,27 @@ from watch_recognition.targets_encoding import (
     set_shapes,
 )
 
+EMPTY_TRANSFORMS = A.Compose(
+    [],
+    # format="xyas" is required while using tf.Data pipielines, otherwise
+    # tf cannot validate the output shapes # TODO check if this is correct
+    # remove_invisible=False is required to preserve the order and number of keypoints
+    keypoint_params=A.KeypointParams(format="xyas", remove_invisible=False),
+)
+
 DEFAULT_TRANSFORMS = A.Compose(
     [
-        A.ShiftScaleRotate(
-            p=0.8,
-            # rotate_limit=90,
-        ),
+        # A.ShiftScaleRotate(),
         A.OneOf(
             [
-                A.HueSaturationValue(p=0.7),
-                A.RGBShift(p=0.7),
-                A.ChannelShuffle(p=0.7),
-                A.RandomBrightnessContrast(p=0.7),
+                A.HueSaturationValue(),
+                # A.RGBShift(),
+                # A.ChannelShuffle(),
+                # A.RandomBrightnessContrast(),
             ],
             p=1,
         ),
-        A.MotionBlur(),
+        # A.MotionBlur(),
     ],
     # format="xyas" is required while using tf.Data pipielines, otherwise
     # tf cannot validate the output shapes # TODO check if this is correct

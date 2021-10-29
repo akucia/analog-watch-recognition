@@ -2,6 +2,7 @@ import dataclasses
 from typing import Optional, Tuple
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 @dataclasses.dataclass(frozen=True)
@@ -53,6 +54,19 @@ class Point:
             "width": 0.3943217665615142,  # magic value used in label studio
             "score": self.score,
         }
+
+    def plot(self, ax=None, color="red", marker="x", size=20, **kwargs):
+        if ax is None:
+            ax = plt.gca()
+        ax.scatter(
+            self.x,
+            self.y,
+            label=self.name,
+            color=color,
+            marker=marker,
+            s=size,
+            **kwargs
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -115,3 +129,47 @@ class BBox:
             "width": self.width * 100,
             "height": self.height * 100,
         }
+
+
+@dataclasses.dataclass(frozen=True)
+class Line:
+    start: Point
+    end: Point
+
+    @property
+    def poly1d(self) -> np.poly1d:
+        return np.poly1d(
+            np.polyfit(
+                [
+                    self.start.x,
+                    self.end.x,
+                ],
+                [self.start.y, self.end.y],
+                deg=1,
+            )
+        )
+
+    @property
+    def length(self) -> float:
+        return self.start.distance(self.end)
+
+    def scale(self, x: float, y: float) -> "Line":
+        return Line(self.start.scale(x, y), self.end.scale(x, y))
+
+    def projection_point(self, point: Point) -> Point:
+        line_fit = self.poly1d
+        m = line_fit.coeffs[0]
+        k = line_fit.coeffs[1]
+        proj_point_x = (point.x + m * point.y - m * k) / (m ** 2 + 1)
+        proj_point_y = m * proj_point_x + k
+        return Point(proj_point_x, proj_point_y)
+
+    def plot(self, ax=None, color=None, **kwargs):
+        if ax is None:
+            ax = plt.gca()
+        ax.plot(
+            [self.start.x, self.end.x],
+            [self.start.y, self.end.y],
+            color=color,
+            **kwargs
+        )

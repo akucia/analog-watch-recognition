@@ -11,7 +11,7 @@ from sklearn.metrics import euclidean_distances
 from tensorflow.python.keras.utils.np_utils import to_categorical
 
 from watch_recognition.data_preprocessing import binarize, keypoints_to_angle
-from watch_recognition.utilities import Point
+from watch_recognition.utilities import Line, Point
 
 
 def set_shapes(img, target, img_shape=(224, 224, 3), target_shape=(28, 28, 4)):
@@ -168,7 +168,6 @@ def encode_keypoints_to_angle_np(keypoints, bin_size=90):
 
 
 def decode_single_point(mask, threshold=0.1) -> Point:
-
     mask = np.where(mask < threshold, np.zeros_like(mask), mask)
     if mask.sum() == 0:
         mask = np.ones_like(mask)
@@ -197,15 +196,6 @@ def extract_points_from_map(
     Returns:
 
     """
-
-    # predicted_map = (predicted_map * 255).astype('uint8')
-    # plt.imshow(predicted_map)
-    # plt.show()
-    # thresh1 = cv2.adaptiveThreshold(predicted_map, 1, cv2.ADAPTIVE_THRESH_MEAN_C,
-    #                                 cv2.THRESH_BINARY, 3, 1)
-    # plt.imshow(thresh1)
-    # plt.show()
-    # thresh1 = thresh1.astype('float32')
     _, text_score = cv2.threshold(
         predicted_map, thresh=text_threshold, maxval=1, type=cv2.THRESH_BINARY
     )
@@ -232,8 +222,11 @@ def extract_points_from_map(
     return points
 
 
-def convert_mask_outputs_to_keypoints(predicted) -> Tuple[Point, Point, Point, Point]:
-
+def convert_mask_outputs_to_keypoints(
+    predicted: np.ndarray,
+    return_all_hand_points: bool = False,
+    experimental_hands_decoding: bool = False,
+) -> Tuple[Point, ...]:
     masks = predicted.transpose((2, 0, 1))
 
     center = decode_single_point(masks[0])
@@ -257,12 +250,40 @@ def convert_mask_outputs_to_keypoints(predicted) -> Tuple[Point, Point, Point, P
         detection_threshold=0.15,
         text_threshold=0.15,
     )
+    if return_all_hand_points:
+        points = (center, top, *hands_points)
+        return points
+
+    if experimental_hands_decoding:
+        lines = []
+        used_points = set()
+        for a, b in combinations(hands_points, 2):
+            line = Line(a, b)
+            proj_point = line.projection_point(center)
+            d = proj_point.distance(center)
+            if d < 1:
+                lines.append(line)
+                used_points.add(a)
+                used_points.add(b)
+        unused_points = [p for p in hands_points if p not in used_points]
+        for point in unused_points:
+            lines.append(Line(point, center))
+
+        best_lines = sorted(lines, key=lambda l: l.length)[:2]
+        hands = []
+        for line in best_lines:
+            if line.start.distance(center) > line.end.distance(center):
+                hands.append(line.start)
+            else:
+                hands.append(line.end)
+        hour, minute = get_minute_and_hour_points(center, tuple(hands))
+        points = (center, top, hour, minute)
+        return points
+
     if not hands_points:
         hands_points = [Point.none(), Point.none()]
     if len(hands_points) == 1:
         hands_points = (hands_points[0], hands_points[0])
-    if len(hands_points) == 3:
-        hands_points = select_minute_and_hour_points(center, hands_points)
     hands_points = sorted(hands_points, key=lambda x: x.score)[-2:]
     hour, minute = get_minute_and_hour_points(center, tuple(hands_points))
     hour = dataclasses.replace(hour, name="Hour")

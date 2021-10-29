@@ -1,5 +1,6 @@
 import io
 from datetime import timedelta
+from itertools import combinations
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -8,6 +9,7 @@ import tensorflow as tf
 
 from watch_recognition.models import points_to_time
 from watch_recognition.targets_encoding import convert_mask_outputs_to_keypoints
+from watch_recognition.utilities import Line
 
 
 def plot_to_image(figure):
@@ -109,67 +111,74 @@ def time_diff_np(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return deltas.astype(int)
 
 
-import cv2
-
-
-def run_on_image_debug(model, image):
+def run_on_image_debug(model, image, draw_hands=False):
     # TODO Cleanup and refactor this
     # TODO display masks as a single RGB image
     predicted = model.predict(np.expand_dims(image, 0))[0]
 
-    keypoints = convert_mask_outputs_to_keypoints(predicted)
+    keypoints = convert_mask_outputs_to_keypoints(
+        predicted, return_all_hand_points=True
+    )
+    hand_points = keypoints[2:]
+    center = keypoints[0]
+    lines = []
+    used_points = set()
+    for a, b in combinations(hand_points, 2):
+        line = Line(a, b)
+        proj_point = line.projection_point(center)
+        d = proj_point.distance(center)
+        if d < 1:
+            lines.append(line)
+            used_points.add(a)
+            used_points.add(b)
+    unused_points = [p for p in hand_points if p not in used_points]
+    for point in unused_points:
+        lines.append(Line(point, center))
+
+    best_lines = sorted(lines, key=lambda l: l.length)[:2]
+    hands = []
+    for line in best_lines:
+        if line.start.distance(center) > line.end.distance(center):
+            hands.append(line.start)
+        else:
+            hands.append(line.end)
 
     keypoints = [np.array(p.as_coordinates_tuple).astype(float) for p in keypoints]
     center = keypoints[0]
     top = keypoints[1]
-    hands = keypoints[2:]
+    hands = [np.array(p.as_coordinates_tuple).astype(float) for p in hands]
     downsample_factor = image.shape[1] / predicted.shape[1]
 
     masks = predicted.transpose((2, 1, 0))
-    extent = [0, predicted.shape[1], predicted.shape[1], 0]
-    fig, ax = plt.subplots(3, 2, figsize=(5, 10))
+    extent_mask = [0, predicted.shape[1], predicted.shape[1], 0]
+    extent_image = [0, image.shape[0], image.shape[1], 0]
+
+    fig, ax = plt.subplots(1, 2, figsize=(5, 10))
+    for line in best_lines:
+        line.plot(ax=ax[0])
+    for line in best_lines:
+        line.scale(downsample_factor, downsample_factor).plot(ax=ax[1])
     # Center
-    ax[0][0].imshow(masks[0].T, extent=extent, cmap="gray", vmin=0, vmax=1)
-    ax[0][0].title.set_text(f"Output|Center")
-    ax[0][1].imshow(
-        image.astype("uint8"), extent=[0, image.shape[0], image.shape[1], 0]
-    )
-    ax[0][1].title.set_text(f"Image|Center")
-    ax[0][1].axis("off")
-    ax[0][0].scatter(*center, marker="x", color="red", vmin=0, vmax=1)
-    ax[0][1].scatter(*(center * downsample_factor), marker="x", color="red")
+    ax[0].imshow(masks.T, extent=extent_mask)
+    ax[1].imshow(image.astype("uint8"), extent=extent_image)
+    ax[0].scatter(*center, marker="x", color="white", vmin=0, vmax=1, s=20)
+    ax[1].scatter(*(center * downsample_factor), marker="x", color="red")
 
     # Top
-
-    ax[1][0].imshow(masks[1].T, extent=extent, cmap="gray", vmin=0, vmax=1)
-    ax[1][0].title.set_text(f"Output|Top")
-    ax[1][1].imshow(
-        image.astype("uint8"), extent=[0, image.shape[0], image.shape[1], 0]
-    )
-    ax[1][1].title.set_text(f"Image|Top")
-    ax[1][1].axis("off")
-    ax[1][0].scatter(*top, marker="x", color="red")
-    ax[1][1].scatter(*(top * downsample_factor), marker="x", color="red")
+    ax[0].scatter(*top, marker="x", color="white", s=20)
+    ax[1].scatter(*(top * downsample_factor), marker="x", color="red")
 
     # Hands
-    hand_map = masks[2].T
-
-    ax[2][0].imshow(hand_map, extent=extent, cmap="gray", vmin=0, vmax=1)
-    ax[2][0].title.set_text(f"Output|Hands")
-    ax[2][1].imshow(
-        image.astype("uint8"), extent=[0, image.shape[0], image.shape[1], 0]
-    )
-    ax[2][1].title.set_text(f"Image|Hands")
-    ax[2][1].axis("off")
     for hand in hands:
-        ax[2][0].scatter(*hand, marker="x", color="red")
-        ax[2][1].scatter(*(hand * downsample_factor), marker="x", color="red")
-        ax[2][0].scatter(*hand, marker="x", color="red")
-        ax[2][1].scatter(*(hand * downsample_factor), marker="x", color="red")
+        ax[0].scatter(*hand, marker="x", color="white", s=20)
+        ax[1].scatter(*(hand * downsample_factor), marker="x", color="red")
+        ax[0].scatter(*hand, marker="x", color="white", s=20)
+        ax[1].scatter(*(hand * downsample_factor), marker="x", color="red")
 
     plt.show()
-    read_hour, read_minute = points_to_time(center, hands[0], hands[1], top)
-    print(f"{read_hour:.0f}:{read_minute:.0f}")
+    if len(hands) == 2:
+        read_hour, read_minute = points_to_time(center, hands[0], hands[1], top)
+        print(f"{read_hour:.0f}:{read_minute:.0f}")
 
 
 def visualize_high_loss_examples(epoch, logs, dataset, file_writer, model):
