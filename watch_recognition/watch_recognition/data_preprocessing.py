@@ -27,13 +27,15 @@ def load_single_kp_example(
 
 
 def load_keypoints_data_as_kp(
-    source: Path,
+    source: str,
     image_size: Tuple[int, int] = (224, 224),
     skip_examples_without_all_keypoints: bool = True,
     min_image_size: Optional[Tuple[int, int]] = (100, 100),
     autorotate: bool = False,
 ):
-    with tf.io.gfile.GFile(source / f"tags.csv", "r") as f:
+    if not source.endswith("/"):
+        source += "/"
+    with tf.io.gfile.GFile(source + "tags.csv", "r") as f:
         labels_df = pd.read_csv(f)
     all_keypoints = []
     all_images = []
@@ -43,7 +45,7 @@ def load_keypoints_data_as_kp(
             continue
         if len(data["label"].unique()) != 4:
             print(f"{image_name} keypoints are not unique")
-        image_path = source / image_name
+        image_path = source + f"{image_name}"
 
         with tf.io.gfile.GFile(image_path, "rb") as f:
             with Image.open(f) as img:

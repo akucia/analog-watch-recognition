@@ -9,7 +9,7 @@ setuptools.setup(
     long_description_content_type="",
     url="",
     packages=setuptools.find_packages(),
-    python_requires=">=3.7.11",
+    python_requires=">=3.7",
     install_requires=[
         "tensorflow==2.6.*",
         "pandas==1.3.1",
