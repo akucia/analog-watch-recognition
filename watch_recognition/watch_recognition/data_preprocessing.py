@@ -41,7 +41,7 @@ def load_keypoints_data_as_kp(
     all_images = []
     all_filenames = []
     for image_name, data in labels_df.groupby("crop_file"):
-        if skip_examples_without_all_keypoints and len(data) != 4:
+        if skip_examples_without_all_keypoints and len(data) < 4:
             continue
         if len(data["label"].unique()) != 4:
             print(f"{image_name} keypoints are not unique")
@@ -79,7 +79,8 @@ def load_keypoints_data_as_kp(
                 int_point = np.floor(point).astype(int)
                 kp = tuple(int_point)
             else:
-                raise ValueError(f"no keypoint data for {tag} on {image_name}")
+                kp = (-100, -100, 0, 0)
+                # raise ValueError(f"no keypoint data for {tag} on {image_name}")
 
             points.append(kp)
         points = np.array(points)

@@ -1,6 +1,7 @@
 from functools import partial
 
 import albumentations as A
+import cv2
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
@@ -21,11 +22,12 @@ EMPTY_TRANSFORMS = A.Compose(
 DEFAULT_TRANSFORMS = A.Compose(
     [
         # A.ShiftScaleRotate(),
+        # A.Rotate(),
         A.OneOf(
             [
                 A.HueSaturationValue(),
-                # A.RGBShift(),
-                # A.ChannelShuffle(),
+                A.RGBShift(),
+                A.ChannelShuffle(),
                 # A.RandomBrightnessContrast(),
             ],
             p=1,
@@ -47,10 +49,10 @@ DEFAULT_TRANSFORMS_FOR_ANGLE_CLASSIFIER = A.Compose(
         ),
         A.OneOf(
             [
-                A.HueSaturationValue(p=0.7),
-                A.RGBShift(p=0.7),
-                A.ChannelShuffle(p=0.7),
-                A.RandomBrightnessContrast(p=0.7),
+                A.HueSaturationValue(p=1),
+                A.RGBShift(p=1),
+                A.ChannelShuffle(p=1),
+                A.RandomBrightnessContrast(p=1),
             ],
             p=1,
         ),
@@ -106,12 +108,13 @@ def augment_kp_angle_cls_data(image, kp):
 
 
 def view_image(ds):
+
     batch = next(iter(ds))  # extract 1 batch from the dataset
     image, masks = batch[0], batch[1]
     image = image.numpy()
     masks = masks.numpy()
     if masks.shape[-1] > 1:
-        fig, axarr = plt.subplots(5, masks.shape[-1] + 1, figsize=(15, 15))
+        fig, axarr = plt.subplots(5, masks.shape[-1] + 2, figsize=(15, 15))
         for i in range(5):
             ax = axarr[i]
             img = image[i]
@@ -124,8 +127,16 @@ def view_image(ds):
                 ax_idx = j + 1
                 ax[ax_idx].imshow(masks[i, :, :, j])
                 ax[ax_idx].set_title("Masks")
+
+            merged = cv2.addWeighted(
+                img, 0.5, (masks[i] * 255).astype("uint8"), 0.5, 0.0
+            )
+
+            ax_idx += 1
+            ax[ax_idx].imshow(merged)
+            ax[ax_idx].set_title("Masks + Image")
     else:
-        fig, axarr = plt.subplots(5, 2, figsize=(15, 15))
+        fig, axarr = plt.subplots(5, 3, figsize=(15, 15))
         for i in range(5):
             ax = axarr[i]
             img = image[i]
@@ -138,6 +149,14 @@ def view_image(ds):
             ax_idx += 1
             ax[ax_idx].imshow(masks[i, :, :, -1].astype("uint8"))
             ax[ax_idx].set_title("Masks")
+
+            merged = cv2.addWeighted(
+                img, 0.5, (masks[i, :, :, -1] * 255).astype("uint8"), 0.5, 0.0
+            )
+
+            ax_idx += 1
+            ax[ax_idx].imshow(merged)
+            ax[ax_idx].set_title("Masks + Image")
 
 
 def get_watch_angle_dataset(
@@ -172,13 +191,14 @@ def get_watch_keypoints_dataset(
         encode_keypoints_to_mask,
         image_size=(*image_size, 3),
         mask_size=mask_size,
-        radius=1,
+        radius=4,
         include_background=False,
         separate_hour_and_minute_hands=False,
         add_perimeter=True,
-        with_perimeter_for_hands=False,
+        with_perimeter_for_hands=True,
         sparse=False,
         blur=True,
+        hands_as_lines=True,
     )
     set_shape_f = partial(
         set_shapes, img_shape=(*image_size, 3), target_shape=(*mask_size, 3)

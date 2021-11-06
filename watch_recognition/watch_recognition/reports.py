@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from watch_recognition.models import points_to_time
+from watch_recognition.models import IouLoss2, points_to_time
 from watch_recognition.targets_encoding import convert_mask_outputs_to_keypoints
 from watch_recognition.utilities import Line
 
@@ -111,125 +111,128 @@ def time_diff_np(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     return deltas.astype(int)
 
 
-def run_on_image_debug(model, image, draw_hands=False):
-    # TODO Cleanup and refactor this
-    # TODO display masks as a single RGB image
+def run_on_image_debug(model, image):
     predicted = model.predict(np.expand_dims(image, 0))[0]
 
-    keypoints = convert_mask_outputs_to_keypoints(
-        predicted, return_all_hand_points=True
-    )
-    hand_points = keypoints[2:]
-    center = keypoints[0]
-    lines = []
-    used_points = set()
-    for a, b in combinations(hand_points, 2):
-        line = Line(a, b)
-        proj_point = line.projection_point(center)
-        d = proj_point.distance(center)
-        if d < 1:
-            lines.append(line)
-            used_points.add(a)
-            used_points.add(b)
-    unused_points = [p for p in hand_points if p not in used_points]
-    for point in unused_points:
-        lines.append(Line(point, center))
+    draw_predictions_debug(image, predicted)
 
-    best_lines = sorted(lines, key=lambda l: l.length)[:2]
-    hands = []
-    for line in best_lines:
-        if line.start.distance(center) > line.end.distance(center):
-            hands.append(line.start)
-        else:
-            hands.append(line.end)
+
+def draw_predictions_debug(image, predicted):
+    # TODO Cleanup and refactor this
+
+    keypoints = convert_mask_outputs_to_keypoints(
+        predicted, decode_hands_from_lines=True
+    )
+    for k in keypoints:
+        print(k)
 
     keypoints = [np.array(p.as_coordinates_tuple).astype(float) for p in keypoints]
     center = keypoints[0]
     top = keypoints[1]
-    hands = [np.array(p.as_coordinates_tuple).astype(float) for p in hands]
+    hands = keypoints[2:]
     downsample_factor = image.shape[1] / predicted.shape[1]
-
     masks = predicted.transpose((2, 1, 0))
     extent_mask = [0, predicted.shape[1], predicted.shape[1], 0]
     extent_image = [0, image.shape[0], image.shape[1], 0]
-
-    fig, ax = plt.subplots(1, 2, figsize=(5, 10))
-    for line in best_lines:
-        line.plot(ax=ax[0])
-    for line in best_lines:
-        line.scale(downsample_factor, downsample_factor).plot(ax=ax[1])
+    fig, ax = plt.subplots(1, 2, figsize=(10, 10))
     # Center
     ax[0].imshow(masks.T, extent=extent_mask)
     ax[1].imshow(image.astype("uint8"), extent=extent_image)
     ax[0].scatter(*center, marker="x", color="white", vmin=0, vmax=1, s=20)
     ax[1].scatter(*(center * downsample_factor), marker="x", color="red")
-
     # Top
     ax[0].scatter(*top, marker="x", color="white", s=20)
     ax[1].scatter(*(top * downsample_factor), marker="x", color="red")
-
     # Hands
     for hand in hands:
         ax[0].scatter(*hand, marker="x", color="white", s=20)
         ax[1].scatter(*(hand * downsample_factor), marker="x", color="red")
         ax[0].scatter(*hand, marker="x", color="white", s=20)
         ax[1].scatter(*(hand * downsample_factor), marker="x", color="red")
-
     plt.show()
     if len(hands) == 2:
         read_hour, read_minute = points_to_time(center, hands[0], hands[1], top)
         print(f"{read_hour:.0f}:{read_minute:.0f}")
 
 
-def visualize_high_loss_examples(epoch, logs, dataset, file_writer, model):
-    iterator = dataset.as_numpy_iterator()
-    batch = next(iterator)
-    X_batch, y_batch = batch
-    predictions = model.predict(X_batch)
-    loss = tf.keras.metrics.categorical_crossentropy(y_batch, predictions).numpy()
-    loss_for_example = loss.sum(axis=-1).sum(axis=-1)
-    worst_examples = np.argsort(loss_for_example)[::-1][:5]
+def visualize_high_loss_examples(
+    epoch, logs, dataset, file_writer, model, loss, every_n_epoch=1
+):
+    if epoch % every_n_epoch == 0:
+        img = _visualize_high_loss_examples(dataset, loss, model)
+        with file_writer.as_default():
+            tf.summary.image(
+                "top_5_high_loss_examples",
+                img,
+                step=epoch,
+            )
 
-    fig, axarr = plt.subplots(1, 5)
+
+def _visualize_high_loss_examples(dataset, loss, model):
+    images, losses, predictions, targets, worst_examples = get_n_worst_loss_examples(
+        dataset, loss, model
+    )
+    fig, axarr = plt.subplots(len(worst_examples), 3, figsize=(10, 10))
     for i, idx in enumerate(worst_examples):
-        axarr[i].set_xticks([])
-        axarr[i].set_yticks([])
-        axarr[i].grid(False)
-        axarr[i].imshow(X_batch[idx])
-        axarr[i].set_title(str(loss_for_example[idx]))
+        for j in range(3):
+            axarr[i][j].set_xticks([])
+            axarr[i][j].set_yticks([])
+            axarr[i][j].grid(False)
+        axarr[i][0].imshow(images[idx])
+        axarr[i][1].imshow(targets[idx])
+        axarr[i][2].imshow(predictions[idx])
+        axarr[i][2].set_title(f"{losses[idx]:.3f}")
     plt.tight_layout()
     img = plot_to_image(fig)
+    return img
 
-    with file_writer.as_default():
-        tf.summary.image(
-            "top_5_high_loss_examples",
-            img,
-            step=epoch,
-        )
+
+def get_n_worst_loss_examples(dataset, loss, model, n=5):
+    iterator = dataset.as_numpy_iterator()
+    images = []
+    losses = []
+    predictions = []
+    targets = []
+    for batch in iterator:
+        X_batch, y_batch = batch
+        y_pred = model.predict(X_batch)
+        for target, pred in zip(y_batch, y_pred):
+            value = loss(target, pred).numpy()
+            losses.append(value)
+        images.append(X_batch)
+        predictions.append(y_pred)
+        targets.append(y_batch)
+    images = np.concatenate(images, axis=0)
+    predictions = np.concatenate(predictions, axis=0)
+    targets = np.concatenate(targets, axis=0)
+    losses = np.array(losses)
+    worst_examples = np.argsort(losses)[::-1][:n]
+    return images, losses, predictions, targets, worst_examples
 
 
 def euclidean_distance(x_1, y_1, x_2, y_2) -> float:
     return np.sqrt(((x_1 - x_2) ** 2) + ((y_1 - y_2) ** 2))
 
 
-def log_scalar_metrics(epoch, logs, X, y, file_writer, model):
-    predicted = model.predict(X)
-    (
-        center_distances,
-        top_distances,
-        hour_distances,
-        minute_distances,
-    ) = calculate_distances_between_points(X, predicted, y)
-    distances = [center_distances, top_distances, hour_distances, minute_distances]
-    with file_writer.as_default():
-        means = []
-        for tag, array in zip(["Center", "Top", "Hour", "Minute"], distances):
+def log_scalar_metrics(epoch, logs, X, y, file_writer, model, every_n_epoch: int = 1):
+    if epoch % every_n_epoch == 0:
+        predicted = model.predict(X)
+        (
+            center_distances,
+            top_distances,
+            hour_distances,
+            minute_distances,
+        ) = calculate_distances_between_points(X, predicted, y)
+        distances = [center_distances, top_distances, hour_distances, minute_distances]
+        with file_writer.as_default():
+            means = []
+            for tag, array in zip(["Center", "Top", "Hour", "Minute"], distances):
 
-            mean = np.mean(array)
-            means.append(mean)
-            tf.summary.scalar(f"point_distance_{tag}", mean, step=epoch)
-    with file_writer.as_default():
-        tf.summary.scalar(f"point_distance_mean", np.mean(means), step=epoch)
+                mean = np.mean(array)
+                means.append(mean)
+                tf.summary.scalar(f"point_distance_{tag}", mean, step=epoch)
+        with file_writer.as_default():
+            tf.summary.scalar(f"point_distance_mean", np.mean(means), step=epoch)
 
 
 def calculate_time_lost(X, predicted, y):

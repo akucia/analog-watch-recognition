@@ -11,8 +11,8 @@ import tensorflow as tf
 
 from watch_recognition.data_preprocessing import load_keypoints_data_as_kp
 from watch_recognition.datasets import get_watch_keypoints_dataset
-from watch_recognition.models import IouLoss2, get_unet_model
-from watch_recognition.reports import log_scalar_metrics
+from watch_recognition.models import DeeplabV3Plus, IouLoss2, get_unet_model
+from watch_recognition.reports import log_scalar_metrics, visualize_high_loss_examples
 
 
 def get_args() -> Dict:
@@ -75,7 +75,7 @@ def train_and_export(
     tf.compat.v1.logging.set_verbosity(verbosity)
 
     TYPE = "keypoint"
-    MODEL_NAME = f"efficientnetb0-unet-sigmoid-{image_size}"
+    MODEL_NAME = f"efficientnetb0-linknet-sigmoid-{image_size}-hands"
 
     image_size = (image_size, image_size)
     mask_size = image_size
@@ -111,7 +111,9 @@ def train_and_export(
         augment=False,
         image_size=image_size,
         mask_size=mask_size,
-    )
+        batch_size=batch_size,
+    ).cache()
+
     print(dataset_val)
 
     model = get_unet_model(
@@ -120,7 +122,7 @@ def train_and_export(
         n_outputs=3,
         output_activation="sigmoid",
     )
-
+    # model = DeeplabV3Plus(image_size=image_size[0], num_classes=3)
     model.summary()
 
     loss = IouLoss2()
@@ -168,20 +170,40 @@ def train_and_export(
                 cooldown=3,
                 verbose=1,
             ),
+            # tf.keras.callbacks.LambdaCallback(
+            #     on_epoch_end=partial(
+            #         log_scalar_metrics,
+            #         X=X,
+            #         y=y,
+            #         file_writer=file_writer_distance_metrics_train,
+            #         model=model,
+            #         every_n_epoch=10,
+            #     )
+            # ),
+            # tf.keras.callbacks.LambdaCallback(
+            #     on_epoch_end=partial(
+            #         log_scalar_metrics,
+            #         X=X_val,
+            #         y=y_val,
+            #         file_writer=file_writer_distance_metrics_validation,
+            #         model=model,
+            #     )
+            # ),
             tf.keras.callbacks.LambdaCallback(
                 on_epoch_end=partial(
-                    log_scalar_metrics,
-                    X=X,
-                    y=y,
+                    visualize_high_loss_examples,
+                    dataset=dataset_train,
+                    loss=loss,
                     file_writer=file_writer_distance_metrics_train,
                     model=model,
+                    every_n_epoch=5,
                 )
             ),
             tf.keras.callbacks.LambdaCallback(
                 on_epoch_end=partial(
-                    log_scalar_metrics,
-                    X=X_val,
-                    y=y_val,
+                    visualize_high_loss_examples,
+                    dataset=dataset_val,
+                    loss=loss,
                     file_writer=file_writer_distance_metrics_validation,
                     model=model,
                 )

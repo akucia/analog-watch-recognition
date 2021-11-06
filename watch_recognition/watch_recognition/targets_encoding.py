@@ -5,7 +5,9 @@ from typing import List, Tuple
 import cv2
 import numpy as np
 import tensorflow as tf
-from skimage.draw import circle_perimeter, disk
+from matplotlib import pyplot as plt
+from scipy.optimize import minimize
+from skimage.draw import circle_perimeter, disk, line, line_aa
 from skimage.filters import gaussian
 from sklearn.metrics import euclidean_distances
 from tensorflow.python.keras.utils.np_utils import to_categorical
@@ -25,12 +27,13 @@ def encode_keypoints_to_mask_np(
     image_size,
     mask_size,
     radius=1,
-    include_background=True,
-    separate_hour_and_minute_hands: bool = True,
+    include_background=False,
+    separate_hour_and_minute_hands: bool = False,
     add_perimeter: bool = False,
-    sparse: bool = True,
+    sparse: bool = False,
     with_perimeter_for_hands: bool = False,
     blur: bool = False,
+    hands_as_lines: bool = False,
 ):
     downsample_factor = image_size[0] / mask_size[0]
     all_masks = []
@@ -39,7 +42,7 @@ def encode_keypoints_to_mask_np(
     int_points = np.floor(fm_point).astype(int)
     # center and top
     for int_point in int_points[:2]:
-        mask = _encode_point_to_mask(radius * 2, int_point, mask_size, add_perimeter)
+        mask = _encode_point_to_mask(radius, int_point, mask_size, add_perimeter)
         if blur:
             mask = _blur_mask(mask)
         all_masks.append(mask)
@@ -53,11 +56,17 @@ def encode_keypoints_to_mask_np(
                 mask = _blur_mask(mask)
             all_masks.append(mask)
     else:
-        mask = _encode_multiple_points_to_mask(
-            radius, int_points[2:], mask_size, with_perimeter_for_hands
-        )
-        if blur:
-            mask = _blur_mask(mask)
+        if hands_as_lines:
+            mask = _encode_multiple_points_to_lines(
+                int_points[2:], int_points[0], mask_size, blur
+            )
+
+        else:
+            mask = _encode_multiple_points_to_mask(
+                radius, int_points[2:], mask_size, with_perimeter_for_hands
+            )
+            if blur:
+                mask = _blur_mask(mask)
         all_masks.append(mask)
 
     masks = np.array(all_masks).transpose((1, 2, 0))
@@ -72,12 +81,31 @@ def encode_keypoints_to_mask_np(
     return masks.astype("float32")
 
 
-def _blur_mask(mask):
+def _blur_mask(mask, max_norm=True, clip=False, sigma=3):
     mask = gaussian(
         mask,
-        sigma=2,
+        sigma=sigma,
     )
-    mask = mask / (np.max(mask) + 1e-8)
+    if max_norm:
+        mask = np.clip(mask, 0, 0.85)
+        mask = mask / (np.max(mask) + 1e-8)
+
+    return mask
+
+
+def _encode_multiple_points_to_lines(int_points, center, mask_size, blur):
+    masks = []
+    for int_point in int_points:
+        mask = np.zeros(mask_size, dtype=np.float32)
+        # TODO make lines thicker, maybe stronger blur? maybe line_aa?
+        rr, cc = line(*int_point, *center)
+        cc, rr = select_rows_and_columns_inside_mask(cc, mask_size, rr)
+        mask[cc, rr] = 1
+        if blur:
+            mask = _blur_mask(mask)
+        masks.append(mask)
+    masks = np.stack(masks, axis=-1)
+    mask = np.max(masks, axis=-1)
     return mask
 
 
@@ -114,6 +142,7 @@ def encode_keypoints_to_mask(
     sparse=False,
     with_perimeter_for_hands: bool = False,
     blur: bool = False,
+    hands_as_lines: bool = False,
 ):
     mask = tf.numpy_function(
         func=encode_keypoints_to_mask_np,
@@ -128,6 +157,7 @@ def encode_keypoints_to_mask(
             sparse,
             with_perimeter_for_hands,
             blur,
+            hands_as_lines,
         ],
         Tout=tf.float32,
     )
@@ -168,6 +198,9 @@ def encode_keypoints_to_angle_np(keypoints, bin_size=90):
 
 
 def decode_single_point(mask, threshold=0.1) -> Point:
+    # this might be faster implementation, and for batch of outputs
+    # https://github.com/OlgaChernytska/2D-Hand-Pose-Estimation-RGB/blob/c9f201ca114129fa750f4bac2adf0f87c08533eb/utils/prep_utils.py#L114
+
     mask = np.where(mask < threshold, np.zeros_like(mask), mask)
     if mask.sum() == 0:
         mask = np.ones_like(mask)
@@ -226,6 +259,7 @@ def convert_mask_outputs_to_keypoints(
     predicted: np.ndarray,
     return_all_hand_points: bool = False,
     experimental_hands_decoding: bool = False,
+    decode_hands_from_lines: bool = False,
 ) -> Tuple[Point, ...]:
     masks = predicted.transpose((2, 0, 1))
 
@@ -279,6 +313,9 @@ def convert_mask_outputs_to_keypoints(
         hour, minute = get_minute_and_hour_points(center, tuple(hands))
         points = (center, top, hour, minute)
         return points
+    if decode_hands_from_lines:
+        hands_points = decode_keypoints_via_line_fits(hands_map, center)
+        print(hands_points)
 
     if not hands_points:
         hands_points = [Point.none(), Point.none()]
@@ -340,3 +377,89 @@ def select_rows_and_columns_inside_mask(cc, mask_size, rr):
     cc = cc[filter]
     rr = rr[filter]
     return cc, rr
+
+
+# TODO replace with poly1d from numpy/scipy
+def linear(x, a=1, b=0):
+    return a * x + b
+
+
+def inverse_mse_line_angle(params, x, y):
+    angle_1 = params
+    y_1_hat = linear(x, angle_1)
+    mse = (y - y_1_hat) ** 2
+
+    return 1 / mse.sum()
+
+
+def mse_line_angle(params, x, y):
+    angle_1 = params
+    y_1_hat = linear(x, angle_1)
+    mse = (y - y_1_hat) ** 2
+    return mse.sum()
+
+
+def decode_keypoints_via_line_fits(
+    mask, center: Point, threshold=0.5, debug: bool = False
+) -> Tuple[Point, Point]:
+    image = np.where(mask > threshold, np.ones_like(mask), np.zeros_like(mask))
+
+    idx = np.nonzero(image)
+
+    x = idx[1] - center.x
+    y = idx[0] - center.y
+    mean_y = np.mean(y)
+    mean_x = np.mean(x)
+    mean_tan = mean_y / mean_x
+    res = minimize(
+        inverse_mse_line_angle,
+        x0=np.array([mean_tan]),
+        args=(x, y),
+    )
+    y_0_fit = linear(x, res.x[0])
+
+    if debug:
+        print(mean_tan)
+        print(res)
+
+        plt.scatter(x, y, marker="x")
+        plt.plot(x, y_0_fit)
+        plt.show()
+
+    x_1 = []
+    y_1 = []
+    x_2 = []
+    y_2 = []
+
+    for x_i, y_i in zip(x, y):
+        if y_i > linear(x_i, res.x[0]):
+            x_1.append(x_i)
+            y_1.append(y_i)
+        else:
+            x_2.append(x_i)
+            y_2.append(y_i)
+    x_1 = np.array(x_1)
+    y_1 = np.array(y_1)
+    x_2 = np.array(x_2)
+    y_2 = np.array(y_2)
+
+    res = minimize(
+        mse_line_angle,
+        x0=np.array([0]),
+        args=(x_1, y_1),
+    )
+    x_1_max = x_1[np.argmax(np.abs(x_1))]
+    y_1_fit = linear(x_1_max, res.x[0])
+
+    res = minimize(
+        mse_line_angle,
+        x0=np.array([0]),
+        args=(x_2, y_2),
+    )
+    x_2_max = x_2[np.argmax(np.abs(x_2))]
+
+    y_2_fit = linear(x_2_max, res.x[0])
+
+    p1 = Point(x_1_max + center.x, y_1_fit + center.y, score=1)
+    p2 = Point(x_2_max + center.x, y_2_fit + center.y, score=1)
+    return p1, p2
