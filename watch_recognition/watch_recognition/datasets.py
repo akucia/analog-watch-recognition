@@ -21,18 +21,15 @@ EMPTY_TRANSFORMS = A.Compose(
 
 DEFAULT_TRANSFORMS = A.Compose(
     [
-        # A.ShiftScaleRotate(),
-        # A.Rotate(),
         A.OneOf(
             [
                 A.HueSaturationValue(),
                 A.RGBShift(),
                 A.ChannelShuffle(),
-                # A.RandomBrightnessContrast(),
             ],
             p=1,
         ),
-        # A.MotionBlur(),
+        A.MotionBlur(),
     ],
     # format="xyas" is required while using tf.Data pipielines, otherwise
     # tf cannot validate the output shapes # TODO check if this is correct

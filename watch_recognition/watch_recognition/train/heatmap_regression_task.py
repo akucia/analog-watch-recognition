@@ -75,7 +75,7 @@ def train_and_export(
     tf.compat.v1.logging.set_verbosity(verbosity)
 
     TYPE = "keypoint"
-    MODEL_NAME = f"efficientnetb0-linknet-sigmoid-{image_size}-hands"
+    MODEL_NAME = f"efficientnetb0-unet-{image_size}-hands"
 
     image_size = (image_size, image_size)
     mask_size = image_size
@@ -122,7 +122,6 @@ def train_and_export(
         n_outputs=3,
         output_activation="sigmoid",
     )
-    # model = DeeplabV3Plus(image_size=image_size[0], num_classes=3)
     model.summary()
 
     loss = IouLoss2()

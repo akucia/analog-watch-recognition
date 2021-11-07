@@ -81,14 +81,13 @@ def encode_keypoints_to_mask_np(
     return masks.astype("float32")
 
 
-def _blur_mask(mask, max_norm=True, clip=False, sigma=3):
+def _blur_mask(mask, sigma=3):
     mask = gaussian(
         mask,
         sigma=sigma,
     )
-    if max_norm:
-        mask = np.clip(mask, 0, 0.85)
-        mask = mask / (np.max(mask) + 1e-8)
+    mask = mask / (np.max(mask) + 1e-8)
+    mask = (mask > 0.3).astype(float)
 
     return mask
 
@@ -315,7 +314,6 @@ def convert_mask_outputs_to_keypoints(
         return points
     if decode_hands_from_lines:
         hands_points = decode_keypoints_via_line_fits(hands_map, center)
-        print(hands_points)
 
     if not hands_points:
         hands_points = [Point.none(), Point.none()]
@@ -405,6 +403,8 @@ def decode_keypoints_via_line_fits(
     image = np.where(mask > threshold, np.ones_like(mask), np.zeros_like(mask))
 
     idx = np.nonzero(image)
+    if len(idx) == 0:
+        return Point.none(), Point.none()
 
     x = idx[1] - center.x
     y = idx[0] - center.y
@@ -443,23 +443,22 @@ def decode_keypoints_via_line_fits(
     x_2 = np.array(x_2)
     y_2 = np.array(y_2)
 
-    res = minimize(
-        mse_line_angle,
-        x0=np.array([0]),
-        args=(x_1, y_1),
-    )
-    x_1_max = x_1[np.argmax(np.abs(x_1))]
-    y_1_fit = linear(x_1_max, res.x[0])
+    p1 = _fit_line_and_get_extreme_point(center, x_1, y_1)
+    p2 = _fit_line_and_get_extreme_point(center, x_2, y_2)
 
-    res = minimize(
-        mse_line_angle,
-        x0=np.array([0]),
-        args=(x_2, y_2),
-    )
-    x_2_max = x_2[np.argmax(np.abs(x_2))]
-
-    y_2_fit = linear(x_2_max, res.x[0])
-
-    p1 = Point(x_1_max + center.x, y_1_fit + center.y, score=1)
-    p2 = Point(x_2_max + center.x, y_2_fit + center.y, score=1)
     return p1, p2
+
+
+def _fit_line_and_get_extreme_point(center, x, y):
+    if len(x) > 0:
+        res = minimize(
+            mse_line_angle,
+            x0=np.array([0]),
+            args=(x, y),
+        )
+        x_1_max = x[np.argmax(np.abs(x))]
+        y_1_fit = linear(x_1_max, res.x[0])
+        p1 = Point(x_1_max + center.x, y_1_fit + center.y, score=1)
+    else:
+        p1 = Point.none()
+    return p1
