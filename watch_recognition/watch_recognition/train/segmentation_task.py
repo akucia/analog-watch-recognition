@@ -1,21 +1,20 @@
+import argparse
 import os
+from datetime import datetime
+from functools import partial
 from typing import Dict
 
-import numpy as np
+from watch_recognition.datasets import get_watch_hands_mask_dataset
 
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 
-import argparse
-from datetime import datetime
-from functools import partial
-
+import numpy as np
 import segmentation_models as sm
 import tensorflow as tf
 
-from watch_recognition.data_preprocessing import load_keypoints_data_as_kp
-from watch_recognition.datasets import get_watch_keypoints_dataset
-from watch_recognition.models import DeeplabV3Plus, IouLoss2, get_unet_model
-from watch_recognition.reports import log_scalar_metrics, visualize_high_loss_examples
+from watch_recognition.data_preprocessing import load_binary_masks_from_coco_dataset
+from watch_recognition.models import DeeplabV3Plus, get_unet_model
+from watch_recognition.reports import visualize_high_loss_examples
 
 
 def get_args() -> Dict:
@@ -85,67 +84,57 @@ def train_and_export(
 ):
     tf.compat.v1.logging.set_verbosity(verbosity)
 
-    TYPE = "keypoint"
-    N = 800
-    MODEL_NAME = f"efficientnetb0-unet-{image_size}-{N}-jl"
+    TYPE = "segmentation"
 
     image_size = (image_size, image_size)
-    mask_size = image_size
 
-    X, y, _ = load_keypoints_data_as_kp(
-        data_dir + "keypoints/train/",
-        autorotate=True,
+    X, y, _ = load_binary_masks_from_coco_dataset(
+        data_dir + "segmentation/train/result.json",
         image_size=image_size,
     )
+    N = len(X)
+    MODEL_NAME = f"efficientnetb0-unet-{image_size}-{N}-aug"
+
     X, y = unison_shuffled_copies(X, y)
     X = X[:N]
     y = y[:N]
 
     print(X.shape, y.shape)
-
-    X_val, y_val, _ = load_keypoints_data_as_kp(
-        data_dir + "keypoints/validation/",
-        autorotate=True,
+    X_val, y_val, _ = load_binary_masks_from_coco_dataset(
+        data_dir + "segmentation/validation/result.json",
         image_size=image_size,
     )
 
     print(X_val.shape, y_val.shape)
 
-    dataset_train = get_watch_keypoints_dataset(
-        X,
-        y,
-        augment=False,
-        image_size=image_size,
-        mask_size=mask_size,
-        batch_size=batch_size,
+    dataset_train = get_watch_hands_mask_dataset(
+        X, y, image_size=image_size, batch_size=batch_size, augment=True
     )
     print(dataset_train)
-
-    dataset_val = get_watch_keypoints_dataset(
-        X_val,
-        y_val,
-        augment=False,
-        image_size=image_size,
-        mask_size=mask_size,
-        batch_size=batch_size,
-    ).cache()
+    dataset_val = get_watch_hands_mask_dataset(
+        X_val, y_val, image_size=image_size, batch_size=batch_size, augment=False
+    )
+    dataset_val = dataset_val.cache()
 
     print(dataset_val)
+
+    # model = DeeplabV3Plus(image_size[0], 1)
 
     model = get_unet_model(
         unet_output_layer=None,
         image_size=image_size,
-        n_outputs=3,
+        n_outputs=1,
         output_activation="sigmoid",
     )
     model.summary()
 
-    loss = sm.losses.JaccardLoss()
+    loss = sm.losses.JaccardLoss() + sm.losses.BinaryCELoss()
     optimizer = tf.keras.optimizers.Adam(learning_rate)
 
     model.compile(
         loss=loss,
         optimizer=optimizer,
+        metrics=[sm.metrics.f1_score, sm.metrics.iou_score],
     )
 
     start = datetime.now()
@@ -175,32 +164,13 @@ def train_and_export(
             #     monitor="val_loss",
             #     save_best_only=True,
             # ),
-            # tf.keras.callbacks.ReduceLROnPlateau(
-            #     monitor="val_loss",
-            #     factor=0.8,
-            #     patience=5,
-            #     min_lr=1e-6,
-            #     cooldown=3,
-            #     verbose=1,
-            # ),
-            tf.keras.callbacks.LambdaCallback(
-                on_epoch_end=partial(
-                    log_scalar_metrics,
-                    X=X,
-                    y=y,
-                    file_writer=file_writer_distance_metrics_train,
-                    model=model,
-                    every_n_epoch=10,
-                )
-            ),
-            tf.keras.callbacks.LambdaCallback(
-                on_epoch_end=partial(
-                    log_scalar_metrics,
-                    X=X_val,
-                    y=y_val,
-                    file_writer=file_writer_distance_metrics_validation,
-                    model=model,
-                )
+            tf.keras.callbacks.ReduceLROnPlateau(
+                monitor="val_loss",
+                factor=0.8,
+                patience=10,
+                min_lr=1e-6,
+                cooldown=3,
+                verbose=1,
             ),
             tf.keras.callbacks.LambdaCallback(
                 on_epoch_end=partial(
@@ -227,6 +197,7 @@ def train_and_export(
     print(
         f"total training time: {elapsed / 60} minutes, average: {elapsed / 60 / epochs} minutes/epoch"
     )
+    model.save(model_path)
 
 
 if __name__ == "__main__":

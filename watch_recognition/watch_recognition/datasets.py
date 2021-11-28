@@ -29,13 +29,51 @@ DEFAULT_TRANSFORMS = A.Compose(
             ],
             p=1,
         ),
-        A.MotionBlur(),
+        # A.MotionBlur(),
     ],
     # format="xyas" is required while using tf.Data pipielines, otherwise
     # tf cannot validate the output shapes # TODO check if this is correct
     # remove_invisible=False is required to preserve the order and number of keypoints
     keypoint_params=A.KeypointParams(format="xyas", remove_invisible=False),
 )
+
+DEFAULT_TRANSFORMS_FOR_MASKS = A.Compose(
+    [
+        # A.HorizontalFlip(),
+        # A.VerticalFlip(),
+        # A.RandomRotate90(),
+        # A.Transpose(),
+        # A.OneOf(
+        #     [
+        #         # A.Downscale(),
+        #         A.ElasticTransform(),
+        #         A.GridDistortion(),
+        #         # A.OpticalDistortion(),
+        #     ],
+        # ),
+        A.OneOf(
+            [
+                A.HueSaturationValue(p=0.8),
+                A.RGBShift(p=0.8),
+                A.ChannelShuffle(p=0.8),
+                A.ChannelDropout(p=0.8),
+                A.CLAHE(p=0.8),
+                A.ISONoise(p=0.8),
+                # A.ImageCompression(p=0.8),
+                A.InvertImg(p=0.8),
+            ],
+            p=1,
+        ),
+    ],
+)
+
+# A.VerticalFlip(p=0.5),
+#     A.RandomRotate90(p=0.5),
+#     A.OneOf([
+#         A.ElasticTransform(p=0.5, alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03),
+#         A.GridDistortion(p=0.5),
+#         A.OpticalDistortion(distort_limit=1, shift_limit=0.5, p=1),
+#     ], p=0.8)])
 
 # TODO deduplicate with DEFAULT_TRANSFORMS
 DEFAULT_TRANSFORMS_FOR_ANGLE_CLASSIFIER = A.Compose(
@@ -86,6 +124,18 @@ def kp_angle_fn(image, keypoints):
     return aug_img, aug_kp
 
 
+def mask_aug_fn(image, mask):
+    data = {
+        "image": image,
+        "mask": mask,
+    }
+    aug_data = DEFAULT_TRANSFORMS_FOR_MASKS(**data)
+    aug_img = aug_data["image"]
+    aug_mask = aug_data["mask"]
+    aug_mask = tf.cast(aug_mask, tf.float32)
+    return aug_img, aug_mask
+
+
 def augment_kp_data(image, kp):
     image, kp = tf.numpy_function(
         func=kp_aug_fn,
@@ -93,6 +143,15 @@ def augment_kp_data(image, kp):
         Tout=(tf.uint8, tf.float32),
     )
     return image, kp
+
+
+def augment_mask_data(image, mask):
+    image, mask = tf.numpy_function(
+        func=mask_aug_fn,
+        inp=[image, mask],
+        Tout=(tf.uint8, tf.float32),
+    )
+    return image, mask
 
 
 def augment_kp_angle_cls_data(image, kp):
@@ -181,8 +240,36 @@ def get_watch_angle_dataset(
     return dataset
 
 
+def get_watch_hands_mask_dataset(
+    X, y, augment: bool = True, image_size=(224, 224), batch_size=32
+) -> tf.data.Dataset:
+    set_shape_f = partial(
+        set_shapes, img_shape=(*image_size, 3), target_shape=(*image_size, 1)
+    )
+    dataset = tf.data.Dataset.from_tensor_slices((X, y))
+    AUTOTUNE = tf.data.experimental.AUTOTUNE
+    if augment:
+        dataset = dataset.map(
+            augment_mask_data,
+            num_parallel_calls=AUTOTUNE,
+        )
+    dataset = (
+        dataset.map(set_shape_f, num_parallel_calls=AUTOTUNE)
+        .shuffle(8 * batch_size)
+        .batch(batch_size)
+        .prefetch(AUTOTUNE)
+    )
+    return dataset
+
+
 def get_watch_keypoints_dataset(
-    X, y, augment: bool = True, batch_size=32, image_size=None, mask_size=None
+    X,
+    y,
+    augment: bool = True,
+    batch_size=32,
+    image_size=None,
+    mask_size=None,
+    shuffle=True,
 ) -> tf.data.Dataset:
     encode_kp = partial(
         encode_keypoints_to_mask,
@@ -208,12 +295,13 @@ def get_watch_keypoints_dataset(
             num_parallel_calls=AUTOTUNE,
         )
 
-    dataset = (
-        dataset.map(encode_kp, num_parallel_calls=AUTOTUNE)
-        .map(set_shape_f, num_parallel_calls=AUTOTUNE)
-        .shuffle(8 * batch_size)
-        .batch(batch_size)
-        .prefetch(AUTOTUNE)
+    dataset = dataset.map(encode_kp, num_parallel_calls=AUTOTUNE).map(
+        set_shape_f, num_parallel_calls=AUTOTUNE
     )
+    if shuffle:
+        dataset = dataset.shuffle(8 * batch_size)
+    if batch_size > 0:
+        dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(AUTOTUNE)
 
     return dataset

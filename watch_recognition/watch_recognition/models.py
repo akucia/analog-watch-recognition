@@ -219,6 +219,7 @@ def get_unet_model(
         classes=n_outputs,
         activation=output_activation,
         input_shape=(*image_size, 3),
+        decoder_use_batchnorm=False,
     )
     if unet_output_layer is not None:
         outputs = [sm_model.get_layer(unet_output_layer).output]
@@ -287,7 +288,7 @@ def DilatedSpatialPyramidPooling(dspp_input):
     return output
 
 
-def DeeplabV3Plus(image_size, num_classes):
+def DeeplabV3Plus(image_size: int, num_classes):
     model_input = tf.keras.Input(shape=(image_size, image_size, 3))
     resnet50 = tf.keras.applications.ResNet50(
         weights="imagenet", include_top=False, input_tensor=model_input

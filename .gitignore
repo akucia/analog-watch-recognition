@@ -303,3 +303,10 @@ runs.json
 *.avi
 
 cloud_train
+/Mask_RCNN/
+/label-studio-ml-backend/
+/label-studio-converter/
+/download_data/
+/deblur-gan/
+/notebooks/frames/
+/watch-recognition-ml-backend/

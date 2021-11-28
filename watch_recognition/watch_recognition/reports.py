@@ -3,6 +3,7 @@ from datetime import timedelta
 from itertools import combinations
 from typing import Tuple
 
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -134,7 +135,7 @@ def draw_predictions_debug(image, predicted):
     masks = predicted.transpose((2, 1, 0))
     extent_mask = [0, predicted.shape[1], predicted.shape[1], 0]
     extent_image = [0, image.shape[0], image.shape[1], 0]
-    fig, ax = plt.subplots(1, 2, figsize=(10, 10))
+    fig, ax = plt.subplots(1, 3, figsize=(10, 10))
     # Center
     ax[0].imshow(masks.T, extent=extent_mask)
     ax[1].imshow(image.astype("uint8"), extent=extent_image)
@@ -143,12 +144,19 @@ def draw_predictions_debug(image, predicted):
     # Top
     ax[0].scatter(*top, marker="x", color="white", s=20)
     ax[1].scatter(*(top * downsample_factor), marker="x", color="red")
+
     # Hands
     for hand in hands:
         ax[0].scatter(*hand, marker="x", color="white", s=20)
         ax[1].scatter(*(hand * downsample_factor), marker="x", color="red")
         ax[0].scatter(*hand, marker="x", color="white", s=20)
         ax[1].scatter(*(hand * downsample_factor), marker="x", color="red")
+
+    colored_mask = (masks.T * 255).astype("uint8")
+    # print(image.dtype)
+    # print(colored_mask.dtype)
+    overlay = cv2.addWeighted(image.astype("uint8"), 0.35, colored_mask, 0.65, 0)
+    ax[2].imshow(overlay, extent=extent_mask)
     plt.show()
     if len(hands) == 2:
         read_hour, read_minute = points_to_time(center, hands[0], hands[1], top)

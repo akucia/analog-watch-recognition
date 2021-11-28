@@ -1,20 +1,64 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import skimage.io as io
 import tensorflow as tf
-from PIL import Image
-from PIL.Image import BICUBIC
+from PIL import Image, ImageOps
+from PIL.Image import BICUBIC, NEAREST
+from pycocotools.coco import COCO
 from skimage.transform import rotate
 
 from watch_recognition.utilities import Point
 
 
+def load_binary_masks_from_coco_dataset(
+    annFile: Union[str, Path],
+    image_size: Optional[Tuple[int, int]] = (224, 224),
+    filterClasses=None,
+):
+    if isinstance(annFile, str):
+        # TODO make this function compatible with Google Cloud paths
+        annFile = Path(annFile)
+    # Initialize the COCO api for instance annotations
+    coco = COCO(annFile)
+    catIds = coco.getCatIds(catNms=filterClasses)
+    imgIds = coco.getImgIds(catIds=catIds)
+    imgs = coco.loadImgs(imgIds)
+    all_images = []
+    all_filenames = []
+    all_masks = []
+    for img in imgs:
+        filename = img["file_name"]
+        all_filenames.append(filename)
+        img_np = load_image(f"{annFile.parent}/{filename}", image_size=None)
+
+        annIds = coco.getAnnIds(imgIds=img["id"], catIds=catIds, iscrowd=None)
+        anns = coco.loadAnns(annIds)
+        with Image.fromarray(img_np) as img_pil:
+            padded_img = ImageOps.pad(img_pil, size=image_size)
+            all_images.append(np.array(padded_img))
+
+        masks = np.array([coco.annToMask(ann) for ann in anns])
+        mask = ((np.sum(masks, axis=0) > 0) * 255).astype("uint8")
+        with Image.fromarray(mask) as mask_pil:
+            padded_mask = ImageOps.pad(mask_pil, size=image_size, method=NEAREST)
+            padded_mask = (np.array(padded_mask) > 0).astype("float32")
+            padded_mask = np.expand_dims(padded_mask, axis=-1)
+            all_masks.append(padded_mask)
+
+    all_images = np.array(all_images)
+    all_masks = np.array(all_masks)
+    all_filename = np.array(all_filenames)
+
+    return all_images, all_masks, all_filename
+
+
 def load_single_kp_example(
     source: Path,
     image_name: str,
-    image_size: Tuple[int, int] = (224, 224),
+    image_size: Optional[Tuple[int, int]] = (224, 224),
 ):
     labels_df = pd.read_csv(source / f"tags.csv")
     image_path = source / image_name
@@ -49,19 +93,19 @@ def load_keypoints_data_as_kp(
 
         with tf.io.gfile.GFile(image_path, "rb") as f:
             with Image.open(f) as img:
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
                 image_too_small = (
                     img.size[0] < min_image_size[0] or img.size[1] < min_image_size[1]
                 )
                 if min_image_size is not None and image_too_small:
                     continue
-                if img.mode != "RGB":
-                    img = img.convert("RGB")
-                img = img.resize(image_size, BICUBIC)
 
+                if image_size is not None:
+                    img = img.resize(image_size, BICUBIC)
                 image_np = tf.keras.preprocessing.image.img_to_array(img).astype(
                     "uint8"
                 )
-
         points = []
         for tag in ["Center", "Top", "Hour", "Minute"]:
             tag_data = data[data["label"] == tag]
@@ -74,9 +118,9 @@ def load_keypoints_data_as_kp(
                 point = np.array(
                     (tag_data["x"].values[0], tag_data["y"].values[0], 0, 0)
                 )
-                point[0] *= image_size[0]
-                point[1] *= image_size[1]
-                int_point = np.floor(point).astype(int)
+                point[0] *= image_np.shape[0]
+                point[1] *= image_np.shape[1]
+                int_point = np.round(point).astype(int)
                 kp = tuple(int_point)
             else:
                 kp = (-100, -100, 0, 0)
@@ -88,7 +132,7 @@ def load_keypoints_data_as_kp(
         if autorotate:
             angle = keypoints_to_angle(points[0, :2], points[1, :2])
             image_np = rotate(image_np.astype("float32"), -angle).astype("uint8")
-            origin_point = Point(image_size[0] / 2, image_size[1] / 2)
+            origin_point = Point(image_np.shape[0] / 2, image_np.shape[1] / 2)
             for i in range(4):
                 points[i, :2] = np.array(
                     Point(*points[i, :2])
@@ -105,6 +149,18 @@ def load_keypoints_data_as_kp(
     all_filename = np.array(all_filenames)
 
     return all_images, all_keypoints, all_filename
+
+
+def load_image(image_path, image_size):
+    with tf.io.gfile.GFile(image_path, "rb") as f:
+        with Image.open(f) as img:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            if image_size is not None:
+                img = img.resize(image_size, BICUBIC)
+
+            image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
+    return image_np
 
 
 def keypoints_to_angle(center, top):

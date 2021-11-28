@@ -1,8 +1,12 @@
 import dataclasses
-from typing import Optional, Tuple
+from itertools import combinations
+from typing import List, Optional, Tuple
 
+import matplotlib.patches as mpatches
 import numpy as np
 from matplotlib import pyplot as plt
+from skimage.draw import line as draw_line
+from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
 
 @dataclasses.dataclass(frozen=True)
@@ -40,6 +44,10 @@ class Point:
     @property
     def as_coordinates_tuple(self) -> Tuple[float, float]:
         return self.x, self.y
+
+    @property
+    def as_array(self) -> np.ndarray:
+        return np.array(self.as_coordinates_tuple)
 
     @property
     def as_label_studio_object(self) -> dict:
@@ -135,6 +143,7 @@ class BBox:
 class Line:
     start: Point
     end: Point
+    score: float = 0
 
     @property
     def poly1d(self) -> np.poly1d:
@@ -148,6 +157,21 @@ class Line:
                 deg=1,
             )
         )
+
+    @property
+    def slope(self) -> float:
+        return self.poly1d.coeffs[0]
+
+    @property
+    def unit_vector(self) -> np.ndarray:
+        vector = self.end.as_array - self.start.as_array
+        return vector / np.linalg.norm(vector)
+
+    @property
+    def center(self) -> Point:
+        x = (self.start.x + self.end.x) / 2
+        y = (self.start.y + self.end.y) / 2
+        return Point(x=x, y=y)
 
     @property
     def length(self) -> float:
@@ -173,3 +197,69 @@ class Line:
             color=color,
             **kwargs
         )
+
+    def draw(self, img: np.array):
+        img = img.copy()
+        start = self.start.as_array[
+            ::-1
+        ]  # reverse order of x and y to get columns and rows
+        end = self.end.as_array[::-1]
+
+        rr, cc = draw_line(*start, *end)
+        img[rr, cc] = 1
+        return img
+
+
+@dataclasses.dataclass(frozen=True)
+class Polygon:
+    coords: np.ndarray
+
+
+def mean_line(lines: List[Line], weighted=True) -> Line:
+    lengths = [l.length for l in lines]
+    mean_slope = np.average([l.slope for l in lines], weights=lengths)
+    max_distance = 0
+    best_line = None
+    for l1, l2 in combinations(lines, 2):
+        d = l1.start.distance(l2.end)
+        if d > max_distance:
+            max_distance = d
+            # best_line = Line(l1.start, l2.end)
+    line_length = max_distance
+    print(line_length, np.mean(lengths))
+    center = Point(*np.median(np.array([l.center.as_array for l in lines]), axis=0))
+    end = center.translate(line_length / 2, mean_slope * line_length / 2)
+    start = center.translate(-line_length / 2, -mean_slope * line_length / 2)
+
+    return Line(start, end)
+
+
+def minmax_line(lines: List[Line]) -> Line:
+    start_points = np.array([line.start.as_coordinates_tuple for line in lines])
+    end_points = np.array([line.end.as_coordinates_tuple for line in lines])
+    start = np.min(start_points, axis=0)
+    end = np.max(end_points, axis=0)
+    return Line(Point(*start), Point(*end))
+
+
+def predictions_to_polygon(predicted_img, debug=False, approximation_tolerance=0.05):
+    predicted_img = predicted_img.squeeze()
+    thresholded_image = predicted_img > 0.1
+    label_image = label(thresholded_image)
+    regions = regionprops(label_image)
+    region = sorted(regions, key=lambda r: r.area, reverse=True)[0]
+    contour = find_contours(label_image == region.label, fully_connected="high")[0]
+    print(len(contour))
+    contour = approximate_polygon(contour, tolerance=approximation_tolerance)
+    print(len(contour))
+    polygon_coords = contour[:, ::-1]
+    if debug:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        poly_patch = mpatches.Polygon(
+            polygon_coords, fill=False, edgecolor="red", linewidth=2, closed=True
+        )
+        ax.plot(polygon_coords[:, 0], polygon_coords[:, 1])
+        ax.imshow(thresholded_image, cmap=plt.cm.gray_r)
+        ax.add_patch(poly_patch)
+        plt.show()
+    return polygon_coords

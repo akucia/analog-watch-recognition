@@ -288,27 +288,7 @@ def convert_mask_outputs_to_keypoints(
         return points
 
     if experimental_hands_decoding:
-        lines = []
-        used_points = set()
-        for a, b in combinations(hands_points, 2):
-            line = Line(a, b)
-            proj_point = line.projection_point(center)
-            d = proj_point.distance(center)
-            if d < 1:
-                lines.append(line)
-                used_points.add(a)
-                used_points.add(b)
-        unused_points = [p for p in hands_points if p not in used_points]
-        for point in unused_points:
-            lines.append(Line(point, center))
-
-        best_lines = sorted(lines, key=lambda l: l.length)[:2]
-        hands = []
-        for line in best_lines:
-            if line.start.distance(center) > line.end.distance(center):
-                hands.append(line.start)
-            else:
-                hands.append(line.end)
+        hands = select_hand_points_with_line_fits(center, hands_points)
         hour, minute = get_minute_and_hour_points(center, tuple(hands))
         points = (center, top, hour, minute)
         return points
@@ -325,6 +305,44 @@ def convert_mask_outputs_to_keypoints(
     minute = dataclasses.replace(minute, name="Minute")
 
     return center, top, hour, minute
+
+
+def select_hand_points_with_line_fits(center, hands_points, max_distance=1):
+    """
+    Finds points that are collinear with the center point to get hand lines lengths.
+    Then selects 2 shortest hand lines (to get rid of seconds hand)
+    Args:
+        center:
+        hands_points:
+        max_distance:
+
+    Returns:
+
+    """
+
+    lines = []
+    used_points = set()
+    for a, b in combinations(hands_points, 2):
+        if a.distance(b) < a.distance(center):
+            continue
+        line = Line(a, b)
+        proj_point = line.projection_point(center)
+        d = proj_point.distance(center)
+        if d < max_distance:
+            lines.append(line)
+            used_points.add(a)
+            used_points.add(b)
+    unused_points = [p for p in hands_points if p not in used_points]
+    for point in unused_points:
+        lines.append(Line(point, center))
+    best_lines = sorted(lines, key=lambda l: l.length)[:2]
+    hands = []
+    for line in best_lines:
+        if line.start.distance(center) > line.end.distance(center):
+            hands.append(line.start)
+        else:
+            hands.append(line.end)
+    return hands
 
 
 def poly_area(x, y):
