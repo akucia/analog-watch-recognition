@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 
 import matplotlib.patches as mpatches
 import numpy as np
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, patches
 from skimage.draw import line as draw_line
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
@@ -86,6 +86,30 @@ class BBox:
     name: str
     score: Optional[float] = None
 
+    @classmethod
+    def from_center_width_height(
+        cls, center_x, center_y, width, height, name="", score=None
+    ):
+        return BBox(
+            x_min=center_x - width / 2,
+            y_min=center_y - height / 2,
+            x_max=center_x + width / 2,
+            y_max=center_y + height / 2,
+            name=name,
+            score=score,
+        )
+
+    @classmethod
+    def from_ltwh(cls, left, top, width, height, name="", score=None):
+        return BBox(
+            x_min=left,
+            y_min=top,
+            x_max=left + width,
+            y_max=top + height,
+            name=name,
+            score=score,
+        )
+
     def contains(self, point: Point) -> bool:
         contains_x = self.x_min < point.x < self.x_max
         contains_y = self.y_min < point.y < self.y_max
@@ -127,6 +151,30 @@ class BBox:
         return self.y_max - self.y_min
 
     @property
+    def area(self):
+        return self.height * self.width
+
+    @property
+    def top(self):
+        return self.y_min
+
+    @property
+    def bottom(self):
+        return self.y_max
+
+    @property
+    def left(self):
+        return self.x_min
+
+    @property
+    def right(self):
+        return self.x_max
+
+    @property
+    def aspect_ratio(self) -> float:
+        return self.width / self.height
+
+    @property
     def as_label_studio_object(self) -> dict:
         return {
             "rectanglelabels": [self.name],
@@ -137,6 +185,22 @@ class BBox:
             "width": self.width * 100,
             "height": self.height * 100,
         }
+
+    def plot(self, ax=None, color="red", **kwargs):
+        if ax is None:
+            ax = plt.gca()
+        print(self.width, self.height)
+        rect = patches.Rectangle(
+            (self.left, self.top),
+            self.width,
+            self.height,
+            linewidth=1,
+            edgecolor=color,
+            facecolor="none",
+        )
+
+        # Add the patch to the Axes
+        ax.add_patch(rect)
 
 
 @dataclasses.dataclass(frozen=True)
