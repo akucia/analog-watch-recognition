@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from watch_recognition.targets_encoding import (
+    add_sample_weights,
     encode_keypoints_to_angle,
     encode_keypoints_to_mask,
     set_shapes,
+    set_shapes_with_sample_weight,
 )
 
 EMPTY_TRANSFORMS = A.Compose(
@@ -41,7 +43,14 @@ DEFAULT_TRANSFORMS_FOR_MASKS = A.Compose(
     [
         # A.HorizontalFlip(),
         # A.VerticalFlip(),
-        # A.RandomRotate90(),
+        A.RandomRotate90(),
+        A.RandomSizedCrop(
+            (96, 128),
+            128,
+            128,
+            # interpolation=cv2.INTER_NEAREST,
+            p=0.5,
+        ),
         # A.Transpose(),
         # A.OneOf(
         #     [
@@ -241,17 +250,28 @@ def get_watch_angle_dataset(
 
 
 def get_watch_hands_mask_dataset(
-    X, y, augment: bool = True, image_size=(224, 224), batch_size=32
+    X, y, augment: bool = True, image_size=(224, 224), batch_size=32, class_weights=None
 ) -> tf.data.Dataset:
-    set_shape_f = partial(
-        set_shapes, img_shape=(*image_size, 3), target_shape=(*image_size, 1)
-    )
+
     dataset = tf.data.Dataset.from_tensor_slices((X, y))
     AUTOTUNE = tf.data.experimental.AUTOTUNE
     if augment:
         dataset = dataset.map(
             augment_mask_data,
             num_parallel_calls=AUTOTUNE,
+        )
+
+    if class_weights:
+        add_sample_weights_f = partial(add_sample_weights, class_weights=[1, 10])
+        dataset = dataset.map(add_sample_weights_f)
+        set_shape_f = partial(
+            set_shapes_with_sample_weight,
+            img_shape=(*image_size, 3),
+            target_shape=(*image_size, 1),
+        )
+    else:
+        set_shape_f = partial(
+            set_shapes, img_shape=(*image_size, 3), target_shape=(*image_size, 1)
         )
     dataset = (
         dataset.map(set_shape_f, num_parallel_calls=AUTOTUNE)

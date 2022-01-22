@@ -205,7 +205,7 @@ def get_model(image_size: Tuple[int, int] = (224, 224)) -> tf.keras.Model:
     return model
 
 
-def get_unet_model(
+def get_segmentation_model(
     image_size: Tuple[int, int] = (224, 224),
     n_outputs: int = 4,
     unet_output_layer: Optional[str] = "decoder_stage0b_relu",
@@ -214,12 +214,11 @@ def get_unet_model(
     inputs = tf.keras.Input(
         shape=(*image_size, 3),
     )
-    sm_model = sm.Unet(
-        "efficientnetb0",
+    sm_model = sm.FPN(
+        "efficientnetb3",
         classes=n_outputs,
         activation=output_activation,
         input_shape=(*image_size, 3),
-        decoder_use_batchnorm=False,
     )
     if unet_output_layer is not None:
         outputs = [sm_model.get_layer(unet_output_layer).output]

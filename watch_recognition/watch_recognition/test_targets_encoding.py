@@ -2,6 +2,7 @@ import unittest
 from functools import partial
 
 import numpy as np
+from scipy import sparse
 from skimage.draw import line
 
 from watch_recognition.targets_encoding import (
@@ -9,8 +10,9 @@ from watch_recognition.targets_encoding import (
     convert_mask_outputs_to_keypoints,
     decode_keypoints_via_line_fits,
     encode_keypoints_to_mask_np,
+    fit_lines_to_hands_mask,
 )
-from watch_recognition.utilities import Point
+from watch_recognition.utilities import Line, Point
 
 
 class TestTargetsEncodingDecoding(unittest.TestCase):
@@ -93,6 +95,70 @@ class TestTargetsEncodingDecoding(unittest.TestCase):
         self.assertAlmostEqual(p1_hat.y, p1.y, delta=3)
         self.assertAlmostEqual(p2_hat.x, p2.x, delta=3)
         self.assertAlmostEqual(p2_hat.y, p2.y, delta=3)
+
+    def test_fit_lines_to_hands_mask(self):
+        expected_lines = [
+            Line(
+                start=Point(
+                    x=64.98504674067426,
+                    y=20.0,
+                    name="Center",
+                    score=0.012472306378185749,
+                ),
+                end=Point(
+                    x=34.57975055215489,
+                    y=68.0,
+                    name="Center",
+                    score=0.012472306378185749,
+                ),
+                score=0,
+            ),
+            Line(
+                start=Point(
+                    x=45.55111266014421,
+                    y=25.0,
+                    name="Center",
+                    score=0.012472306378185749,
+                ),
+                end=Point(
+                    x=48.42353376511889,
+                    y=52.0,
+                    name="Center",
+                    score=0.012472306378185749,
+                ),
+                score=0,
+            ),
+            Line(
+                start=Point(
+                    x=46.19592644607895,
+                    y=45.0,
+                    name="Center",
+                    score=0.012472306378185749,
+                ),
+                end=Point(
+                    x=69.21743187124684,
+                    y=72.0,
+                    name="Center",
+                    score=0.012472306378185749,
+                ),
+                score=0,
+            ),
+        ]
+
+        center = Point(
+            x=47.89023263125223,
+            y=46.987110145701735,
+            name="Center",
+            score=0.012472306378185749,
+        )
+        # TODO relative path
+        hands_mask_sparse = sparse.load_npz(
+            "/Users/akuc/Code/python/analog-watch-recognition/notebooks/hands_mask_sparse.npy",
+        )
+        hands_mask = hands_mask_sparse.toarray()
+        decoded_lines = fit_lines_to_hands_mask(hands_mask, center, debug=False)
+        for a, b in zip(decoded_lines, expected_lines):
+            self.assertAlmostEqual(a, b)
 
 
 if __name__ == "__main__":

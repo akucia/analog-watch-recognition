@@ -1,44 +1,67 @@
+import hashlib
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import skimage.io as io
 import tensorflow as tf
+from google.cloud import storage
+from google.cloud.storage import Blob
 from PIL import Image, ImageOps
 from PIL.Image import BICUBIC, NEAREST
 from pycocotools.coco import COCO
+from skimage.filters import gaussian
 from skimage.transform import rotate
+from tqdm import tqdm
 
 from watch_recognition.utilities import Point
 
 
 def load_binary_masks_from_coco_dataset(
-    annFile: Union[str, Path],
+    data_dir: Union[str, Path],
     image_size: Optional[Tuple[int, int]] = (224, 224),
-    filterClasses=None,
+    filter_classes: Optional[List[str]] = None,
+    blur_masks: bool = False,
 ):
-    if isinstance(annFile, str):
-        # TODO make this function compatible with Google Cloud paths
-        annFile = Path(annFile)
-    # Initialize the COCO api for instance annotations
-    coco = COCO(annFile)
-    catIds = coco.getCatIds(catNms=filterClasses)
+
+    data_dir = str(data_dir)
+    if data_dir.startswith("gs://"):
+        bucket_name = data_dir.replace("gs://", "").split("/")[0]
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_or_name=bucket_name)
+        prefix = data_dir.replace(f"gs://{bucket_name}/", "")
+        blobs: List[Blob] = list(bucket.list_blobs(prefix=prefix))
+        for blob in tqdm(blobs):
+            download_path = Path("/tmp/" + blob.name)
+            if not download_path.exists() or download_path.stat().st_size == 0:
+                download_path.parent.mkdir(exist_ok=True, parents=True)
+                blob.download_to_filename(download_path)
+        data_dir = data_dir.replace(f"gs://{bucket_name}", "/tmp/")
+        print("local data dir: {data_dir}")
+    annotations_file = Path(data_dir) / "result.json"
+
+    coco = COCO(annotations_file)
+    catIds = coco.getCatIds(catNms=filter_classes)
     imgIds = coco.getImgIds(catIds=catIds)
     imgs = coco.loadImgs(imgIds)
     all_images = []
     all_filenames = []
     all_masks = []
+    all_hashes = []
     for img in imgs:
         filename = img["file_name"]
         all_filenames.append(filename)
-        img_np = load_image(f"{annFile.parent}/{filename}", image_size=None)
+        image_path = f"{data_dir}/{filename}"
+        img_np = load_image(image_path, image_size=None)
 
         annIds = coco.getAnnIds(imgIds=img["id"], catIds=catIds, iscrowd=None)
         anns = coco.loadAnns(annIds)
         with Image.fromarray(img_np) as img_pil:
             padded_img = ImageOps.pad(img_pil, size=image_size)
             all_images.append(np.array(padded_img))
+            md5hash = hashlib.md5(img_pil.tobytes())
+            float_hash = int(md5hash.hexdigest(), base=16) / 16 ** 32
+            all_hashes.append(float_hash)
 
         masks = np.array([coco.annToMask(ann) for ann in anns])
         mask = ((np.sum(masks, axis=0) > 0) * 255).astype("uint8")
@@ -46,13 +69,17 @@ def load_binary_masks_from_coco_dataset(
             padded_mask = ImageOps.pad(mask_pil, size=image_size, method=NEAREST)
             padded_mask = (np.array(padded_mask) > 0).astype("float32")
             padded_mask = np.expand_dims(padded_mask, axis=-1)
+            if blur_masks:
+                padded_mask = gaussian(padded_mask)
+                padded_mask /= padded_mask.max()
             all_masks.append(padded_mask)
 
     all_images = np.array(all_images)
     all_masks = np.array(all_masks)
     all_filename = np.array(all_filenames)
+    all_hashes = np.array(all_hashes)
 
-    return all_images, all_masks, all_filename
+    return all_images, all_masks, all_filename, all_hashes
 
 
 def load_single_kp_example(
@@ -151,15 +178,19 @@ def load_keypoints_data_as_kp(
     return all_images, all_keypoints, all_filename
 
 
-def load_image(image_path, image_size):
-    with tf.io.gfile.GFile(image_path, "rb") as f:
-        with Image.open(f) as img:
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            if image_size is not None:
-                img = img.resize(image_size, BICUBIC)
+def load_image(image_path: str, image_size: Tuple[int, int]):
+    if image_path.startswith("gs://"):
+        file = tf.io.gfile.GFile(image_path, "rb")
+    else:
+        file = open(image_path, "rb")
+    with Image.open(file) as img:
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        if image_size is not None:
+            img = img.resize(image_size, BICUBIC)
 
-            image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
+        image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
+    file.close()
     return image_np
 
 

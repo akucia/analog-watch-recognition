@@ -202,7 +202,8 @@ def get_n_worst_loss_examples(dataset, loss, model, n=5):
     predictions = []
     targets = []
     for batch in iterator:
-        X_batch, y_batch = batch
+        # there might be 3rd element in batch, which is a sample weight
+        X_batch, y_batch = batch[0], batch[1]
         y_pred = model.predict(X_batch)
         for target, pred in zip(y_batch, y_pred):
             value = loss(target, pred).numpy()

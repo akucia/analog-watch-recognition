@@ -4,7 +4,8 @@ from typing import List, Optional, Tuple
 
 import matplotlib.patches as mpatches
 import numpy as np
-from matplotlib import pyplot as plt, patches
+from matplotlib import patches
+from matplotlib import pyplot as plt
 from skimage.draw import line as draw_line
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
@@ -227,8 +228,12 @@ class Line:
         return self.poly1d.coeffs[0]
 
     @property
+    def vector(self) -> np.ndarray:
+        return self.end.as_array - self.start.as_array
+
+    @property
     def unit_vector(self) -> np.ndarray:
-        vector = self.end.as_array - self.start.as_array
+        vector = self.vector
         return vector / np.linalg.norm(vector)
 
     @property
@@ -236,6 +241,12 @@ class Line:
         x = (self.start.x + self.end.x) / 2
         y = (self.start.y + self.end.y) / 2
         return Point(x=x, y=y)
+
+    @property
+    def angle(self):
+        dx = self.end.x - self.start.x
+        dy = self.end.y - self.start.y
+        return np.arctan2(dy, dx)
 
     @property
     def length(self) -> float:
@@ -262,6 +273,19 @@ class Line:
             **kwargs
         )
 
+        dx = np.sign(self.unit_vector[0])
+        dy = self.slope * dx
+        ax.arrow(
+            self.center.x,
+            self.center.y,
+            dx,
+            dy,
+            shape="full",
+            edgecolor="black",
+            facecolor=color,
+            width=0.5,
+        )
+
     def draw(self, img: np.array):
         img = img.copy()
         start = self.start.as_array[
@@ -272,6 +296,8 @@ class Line:
         rr, cc = draw_line(*start, *end)
         img[rr, cc] = 1
         return img
+
+    # TODO clip method
 
 
 @dataclasses.dataclass(frozen=True)

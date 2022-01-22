@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from watch_recognition.data_preprocessing import load_keypoints_data_as_kp
 from watch_recognition.datasets import get_watch_keypoints_dataset
-from watch_recognition.models import DeeplabV3Plus, IouLoss2, get_unet_model
+from watch_recognition.models import DeeplabV3Plus, IouLoss2, get_segmentation_model
 from watch_recognition.reports import log_scalar_metrics, visualize_high_loss_examples
 
 
@@ -132,7 +132,7 @@ def train_and_export(
 
     print(dataset_val)
 
-    model = get_unet_model(
+    model = get_segmentation_model(
         unet_output_layer=None,
         image_size=image_size,
         n_outputs=3,

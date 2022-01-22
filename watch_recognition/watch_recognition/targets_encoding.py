@@ -1,15 +1,19 @@
 import dataclasses
+from collections import defaultdict
 from itertools import combinations
 from typing import List, Tuple
 
 import cv2
 import numpy as np
 import tensorflow as tf
+from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize
-from skimage.draw import circle_perimeter, disk, line, line_aa
+from scipy.signal import find_peaks, peak_widths
+from skimage.draw import circle_perimeter, disk, line
 from skimage.filters import gaussian
 from sklearn.metrics import euclidean_distances
+from sklearn.neighbors import KernelDensity
 from tensorflow.python.keras.utils.np_utils import to_categorical
 
 from watch_recognition.data_preprocessing import binarize, keypoints_to_angle
@@ -20,6 +24,15 @@ def set_shapes(img, target, img_shape=(224, 224, 3), target_shape=(28, 28, 4)):
     img.set_shape(img_shape)
     target.set_shape(target_shape)
     return img, target
+
+
+def set_shapes_with_sample_weight(
+    img, target, weights, img_shape=(224, 224, 3), target_shape=(28, 28, 4)
+):
+    img.set_shape(img_shape)
+    target.set_shape(target_shape)
+    weights.set_shape((*target_shape[:-1], 1))
+    return img, target, weights
 
 
 def encode_keypoints_to_mask_np(
@@ -163,15 +176,15 @@ def encode_keypoints_to_mask(
     return image, mask
 
 
-def add_sample_weights(image, label):
+def add_sample_weights(image, label, class_weights: List[float]):
     # The weights for each class, with the constraint that:
     #     sum(class_weights) == 1.0
-    class_weights = tf.constant([1, 1, 1, 1e-3])
-    class_weights = class_weights / tf.reduce_sum(class_weights)
+    class_weights_tf = tf.constant(class_weights)
+    class_weights_tf = class_weights_tf / tf.reduce_sum(class_weights_tf)
 
     # Create an image of `sample_weights` by using the label at each pixel as an
     # index into the `class weights` .
-    sample_weights = tf.gather(class_weights, indices=tf.cast(label, tf.int32))
+    sample_weights = tf.gather(class_weights_tf, indices=tf.cast(label, tf.int32))
 
     return image, label, sample_weights
 
@@ -480,3 +493,153 @@ def _fit_line_and_get_extreme_point(center, x, y):
     else:
         p1 = Point.none()
     return p1
+
+
+def fit_lines_to_hands_mask(padded_mask, center, debug=False):
+    # TODO proper debug handling
+    # TODO optionally restrict to the largest shape found in the mask
+    pixel_lines = []
+    ax = None
+    if debug:
+        plt.imshow(padded_mask)
+        plt.show()
+    vectors = []
+    for i, row in enumerate(padded_mask):
+        for j, value in enumerate(row):
+            if value > 0:
+                line1 = Line(center, Point(j, i))
+                if debug:
+                    line1.plot()
+                pixel_lines.append(line1)
+                if line1.length:
+                    vectors.append(line1.unit_vector)
+
+    vectors = np.array(vectors)
+    if len(vectors) == 0:
+        return []
+    # %%
+    angles = np.rad2deg(np.arctan2(vectors[:, 1], vectors[:, 0]))
+    # %%
+    angles = np.where(angles <= 0, 180 + angles, angles)
+
+    # ----------------------------------------------------------------------
+    # Plot a 1D density example
+    X = angles.copy()[:, np.newaxis]
+
+    X_plot = np.linspace(0, 181, 180)[:, np.newaxis]
+    if debug:
+        fig, ax = plt.subplots(1, 2, figsize=(30, 15))
+        ax = ax.ravel()
+
+        ax[1].imshow(padded_mask)
+        center.plot(ax[1])
+
+    kernel = "gaussian"
+    lw = 2
+
+    kde = KernelDensity(kernel=kernel, bandwidth=1.5).fit(X)
+    log_dens = kde.score_samples(X_plot)
+    exp_dens = np.exp(log_dens)
+
+    # for local maxima
+    peaks, _ = find_peaks(exp_dens, height=0)
+    results_half = peak_widths(exp_dens, peaks, rel_height=0.5)[0]
+    fitted_lines = []
+    for peak_idx, peak_w in zip(peaks, results_half):
+        peak_height = exp_dens[peak_idx]
+        if peak_height > 0.01 and peak_w > 2:
+            peak_position = X_plot[peak_idx, 0]
+            slope = np.tan(np.deg2rad(peak_position))
+            dx = 5
+            dy = dx * slope
+            end_point = center.translate(dx, dy)
+
+            fitted_line = Line(center, end_point)
+            fitted_lines.append(fitted_line)
+            if debug:
+                print(peak_position, peak_height, peak_w)
+                ax[0].axvline(peak_position, lw=int(peak_w))
+
+                fitted_line.plot(color="orange", lw=int(peak_w))
+                # ax[1].axline(center.as_coordinates_tuple, slope=slope, lw=int(peak_w))
+                # TODO assign pixels to correct hand
+    if debug:
+        ax[0].plot(
+            X_plot[:, 0],
+            exp_dens,
+            lw=lw,
+            linestyle="-",
+            label="kernel = '{0}'".format(kernel),
+        )
+
+        ax[0].legend(loc="upper left")
+        ax[0].plot(X[:, 0], -0.005 - 0.01 * np.random.random(X.shape[0]), "+k")
+        plt.show()
+
+    line_to_pixels = defaultdict(list)
+    for i, pixel_line in enumerate(pixel_lines):
+        # TODO select only points which are inside the peaks
+        distances = []
+        pixel_point = pixel_line.end
+        for line in fitted_lines:
+            ppoint = line.projection_point(pixel_point)
+            distance = ppoint.distance(pixel_point)
+            distances.append(distance)
+        line_to_pixels[np.argmin(distances)].append(i)
+    # %%
+    colors = distinctipy.get_colors(len(fitted_lines))
+    # %%
+    if debug:
+        plt.gca().invert_yaxis()
+
+    hands = []
+    # %%
+    if debug:
+        plt.gca().invert_yaxis()
+        for line_idx, pixel_idxs in line_to_pixels.items():
+            for pixel_idx in pixel_idxs:
+                p = pixel_lines[pixel_idx].end
+                p.plot(color=colors[line_idx])
+
+    for line_idx, pixel_idxs in line_to_pixels.items():
+        xmin = center.x
+        xmax = center.x
+        ymin, ymax = center.y, center.y
+        for pixel_idx in pixel_idxs:
+            p = pixel_lines[pixel_idx].end
+            if p.x < xmin:
+                xmin = p.x
+            if p.x > xmax:
+                xmax = p.x
+
+            if p.y < ymin:
+                ymin = p.y
+            if p.y > ymax:
+                ymax = p.y
+
+        n_dx = xmin - center.x
+        n_dy = n_dx * fitted_lines[line_idx].slope
+
+        start_p = center.translate(n_dx, n_dy)
+        y_diff = start_p.y - ymin
+
+        start_p = start_p.translate(-y_diff / fitted_lines[line_idx].slope, -y_diff)
+
+        dx = xmax - center.x
+        dy = dx * fitted_lines[line_idx].slope
+
+        end_p = center.translate(dx, dy)
+
+        y_diff = end_p.y - ymax
+
+        end_p = end_p.translate(-y_diff / fitted_lines[line_idx].slope, -y_diff)
+
+        if end_p.distance(center) > start_p.distance(center):
+            end_p, start_p = center, end_p
+
+        hand_proposal = Line(start_p, end_p)
+        if debug:
+            hand_proposal.plot(color=colors[line_idx])
+        hands.append(hand_proposal)
+
+    return hands
