@@ -7,6 +7,8 @@ from segmentation_models.base import Loss
 from segmentation_models.base.functional import average, get_reduce_axes
 from segmentation_models.losses import SMOOTH
 
+from watch_recognition.utilities import Point
+
 
 def hour_diff(y_true, y_pred):
     diff = tf.round(tf.abs(y_true - y_pred) * 12)
@@ -139,10 +141,12 @@ class IouLoss2(Loss):
         )
 
 
-def points_to_time(center, hour, minute, top):
-    hour = hour - center
-    minute = minute - center
-    top = top - center
+def points_to_time(
+    center: Point, hour: Point, minute: Point, top: Point
+) -> Tuple[float, float]:
+    hour = hour.as_array - center.as_array
+    minute = minute.as_array - center.as_array
+    top = top.as_array - center.as_array
     read_hour = (
         np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1])) / 360 * 12
     )

@@ -1,7 +1,9 @@
 import dataclasses
+from functools import cached_property
 from itertools import combinations
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
+import cv2
 import matplotlib.patches as mpatches
 import numpy as np
 from matplotlib import patches
@@ -14,7 +16,7 @@ from skimage.measure import approximate_polygon, find_contours, label, regionpro
 class Point:
     x: float
     y: float
-    name: str = ""
+    name: str = ""  # TODO name and score could be moved to a separate class
     score: Optional[float] = None
 
     @classmethod
@@ -74,8 +76,32 @@ class Point:
             color=color,
             marker=marker,
             s=size,
-            **kwargs
+            **kwargs,
         )
+
+    def draw_marker(self, image: np.ndarray, color=None) -> np.ndarray:
+        original_image_np = image.astype(np.uint8)
+
+        x, y = self.as_coordinates_tuple
+        x = int(x)
+        y = int(y)
+
+        cv2.drawMarker(original_image_np, (x, y), color, cv2.MARKER_CROSS, thickness=3)
+
+        return original_image_np.astype(np.uint8)
+
+    def draw(self, image: np.ndarray, color=None) -> np.ndarray:
+        if color is not None:
+            if len(image.shape) != 3 or image.shape[2] != 3:
+                raise ValueError(
+                    f"To draw colored point on image, it has to have 3 channels. Got image with shape {image.shape}"
+                )
+            value = color
+        else:
+            value = 1
+        image = image.copy()
+        image[self.y, self.x] = value
+        return image
 
 
 @dataclasses.dataclass(frozen=True)
@@ -190,7 +216,6 @@ class BBox:
     def plot(self, ax=None, color="red", **kwargs):
         if ax is None:
             ax = plt.gca()
-        print(self.width, self.height)
         rect = patches.Rectangle(
             (self.left, self.top),
             self.width,
@@ -203,6 +228,26 @@ class BBox:
         # Add the patch to the Axes
         ax.add_patch(rect)
 
+    def draw(
+        self, image: np.ndarray, color: Tuple[int, int, int] = (255, 0, 255)
+    ) -> np.ndarray:
+        original_image_np = image.astype(np.uint8)
+        xmin, ymin, xmax, ymax = tuple(map(int, self.as_coordinates_tuple))
+
+        cv2.rectangle(original_image_np, (xmin, ymin), (xmax, ymax), color, 2)
+        y = ymin - 15 if ymin - 15 > 15 else ymin + 15
+        cv2.putText(
+            original_image_np,
+            self.name,
+            (xmin, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            color,
+            2,
+        )
+
+        return original_image_np.astype(np.uint8)
+
 
 @dataclasses.dataclass(frozen=True)
 class Line:
@@ -210,15 +255,34 @@ class Line:
     end: Point
     score: float = 0
 
-    @property
+    @classmethod
+    def from_multiple_points(cls, points: List[Point]) -> "Line":
+        if len(points) < 2:
+            raise ValueError(f"Need at least 2 points to fit a lint, got {len(points)}")
+        x_coords = [p.x for p in points]
+        y_coords = [p.y for p in points]
+        poly1d = cls._fit_line(x_coords, y_coords)
+        x_min = min(x_coords)
+        x_max = max(x_coords)
+        start = Point(x_min, poly1d(x_min))
+        end = Point(x_max, poly1d(x_max))
+        return Line(start, end)
+
+    @cached_property
     def poly1d(self) -> np.poly1d:
+        x_coords = [self.start.x, self.end.x]
+        y_coords = [self.start.y, self.end.y]
+        return self._fit_line(x_coords, y_coords)
+
+    @classmethod
+    def _fit_line(
+        cls, x_coords: Union[List, np.ndarray], y_coords: Union[List, np.ndarray]
+    ) -> np.poly1d:
+
         return np.poly1d(
             np.polyfit(
-                [
-                    self.start.x,
-                    self.end.x,
-                ],
-                [self.start.y, self.end.y],
+                x_coords,
+                y_coords,
                 deg=1,
             )
         )
@@ -255,6 +319,9 @@ class Line:
     def scale(self, x: float, y: float) -> "Line":
         return Line(self.start.scale(x, y), self.end.scale(x, y))
 
+    def translate(self, x: float, y: float) -> "Line":
+        return Line(self.start.translate(x, y), self.end.translate(x, y))
+
     def projection_point(self, point: Point) -> Point:
         line_fit = self.poly1d
         m = line_fit.coeffs[0]
@@ -270,7 +337,7 @@ class Line:
             [self.start.x, self.end.x],
             [self.start.y, self.end.y],
             color=color,
-            **kwargs
+            **kwargs,
         )
 
         dx = np.sign(self.unit_vector[0])
@@ -286,16 +353,14 @@ class Line:
             width=0.5,
         )
 
-    def draw(self, img: np.array):
-        img = img.copy()
-        start = self.start.as_array[
-            ::-1
-        ]  # reverse order of x and y to get columns and rows
-        end = self.end.as_array[::-1]
-
-        rr, cc = draw_line(*start, *end)
-        img[rr, cc] = 1
-        return img
+    def draw(self, img: np.ndarray, color=(0, 255, 0), thickness=10) -> np.ndarray:
+        original_image_np = img.astype(np.uint8)
+        start = self.start.as_coordinates_tuple
+        end = self.end.as_coordinates_tuple
+        start = tuple(map(int, start))
+        end = tuple(map(int, end))
+        cv2.line(original_image_np, start, end, color, thickness=thickness)
+        return original_image_np.astype(np.uint8)
 
     # TODO clip method
 

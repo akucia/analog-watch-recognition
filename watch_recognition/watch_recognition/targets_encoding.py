@@ -12,6 +12,7 @@ from scipy.optimize import minimize
 from scipy.signal import find_peaks, peak_widths
 from skimage.draw import circle_perimeter, disk, line
 from skimage.filters import gaussian
+from skimage.measure import label, regionprops
 from sklearn.metrics import euclidean_distances
 from sklearn.neighbors import KernelDensity
 from tensorflow.python.keras.utils.np_utils import to_categorical
@@ -495,28 +496,48 @@ def _fit_line_and_get_extreme_point(center, x, y):
     return p1
 
 
-def fit_lines_to_hands_mask(padded_mask, center, debug=False):
+def vonmises_kde(data, kappa, n_bins=100):
+    """https://stackoverflow.com/a/44783738/8814045"""
+    from scipy.special import i0
+
+    bins = np.linspace(-np.pi, np.pi, n_bins)
+    x = np.linspace(-np.pi, np.pi, n_bins)
+    # integrate vonmises kernels
+    kde = np.exp(kappa * np.cos(x[:, None] - data[None, :])).sum(1) / (
+        2 * np.pi * i0(kappa)
+    )
+    kde /= np.trapz(kde, x=bins)
+    return bins, kde
+
+
+def fit_lines_to_hands_mask(
+    padded_mask: np.ndarray,
+    center: Point,
+    use_largest_region: bool = True,
+    debug: bool = False,
+):
+    if use_largest_region:
+        label_image = label(padded_mask)
+        # select the largest object to filter out small false positives
+        region = sorted(regionprops(label_image), key=lambda r: r.area, reverse=True)[0]
+        padded_mask = label_image == region.label
     # TODO proper debug handling
     # TODO optionally restrict to the largest shape found in the mask
-    pixel_lines = []
-    ax = None
     if debug:
         plt.imshow(padded_mask)
-        plt.show()
+        center.plot()
     vectors = []
+    points = []
     for i, row in enumerate(padded_mask):
         for j, value in enumerate(row):
             if value > 0:
                 line1 = Line(center, Point(j, i))
-                if debug:
-                    line1.plot()
-                pixel_lines.append(line1)
+                points.append(Point(j, i))
                 if line1.length:
                     vectors.append(line1.unit_vector)
-
-    vectors = np.array(vectors)
-    if len(vectors) == 0:
+    if len(points) < 50:
         return []
+    vectors = np.array(vectors)
     # %%
     angles = np.rad2deg(np.arctan2(vectors[:, 1], vectors[:, 0]))
     # %%
@@ -525,121 +546,155 @@ def fit_lines_to_hands_mask(padded_mask, center, debug=False):
     # ----------------------------------------------------------------------
     # Plot a 1D density example
     X = angles.copy()[:, np.newaxis]
-
-    X_plot = np.linspace(0, 181, 180)[:, np.newaxis]
+    # TODO there's a problem with linked boundaries here
+    # 180 deg == 0 deg, and a peak might start at 175 deg and end at 5 deg
+    degrees_overlap = 15
+    step = 0.5
+    X_plot = np.arange(0 - degrees_overlap, 179 + degrees_overlap, step)[
+        :, np.newaxis
+    ]  # KDE requires 2D inputs
+    # print(X_plot)
+    ax = None
     if debug:
         fig, ax = plt.subplots(1, 2, figsize=(30, 15))
         ax = ax.ravel()
-
         ax[1].imshow(padded_mask)
         center.plot(ax[1])
 
     kernel = "gaussian"
     lw = 2
-
+    # TODO the KDE stuff should be extracted and tested separately
     kde = KernelDensity(kernel=kernel, bandwidth=1.5).fit(X)
     log_dens = kde.score_samples(X_plot)
     exp_dens = np.exp(log_dens)
+    offset = int(degrees_overlap / step) * 2
+    end_values = exp_dens[-offset:]
+    to_subtract = np.concatenate((np.zeros(len(exp_dens) - offset), end_values))
+    to_add = np.concatenate((end_values, np.zeros(len(exp_dens) - offset)))
+    exp_dens = exp_dens + to_add - to_subtract
 
     # for local maxima
-    peaks, _ = find_peaks(exp_dens, height=0)
-    results_half = peak_widths(exp_dens, peaks, rel_height=0.5)[0]
-    fitted_lines = []
-    for peak_idx, peak_w in zip(peaks, results_half):
+    peaks, _ = find_peaks(exp_dens, height=0.01, width=2, distance=1, prominence=0.005)
+    # print(f"found {len(peaks)} peaks")
+    results_half = peak_widths(exp_dens, peaks, rel_height=0.25)[0]
+    colors = distinctipy.get_colors(len(peaks))
+    peak_to_points = defaultdict(list)
+    for i, (peak_idx, peak_w) in enumerate(zip(peaks, results_half)):
         peak_height = exp_dens[peak_idx]
-        if peak_height > 0.01 and peak_w > 2:
-            peak_position = X_plot[peak_idx, 0]
-            slope = np.tan(np.deg2rad(peak_position))
-            dx = 5
-            dy = dx * slope
-            end_point = center.translate(dx, dy)
+        peak_position = X_plot[peak_idx, 0]
+        # magic scaling to separate the peaks more
+        peak_w *= 0.75
+        left_peak_border = max(peak_position - peak_w / 2, X_plot[0, 0])
+        right_peak_border = min(peak_position + peak_w / 2, X_plot[-1, 0])
+        left_peak_border_idx = np.argwhere(X_plot[:, 0] <= left_peak_border)[-1][0]
+        right_peak_border_idx = np.argwhere(X_plot[:, 0] >= right_peak_border)[0][0]
+        if left_peak_border < 0 and right_peak_border < 0:
+            # -2 , - 1
+            points_ids_left = angles >= (180 + left_peak_border)
+            points_ids_right = angles <= (180 + right_peak_border)
+            points_ids = points_ids_left & points_ids_right
+        elif left_peak_border < 0 and right_peak_border > 0:
+            # -2 , 2
+            points_ids_left = angles >= (180 + left_peak_border)
+            points_ids_right = angles <= right_peak_border
+            points_ids = points_ids_left | points_ids_right
+        elif left_peak_border > 0 and right_peak_border < 0:
+            # 2 , -2
+            raise ValueError("right border shouldn't be < left border")
+        elif left_peak_border > 0 and right_peak_border > 0:
+            points_ids_left = angles >= left_peak_border
+            points_ids_right = angles <= right_peak_border
+            points_ids = points_ids_left & points_ids_right
+        else:
+            ValueError(
+                f"I thought it's impossible: left_peak_border={left_peak_border} | right_peak_border = {right_peak_border}"
+            )
+        points_ids = points_ids.squeeze()
 
-            fitted_line = Line(center, end_point)
-            fitted_lines.append(fitted_line)
-            if debug:
-                print(peak_position, peak_height, peak_w)
-                ax[0].axvline(peak_position, lw=int(peak_w))
+        peak_to_points[peak_idx].extend((np.array(points)[points_ids]))
 
-                fitted_line.plot(color="orange", lw=int(peak_w))
-                # ax[1].axline(center.as_coordinates_tuple, slope=slope, lw=int(peak_w))
-                # TODO assign pixels to correct hand
+        if debug:
+            # print(peak_position, peak_height, peak_w)
+            ax[0].fill_between(
+                X_plot[left_peak_border_idx:right_peak_border_idx, 0],
+                exp_dens[left_peak_border_idx:right_peak_border_idx],
+                facecolor=colors[i],
+                alpha=0.5,
+            )
+
+    fitted_hands = [
+        Line.from_multiple_points(points) for points in peak_to_points.values()
+    ]
+    hands = []
+    for hand in fitted_hands:
+        if hand.end.distance(center) < hand.start.distance(center):
+            new_hand = Line(hand.end, hand.start)
+        else:
+            new_hand = hand
+        hands.append(new_hand)
+    hands = [
+        dataclasses.replace(hand, score=width)
+        for hand, width in zip(hands, results_half)
+    ]
+
     if debug:
         ax[0].plot(
             X_plot[:, 0],
             exp_dens,
             lw=lw,
             linestyle="-",
-            label="kernel = '{0}'".format(kernel),
         )
+        Y = -0.005 - 0.01 * np.random.random(X.shape[0])
+        ax[0].plot(X[:, 0], Y, "+k")
+        indices_in_overlap = X[:, 0] > (180 - degrees_overlap)
+        X_overlap = X[indices_in_overlap, :]
+        X_overlap = X_overlap - 180
+        ax[0].plot(X_overlap[:, 0], Y[indices_in_overlap], "+r")
 
-        ax[0].legend(loc="upper left")
-        ax[0].plot(X[:, 0], -0.005 - 0.01 * np.random.random(X.shape[0]), "+k")
+        empty_mask = np.zeros((*padded_mask.shape, 3)).astype("uint8")
+        ax[1].invert_yaxis()
+
+        for i, peak_points in enumerate(peak_to_points.values()):
+            for p in peak_points:
+                color = (np.array(colors[i]) * 255).astype("uint8")
+                empty_mask = p.draw(empty_mask, color=color)
+            hands[i].plot(ax=ax[1], color="red", lw=2)
+        ax[1].imshow(empty_mask)
         plt.show()
 
-    line_to_pixels = defaultdict(list)
-    for i, pixel_line in enumerate(pixel_lines):
-        # TODO select only points which are inside the peaks
-        distances = []
-        pixel_point = pixel_line.end
-        for line in fitted_lines:
-            ppoint = line.projection_point(pixel_point)
-            distance = ppoint.distance(pixel_point)
-            distances.append(distance)
-        line_to_pixels[np.argmin(distances)].append(i)
-    # %%
-    colors = distinctipy.get_colors(len(fitted_lines))
-    # %%
-    if debug:
-        plt.gca().invert_yaxis()
-
-    hands = []
-    # %%
-    if debug:
-        plt.gca().invert_yaxis()
-        for line_idx, pixel_idxs in line_to_pixels.items():
-            for pixel_idx in pixel_idxs:
-                p = pixel_lines[pixel_idx].end
-                p.plot(color=colors[line_idx])
-
-    for line_idx, pixel_idxs in line_to_pixels.items():
-        xmin = center.x
-        xmax = center.x
-        ymin, ymax = center.y, center.y
-        for pixel_idx in pixel_idxs:
-            p = pixel_lines[pixel_idx].end
-            if p.x < xmin:
-                xmin = p.x
-            if p.x > xmax:
-                xmax = p.x
-
-            if p.y < ymin:
-                ymin = p.y
-            if p.y > ymax:
-                ymax = p.y
-
-        n_dx = xmin - center.x
-        n_dy = n_dx * fitted_lines[line_idx].slope
-
-        start_p = center.translate(n_dx, n_dy)
-        y_diff = start_p.y - ymin
-
-        start_p = start_p.translate(-y_diff / fitted_lines[line_idx].slope, -y_diff)
-
-        dx = xmax - center.x
-        dy = dx * fitted_lines[line_idx].slope
-
-        end_p = center.translate(dx, dy)
-
-        y_diff = end_p.y - ymax
-
-        end_p = end_p.translate(-y_diff / fitted_lines[line_idx].slope, -y_diff)
-
-        if end_p.distance(center) > start_p.distance(center):
-            end_p, start_p = center, end_p
-
-        hand_proposal = Line(start_p, end_p)
-        if debug:
-            hand_proposal.plot(color=colors[line_idx])
-        hands.append(hand_proposal)
+    hands = [
+        hand for hand in hands if hand.projection_point(center).distance(center) < 1
+    ]
+    hands = [Line(center, hand.end) for hand in hands]
 
     return hands
+
+
+def line_selector(all_hands_lines: List[Line]) -> Tuple[Line, Line]:
+    # select which line is hour and which is a minute hand
+
+    # nothing to do
+    if not all_hands_lines:
+        return tuple()
+    #  there are more than 3 lines: it's probably an error, discard all of them
+    # maybe in the future there can be a way to handle that cases
+    if len(all_hands_lines) > 3:
+        return tuple()
+    # if there's just one line: count it as both hour and minute hand
+    if len(all_hands_lines) == 1:
+        all_hands_lines = [all_hands_lines[0], all_hands_lines[0]]
+    # if there are three lines: reject the longest
+    if len(all_hands_lines) == 3:
+        all_hands_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=True)[
+            1:
+        ]
+    if len(all_hands_lines) != 2:
+        raise ValueError(
+            f"unexpected number of lines, there should be exactly 2 at this point,"
+            f" got {len(all_hands_lines)}"
+        )
+
+    # if there are two lines: shorter is hour, longer is minutes
+    minute, hour = sorted(all_hands_lines, key=lambda l: l.length, reverse=True)
+
+    return minute, hour

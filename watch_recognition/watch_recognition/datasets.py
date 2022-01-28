@@ -45,21 +45,12 @@ DEFAULT_TRANSFORMS_FOR_MASKS = A.Compose(
         # A.VerticalFlip(),
         A.RandomRotate90(),
         A.RandomSizedCrop(
-            (96, 128),
-            128,
-            128,
-            # interpolation=cv2.INTER_NEAREST,
+            (120, 160),  # TODO min,max size should be passes as params
+            160,  # timage size should be passed as params to generate dataset
+            160,
+            interpolation=cv2.INTER_CUBIC,
             p=0.5,
         ),
-        # A.Transpose(),
-        # A.OneOf(
-        #     [
-        #         # A.Downscale(),
-        #         A.ElasticTransform(),
-        #         A.GridDistortion(),
-        #         # A.OpticalDistortion(),
-        #     ],
-        # ),
         A.OneOf(
             [
                 A.HueSaturationValue(p=0.8),
@@ -68,7 +59,6 @@ DEFAULT_TRANSFORMS_FOR_MASKS = A.Compose(
                 A.ChannelDropout(p=0.8),
                 A.CLAHE(p=0.8),
                 A.ISONoise(p=0.8),
-                # A.ImageCompression(p=0.8),
                 A.InvertImg(p=0.8),
             ],
             p=1,
@@ -76,13 +66,6 @@ DEFAULT_TRANSFORMS_FOR_MASKS = A.Compose(
     ],
 )
 
-# A.VerticalFlip(p=0.5),
-#     A.RandomRotate90(p=0.5),
-#     A.OneOf([
-#         A.ElasticTransform(p=0.5, alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03),
-#         A.GridDistortion(p=0.5),
-#         A.OpticalDistortion(distort_limit=1, shift_limit=0.5, p=1),
-#     ], p=0.8)])
 
 # TODO deduplicate with DEFAULT_TRANSFORMS
 DEFAULT_TRANSFORMS_FOR_ANGLE_CLASSIFIER = A.Compose(

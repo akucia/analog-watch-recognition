@@ -209,25 +209,25 @@ def train_and_export(
                 cooldown=3,
                 verbose=1,
             ),
-            tf.keras.callbacks.LambdaCallback(
-                on_epoch_end=partial(
-                    visualize_high_loss_examples,
-                    dataset=dataset_train,
-                    loss=loss,
-                    file_writer=file_writer_distance_metrics_train,
-                    model=model,
-                    every_n_epoch=5,
-                )
-            ),
-            tf.keras.callbacks.LambdaCallback(
-                on_epoch_end=partial(
-                    visualize_high_loss_examples,
-                    dataset=dataset_val,
-                    loss=loss,
-                    file_writer=file_writer_distance_metrics_validation,
-                    model=model,
-                )
-            ),
+            # tf.keras.callbacks.LambdaCallback(
+            #     on_epoch_end=partial(
+            #         visualize_high_loss_examples,
+            #         dataset=dataset_train,
+            #         loss=loss,
+            #         file_writer=file_writer_distance_metrics_train,
+            #         model=model,
+            #         every_n_epoch=5,
+            #     )
+            # ),
+            # tf.keras.callbacks.LambdaCallback(
+            #     on_epoch_end=partial(
+            #         visualize_high_loss_examples,
+            #         dataset=dataset_val,
+            #         loss=loss,
+            #         file_writer=file_writer_distance_metrics_validation,
+            #         model=model,
+            #     )
+            # ),
             tf.keras.callbacks.ModelCheckpoint(
                 filepath=model_path,
                 save_weights_only=False,
