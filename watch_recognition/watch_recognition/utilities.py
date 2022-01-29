@@ -9,9 +9,7 @@ import numpy as np
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from numpy.linalg import LinAlgError
-from numpy.polynomial.polynomial import Polynomial
 from scipy import odr
-from skimage.draw import line as draw_line
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
 
@@ -82,14 +80,16 @@ class Point:
             **kwargs,
         )
 
-    def draw_marker(self, image: np.ndarray, color=None) -> np.ndarray:
+    def draw_marker(self, image: np.ndarray, color=None, thickness=3) -> np.ndarray:
         original_image_np = image.astype(np.uint8)
 
         x, y = self.as_coordinates_tuple
         x = int(x)
         y = int(y)
 
-        cv2.drawMarker(original_image_np, (x, y), color, cv2.MARKER_CROSS, thickness=3)
+        cv2.drawMarker(
+            original_image_np, (x, y), color, cv2.MARKER_CROSS, thickness=thickness
+        )
 
         return original_image_np.astype(np.uint8)
 

@@ -515,11 +515,14 @@ def fit_lines_to_hands_mask(
     center: Point,
     use_largest_region: bool = True,
     debug: bool = False,
-):
+) -> List[Line]:
     if use_largest_region:
         label_image = label(padded_mask)
         # select the largest object to filter out small false positives
-        region = sorted(regionprops(label_image), key=lambda r: r.area, reverse=True)[0]
+        regions = sorted(regionprops(label_image), key=lambda r: r.area, reverse=True)
+        if not regions:
+            return []
+        region = regions[0]
         padded_mask = label_image == region.label
     # TODO proper debug handling
     # TODO optionally restrict to the largest shape found in the mask
@@ -563,7 +566,7 @@ def fit_lines_to_hands_mask(
     if debug:
         print(properties)
     results_half = peak_widths(exp_dens, peaks, rel_height=0.5)[0]
-    colors = distinctipy.get_colors(len(peaks))
+    colors = distinctipy.get_colors(len(peaks), n_attempts=1)
     peak_to_points = defaultdict(list)
     for i, (peak_idx, peak_w) in enumerate(zip(peaks, results_half)):
         peak_position = X_plot[peak_idx, 0]
@@ -618,9 +621,8 @@ def fit_lines_to_hands_mask(
             for p in peak_points:
                 color = (np.array(colors[i]) * 255).astype("uint8")
                 empty_mask = p.draw(empty_mask, color=color)
-            hands[i].plot(ax=ax[1], color="red", lw=2)
+            hands[i].plot(ax=ax[1], color="white", lw=2)
         ax[1].imshow(empty_mask)
-        plt.show()
     hands = [
         hand for hand in hands if hand.projection_point(center).distance(center) < 5
     ]
