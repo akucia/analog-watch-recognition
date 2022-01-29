@@ -538,25 +538,15 @@ def fit_lines_to_hands_mask(
     if len(points) < 50:
         return []
     vectors = np.array(vectors)
-    # %%
     angles = np.rad2deg(np.arctan2(vectors[:, 1], vectors[:, 0]))
-    # %%
-    angles = np.where(angles <= 0, 180 + angles, angles)
-
-    # ----------------------------------------------------------------------
-    # Plot a 1D density example
     X = angles.copy()[:, np.newaxis]
     # TODO there's a problem with linked boundaries here
-    # 180 deg == 0 deg, and a peak might start at 175 deg and end at 5 deg
-    degrees_overlap = 15
     step = 0.5
-    X_plot = np.arange(0 - degrees_overlap, 179 + degrees_overlap, step)[
-        :, np.newaxis
-    ]  # KDE requires 2D inputs
+    X_plot = np.arange(-180, 180, step)[:, np.newaxis]  # KDE requires 2D inputs
     # print(X_plot)
     ax = None
     if debug:
-        fig, ax = plt.subplots(1, 2, figsize=(30, 15))
+        fig, ax = plt.subplots(1, 2, figsize=(15, 7))
         ax = ax.ravel()
         ax[1].imshow(padded_mask)
         center.plot(ax[1])
@@ -567,51 +557,23 @@ def fit_lines_to_hands_mask(
     kde = KernelDensity(kernel=kernel, bandwidth=1.5).fit(X)
     log_dens = kde.score_samples(X_plot)
     exp_dens = np.exp(log_dens)
-    offset = int(degrees_overlap / step) * 2
-    end_values = exp_dens[-offset:]
-    to_subtract = np.concatenate((np.zeros(len(exp_dens) - offset), end_values))
-    to_add = np.concatenate((end_values, np.zeros(len(exp_dens) - offset)))
-    exp_dens = exp_dens + to_add - to_subtract
-
-    # for local maxima
     peaks, properties = find_peaks(
-        exp_dens, height=0.01, width=5, distance=5, prominence=5e-4
+        exp_dens, height=5e-3, width=5, distance=5, prominence=5e-4
     )
     if debug:
         print(properties)
-    results_half = peak_widths(exp_dens, peaks, rel_height=0.15)[0]
+    results_half = peak_widths(exp_dens, peaks, rel_height=0.5)[0]
     colors = distinctipy.get_colors(len(peaks))
     peak_to_points = defaultdict(list)
     for i, (peak_idx, peak_w) in enumerate(zip(peaks, results_half)):
-        peak_height = exp_dens[peak_idx]
         peak_position = X_plot[peak_idx, 0]
-        # magic scaling to separate the peaks more
-        # peak_w *= 0.75
         left_peak_border = max(peak_position - peak_w / 2, X_plot[0, 0])
         right_peak_border = min(peak_position + peak_w / 2, X_plot[-1, 0])
         left_peak_border_idx = np.argwhere(X_plot[:, 0] <= left_peak_border)[-1][0]
         right_peak_border_idx = np.argwhere(X_plot[:, 0] >= right_peak_border)[0][0]
-        if left_peak_border < 0 and right_peak_border < 0:
-            # -2 , - 1
-            points_ids_left = angles >= (180 + left_peak_border)
-            points_ids_right = angles <= (180 + right_peak_border)
-            points_ids = points_ids_left & points_ids_right
-        elif left_peak_border < 0 and right_peak_border > 0:
-            # -2 , 2
-            points_ids_left = angles >= (180 + left_peak_border)
-            points_ids_right = angles <= right_peak_border
-            points_ids = points_ids_left | points_ids_right
-        elif left_peak_border > 0 and right_peak_border < 0:
-            # 2 , -2
-            raise ValueError("right border shouldn't be < left border")
-        elif left_peak_border > 0 and right_peak_border > 0:
-            points_ids_left = angles >= left_peak_border
-            points_ids_right = angles <= right_peak_border
-            points_ids = points_ids_left & points_ids_right
-        else:
-            ValueError(
-                f"I thought it's impossible: left_peak_border={left_peak_border} | right_peak_border = {right_peak_border}"
-            )
+        points_ids_left = angles >= left_peak_border
+        points_ids_right = angles <= right_peak_border
+        points_ids = points_ids_left & points_ids_right
         points_ids = points_ids.squeeze()
 
         peak_to_points[peak_idx].extend((np.array(points)[points_ids]))
@@ -624,7 +586,6 @@ def fit_lines_to_hands_mask(
                 facecolor=colors[i],
                 alpha=0.5,
             )
-
     fitted_hands = [
         Line.from_multiple_points(points) for points in peak_to_points.values()
     ]
@@ -649,10 +610,6 @@ def fit_lines_to_hands_mask(
         )
         Y = -0.005 - 0.01 * np.random.random(X.shape[0])
         ax[0].plot(X[:, 0], Y, "+k")
-        indices_in_overlap = X[:, 0] > (180 - degrees_overlap)
-        X_overlap = X[indices_in_overlap, :]
-        X_overlap = X_overlap - 180
-        ax[0].plot(X_overlap[:, 0], Y[indices_in_overlap], "+r")
 
         empty_mask = np.zeros((*padded_mask.shape, 3)).astype("uint8")
         ax[1].invert_yaxis()
@@ -664,11 +621,21 @@ def fit_lines_to_hands_mask(
             hands[i].plot(ax=ax[1], color="red", lw=2)
         ax[1].imshow(empty_mask)
         plt.show()
-
     hands = [
-        hand for hand in hands if hand.projection_point(center).distance(center) < 1
+        hand for hand in hands if hand.projection_point(center).distance(center) < 5
     ]
-
+    # TODO maybe it's good idea to join lines with opposite angles
+    # for hand in hands:
+    #     print(hand.angle, np.rad2deg(hand.angle), 180 + np.rad2deg(hand.angle))
+    # for hand_1, hand_2 in combinations(hands, 2):
+    #     angle_1 = hand_1.angle
+    #     if angle_1 < 0:
+    #         angle_1 += 180
+    #
+    #     angle_2 = hand_2.angle
+    #     if angle_2 < 0:
+    #         angle_2 += 180
+    #     if
     return hands
 
 
@@ -677,17 +644,33 @@ def line_selector(all_hands_lines: List[Line]) -> Tuple[Tuple[Line, Line], List[
 
     # nothing to do
     if not all_hands_lines:
-        return tuple()
+        return tuple(), tuple()
 
+    sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
     # if there's just one line: count it as both hour and minute hand
     if len(all_hands_lines) == 1:
-        all_hands_lines = [all_hands_lines[0], all_hands_lines[0]]
+        selected_lines = [sorted_lines[0], sorted_lines[0]]
+        rejected_lines = []
 
-    # if there are three or more lines: reject the longest
-    sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
-    selected_lines = sorted_lines[:2]
-    rejected_lines = sorted_lines[2:]
+    # 2 lines are fine
+    elif len(all_hands_lines) == 2:
+        selected_lines = sorted_lines
+        rejected_lines = []
 
+    # if there are three lines - reject the longest
+    elif len(all_hands_lines) == 3:
+        selected_lines = sorted_lines[:2]
+        rejected_lines = sorted_lines[2:]
+    # if there are 4 lines - reject the shorted and the longest
+    elif len(all_hands_lines) == 4:
+        selected_lines = sorted_lines[1:3]
+        rejected_lines = sorted_lines[:1] + sorted_lines[3:]
+    else:
+        print(f"I don't know what to do with {len(sorted_lines)} recognized hand lines")
+        return [], []
+        raise NotImplementedError(
+            f"I don't know what to do with 5 recognized hand lines"
+        )
     # if there are two lines: shorter is hour, longer is minutes
     minute, hour = sorted(selected_lines, key=lambda l: l.length, reverse=True)
 

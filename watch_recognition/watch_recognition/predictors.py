@@ -76,7 +76,9 @@ class HandPredictor:
         self.output_size = tuple(self.model.outputs[0].shape[1:3])
         self.cache = {}
 
-    def predict(self, image: Image, center_point: Point) -> Tuple[Line, Line]:
+    def predict(
+        self, image: Image, center_point: Point
+    ) -> Tuple[Tuple[Line, Line], List[Line]]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
@@ -100,17 +102,18 @@ class HandPredictor:
 
     def predict_from_image_and_bbox(
         self, image: Image, bbox: BBox, center_point: Point
-    ) -> Tuple[Line, Line]:
+    ) -> Tuple[Tuple[Line, Line], List[Line]]:
         """Runs predictions on full image using bbox to crop area of interest before
         running the model.
         Returns keypoints in pixel coordinates of the image
         """
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
             center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
-            lines = self.predict(crop, center_point_inside_bbox)
+            valid_lines, other_lines = self.predict(crop, center_point_inside_bbox)
 
-            lines = [line.translate(bbox.left, bbox.top) for line in lines]
-            return tuple(lines)
+            valid_lines = [line.translate(bbox.left, bbox.top) for line in valid_lines]
+            other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
+            return valid_lines, other_lines
 
 
 class TFLiteDetector:
@@ -214,3 +217,28 @@ class TFLiteDetector:
 def _hash_image(image: Image) -> str:
     md5hash = hashlib.md5(image.tobytes())
     return md5hash.hexdigest()
+
+
+class RotationPredictor:
+    def __init__(self, model_path):
+        self.model = tf.keras.models.load_model(model_path, compile=False)
+        self.input_size = tuple(self.model.inputs[0].shape[1:3])
+        self.output_size = self.model.outputs[0].shape[1]
+        self.bin_size = 360 // self.output_size
+        self.cache = {}
+
+    def predict(self, image: Image) -> float:
+        image_hash = _hash_image(image)
+        if image_hash in self.cache:
+            return self.cache[image_hash]
+        # TODO switch to ImageOps.pad
+        with image.resize(self.input_size, BICUBIC) as resized_image:
+            image_np = np.expand_dims(resized_image, 0)
+            predicted = self.model.predict(image_np)[0]
+            angle = predicted.argmax(axis=1) * self.bin_size
+            self.cache[image_hash] = angle
+            return angle
+
+    def predict_and_correct(self, image: Image) -> Image:
+        angle = self.predict(image)
+        return image.rotate(-angle, resample=BICUBIC)

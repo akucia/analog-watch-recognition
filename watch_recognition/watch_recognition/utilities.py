@@ -8,6 +8,9 @@ import matplotlib.patches as mpatches
 import numpy as np
 from matplotlib import patches
 from matplotlib import pyplot as plt
+from numpy.linalg import LinAlgError
+from numpy.polynomial.polynomial import Polynomial
+from scipy import odr
 from skimage.draw import line as draw_line
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
@@ -264,9 +267,14 @@ class Line:
         poly1d = cls._fit_line(x_coords, y_coords)
         x_min = min(x_coords)
         x_max = max(x_coords)
+        y_min = min(y_coords)
+        y_max = max(y_coords)
         start = Point(x_min, poly1d(x_min))
         end = Point(x_max, poly1d(x_max))
-        return Line(start, end)
+        window = BBox(x_min, y_min, x_max, y_max, "")
+        l1 = Line(start, end)
+        l2 = l1.clip(window)
+        return l2
 
     @cached_property
     def poly1d(self) -> np.poly1d:
@@ -278,14 +286,30 @@ class Line:
     def _fit_line(
         cls, x_coords: Union[List, np.ndarray], y_coords: Union[List, np.ndarray]
     ) -> np.poly1d:
+        """
+        Fit 1st degree polynomial using ODR = Orthogonal Distance Regression
+        Least squares regression won't work for perfectly vertical lines.
 
-        return np.poly1d(
-            np.polyfit(
-                x_coords,
-                y_coords,
-                deg=1,
-            )
-        )
+        Notes:
+          Check out this Stack Overflow question and answer:
+            https://stackoverflow.com/a/10982488/8814045
+          and scipy docs with an example:
+            https://docs.scipy.org/doc/scipy/reference/generated/scipy.odr.polynomial.html#scipy.odr.polynomial
+
+        Args:
+            x_coords:
+            y_coords:
+
+        Returns:
+
+        """
+        poly_model = odr.polynomial(1)
+        data = odr.Data(x_coords, y_coords)
+        odr_obj = odr.ODR(data, poly_model)
+        output = odr_obj.run()
+        poly = np.poly1d(output.beta[::-1])
+
+        return poly
 
     @property
     def slope(self) -> float:
@@ -362,7 +386,16 @@ class Line:
         cv2.line(original_image_np, start, end, color, thickness=thickness)
         return original_image_np.astype(np.uint8)
 
-    # TODO clip method
+    def clip(self, bbox: BBox) -> "Line":
+        start, end = self.start, self.end
+        new_points = []
+        for p in (start, end):
+            x = min(max(p.x, bbox.x_min), bbox.x_max)
+            y = min(max(p.y, bbox.y_min), bbox.y_max)
+            new_p = Point(x, y)
+            new_points.append(new_p)
+        start, end = new_points
+        return Line(start, end)
 
 
 @dataclasses.dataclass(frozen=True)
