@@ -9,7 +9,7 @@ import tensorflow as tf
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from scipy.optimize import minimize
-from scipy.signal import find_peaks, peak_widths
+from scipy.signal import find_peaks, find_peaks_cwt, peak_widths
 from skimage.draw import circle_perimeter, disk, line
 from skimage.filters import gaussian
 from skimage.measure import label, regionprops
@@ -574,16 +574,19 @@ def fit_lines_to_hands_mask(
     exp_dens = exp_dens + to_add - to_subtract
 
     # for local maxima
-    peaks, _ = find_peaks(exp_dens, height=0.01, width=2, distance=1, prominence=0.005)
-    # print(f"found {len(peaks)} peaks")
-    results_half = peak_widths(exp_dens, peaks, rel_height=0.25)[0]
+    peaks, properties = find_peaks(
+        exp_dens, height=0.01, width=5, distance=5, prominence=5e-4
+    )
+    if debug:
+        print(properties)
+    results_half = peak_widths(exp_dens, peaks, rel_height=0.15)[0]
     colors = distinctipy.get_colors(len(peaks))
     peak_to_points = defaultdict(list)
     for i, (peak_idx, peak_w) in enumerate(zip(peaks, results_half)):
         peak_height = exp_dens[peak_idx]
         peak_position = X_plot[peak_idx, 0]
         # magic scaling to separate the peaks more
-        peak_w *= 0.75
+        # peak_w *= 0.75
         left_peak_border = max(peak_position - peak_w / 2, X_plot[0, 0])
         right_peak_border = min(peak_position + peak_w / 2, X_plot[-1, 0])
         left_peak_border_idx = np.argwhere(X_plot[:, 0] <= left_peak_border)[-1][0]
@@ -665,36 +668,27 @@ def fit_lines_to_hands_mask(
     hands = [
         hand for hand in hands if hand.projection_point(center).distance(center) < 1
     ]
-    hands = [Line(center, hand.end) for hand in hands]
 
     return hands
 
 
-def line_selector(all_hands_lines: List[Line]) -> Tuple[Line, Line]:
+def line_selector(all_hands_lines: List[Line]) -> Tuple[Tuple[Line, Line], List[Line]]:
     # select which line is hour and which is a minute hand
 
     # nothing to do
     if not all_hands_lines:
         return tuple()
-    #  there are more than 3 lines: it's probably an error, discard all of them
-    # maybe in the future there can be a way to handle that cases
-    if len(all_hands_lines) > 3:
-        return tuple()
+
     # if there's just one line: count it as both hour and minute hand
     if len(all_hands_lines) == 1:
         all_hands_lines = [all_hands_lines[0], all_hands_lines[0]]
-    # if there are three lines: reject the longest
-    if len(all_hands_lines) == 3:
-        all_hands_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=True)[
-            1:
-        ]
-    if len(all_hands_lines) != 2:
-        raise ValueError(
-            f"unexpected number of lines, there should be exactly 2 at this point,"
-            f" got {len(all_hands_lines)}"
-        )
+
+    # if there are three or more lines: reject the longest
+    sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
+    selected_lines = sorted_lines[:2]
+    rejected_lines = sorted_lines[2:]
 
     # if there are two lines: shorter is hour, longer is minutes
-    minute, hour = sorted(all_hands_lines, key=lambda l: l.length, reverse=True)
+    minute, hour = sorted(selected_lines, key=lambda l: l.length, reverse=True)
 
-    return minute, hour
+    return (minute, hour), rejected_lines
