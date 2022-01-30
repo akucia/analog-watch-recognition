@@ -623,21 +623,9 @@ def fit_lines_to_hands_mask(
                 empty_mask = p.draw(empty_mask, color=color)
             hands[i].plot(ax=ax[1], color="white", lw=2)
         ax[1].imshow(empty_mask)
-    hands = [
-        hand for hand in hands if hand.projection_point(center).distance(center) < 5
-    ]
-    # TODO maybe it's good idea to join lines with opposite angles
-    # for hand in hands:
-    #     print(hand.angle, np.rad2deg(hand.angle), 180 + np.rad2deg(hand.angle))
-    # for hand_1, hand_2 in combinations(hands, 2):
-    #     angle_1 = hand_1.angle
-    #     if angle_1 < 0:
-    #         angle_1 += 180
-    #
-    #     angle_2 = hand_2.angle
-    #     if angle_2 < 0:
-    #         angle_2 += 180
-    #     if
+        plt.tight_layout()
+        plt.savefig("debug_plots.jpg")
+        plt.show()
     return hands
 
 
@@ -646,7 +634,7 @@ def line_selector(all_hands_lines: List[Line]) -> Tuple[Tuple[Line, Line], List[
 
     # nothing to do
     if not all_hands_lines:
-        return tuple(), tuple()
+        return tuple(), []
 
     sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
     # if there's just one line: count it as both hour and minute hand
@@ -668,10 +656,14 @@ def line_selector(all_hands_lines: List[Line]) -> Tuple[Tuple[Line, Line], List[
         selected_lines = sorted_lines[1:3]
         rejected_lines = sorted_lines[:1] + sorted_lines[3:]
     else:
-        print(f"I don't know what to do with {len(sorted_lines)} recognized hand lines")
-        return [], []
+        n_lines = len(sorted_lines)
+        selected_lines = sorted_lines[n_lines // 2 - 1 : n_lines // 2 + 1]
+        rejected_lines = (
+            sorted_lines[: n_lines // 2 - 1] + sorted_lines[n_lines // 2 + 1 :]
+        )
+    if len(selected_lines) != 2:
         raise NotImplementedError(
-            f"I don't know what to do with 5 recognized hand lines"
+            f"I don't know what to do with {len(sorted_lines)} recognized hand lines"
         )
     # if there are two lines: shorter is hour, longer is minutes
     minute, hour = sorted(selected_lines, key=lambda l: l.length, reverse=True)

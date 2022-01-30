@@ -1,7 +1,35 @@
-# Demo
+# Demo - version 2
+
+https://user-images.githubusercontent.com/17779555/151705227-a892424b-279c-4a43-9076-494a55717d0c.mov
+
+models used:
+- bbox detector for finding clock face in the image
+- classifier for clock orientation estimation
+- keypoint detection for center and top
+- semantic segmentation for finding clock hands
+- KDE for splitting the binary segmentation mask into individual clock hands
+### Watch crop with center and top keypoint
+![Alt text](example_data/crop_and_center.jpg?raw=true "Watch crop with center and top")
+### Detected mask of watch hands
+![Alt text](example_data/hands_mask.jpg?raw=true "Detected mask of watch hands")
+### KDE of pixel angles
+![Alt text](example_data/debug_plots.jpg?raw=true "KDE of pixel angles")
+### Fitted lines to segmented pixels
+![Alt text](example_data/fitted_lines.jpg?raw=true "Fitted lines to segmented pixels")
+### Final selected and rejected lines
+![Alt text](example_data/selected_lines.jpg?raw=true "Selected and rejected lines")
+
+## Models description
+_TODO_
+
+# Demo - version 1
 
 https://user-images.githubusercontent.com/17779555/136506927-d326381b-6d54-4c2a-91a8-aa0fee89ba36.mov
 
+models used:
+- bbox detector for finding clock face in the image
+- classifier for clock orientation
+- keypoint detection for center, top and end of clock hands
 
 # Downloading images from OpenImage Dataset
 

@@ -1,13 +1,15 @@
 import dataclasses
 import hashlib
 from functools import lru_cache
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
 from PIL import Image
 from PIL.Image import BICUBIC
+from PIL.Image import Image as ImageType
 
+from watch_recognition.models import points_to_time
 from watch_recognition.targets_encoding import (
     decode_single_point,
     extract_points_from_map,
@@ -24,7 +26,9 @@ class KPPredictor:
         self.output_size = tuple(self.model.outputs[0].shape[1:3])
         self.cache = {}
 
-    def predict(self, image: Image) -> List[Point]:
+    def predict(
+        self, image: Image, rotation_predictor: Optional["RotationPredictor"] = None
+    ) -> List[Point]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
@@ -32,6 +36,10 @@ class KPPredictor:
         if image_hash in self.cache:
             return self.cache[image_hash]
         # TODO switch to ImageOps.pad
+        correction_angle = 0
+        if rotation_predictor is not None:
+            image, correction_angle = rotation_predictor.predict_and_correct(image)
+
         with image.resize(self.input_size, BICUBIC) as resized_image:
             image_np = np.expand_dims(resized_image, 0)
             predicted = self.model.predict(image_np)[0]
@@ -54,17 +62,27 @@ class KPPredictor:
             top = sorted(top_points, key=lambda x: x.score)[-1]
             top = dataclasses.replace(top, name="Top")
             top = top.scale(scale_x, scale_y)
+            if correction_angle:
+                center = center.rotate_around_origin_point(
+                    Point(image.width / 2, image.height / 2), angle=correction_angle
+                )
+                top = top.rotate_around_origin_point(
+                    Point(image.width / 2, image.height / 2), angle=correction_angle
+                )
             return [center, top]
 
-    def predict_from_image_and_bbox(self, image: Image, bbox: BBox) -> List[Point]:
+    def predict_from_image_and_bbox(
+        self,
+        image: Image,
+        bbox: BBox,
+        rotation_predictor: Optional["RotationPredictor"] = None,
+    ) -> List[Point]:
         """Runs predictions on full image using bbox to crop area of interest before
         running the model.
         Returns keypoints in pixel coordinates of the image
         """
-        # Returns a rectangular region from this image. The box is a
-        #         4-tuple defining the left, upper, right, and lower pixel
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
-            points = self.predict(crop)
+            points = self.predict(crop, rotation_predictor=rotation_predictor)
             points = [point.translate(bbox.left, bbox.top) for point in points]
             return points
 
@@ -95,7 +113,7 @@ class HandPredictor:
             scale_y = image.height / self.output_size[1]
             center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
             all_hands_lines = fit_lines_to_hands_mask(
-                predicted, center=center_scaled_to_segmask, debug=False
+                predicted, center=center_scaled_to_segmask
             )
             all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
             return line_selector(all_hands_lines)
@@ -214,7 +232,7 @@ class TFLiteDetector:
         return bboxes
 
 
-def _hash_image(image: Image) -> str:
+def _hash_image(image: ImageType) -> str:
     md5hash = hashlib.md5(image.tobytes())
     return md5hash.hexdigest()
 
@@ -235,10 +253,46 @@ class RotationPredictor:
         with image.resize(self.input_size, BICUBIC) as resized_image:
             image_np = np.expand_dims(resized_image, 0)
             predicted = self.model.predict(image_np)[0]
-            angle = predicted.argmax(axis=1) * self.bin_size
+            angle = predicted.argmax() * self.bin_size
             self.cache[image_hash] = angle
             return angle
 
-    def predict_and_correct(self, image: Image) -> Image:
+    def predict_and_correct(self, image: ImageType) -> Tuple[ImageType, float]:
         angle = self.predict(image)
-        return image.rotate(-angle, resample=BICUBIC)
+        return image.rotate(-angle, resample=BICUBIC), -angle
+
+
+class ClockTimePredictor:
+    def __init__(self):
+        self.detector: TFLiteDetector = ""
+        self.rotation_predictor: RotationPredictor = ""
+        self.kp_predictor: KPPredictor = ""
+        self.hands_predictor: HandPredictor = ""
+
+    def predict(self, image) -> List[BBox]:
+        bboxes = self.detector.predict(image)
+        results = []
+        for box in bboxes:
+            pred_center, pred_top = self.kp_predictor.predict_from_image_and_bbox(
+                image, box, rotation_predictor=self.rotation_predictor
+            )
+            # TODO remove debug drawing and move it to a different method
+            frame = pred_center.draw_marker(frame, thickness=2)
+            frame = pred_top.draw_marker(frame, thickness=2)
+            minute_and_hour, other = self.hands_predictor.predict_from_image_and_bbox(
+                image, box, pred_center
+            )
+            if minute_and_hour:
+                pred_minute, pred_hour = minute_and_hour
+                read_hour, read_minute = points_to_time(
+                    pred_center, pred_hour.end, pred_minute.end, pred_top
+                )
+                frame = pred_minute.draw(frame, thickness=3)
+                frame = pred_minute.end.draw_marker(frame, thickness=2)
+                frame = pred_hour.draw(frame, thickness=5)
+                frame = pred_hour.end.draw_marker(frame, thickness=2)
+
+                time = f"{read_hour:.0f}:{read_minute:.0f}"
+                box = dataclasses.replace(box, name=time)
+                results.append(box)
+        return results

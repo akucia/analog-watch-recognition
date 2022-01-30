@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from numpy.linalg import LinAlgError
+from numpy.polynomial import Polynomial
 from scipy import odr
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
@@ -264,11 +265,17 @@ class Line:
             raise ValueError(f"Need at least 2 points to fit a lint, got {len(points)}")
         x_coords = [p.x for p in points]
         y_coords = [p.y for p in points]
-        poly1d = cls._fit_line(x_coords, y_coords)
         x_min = min(x_coords)
         x_max = max(x_coords)
         y_min = min(y_coords)
         y_max = max(y_coords)
+        # vertical line
+        if np.std(x_coords) < 2:
+            x_const = float(np.mean(x_coords))
+            return Line(Point(x_const, y_min), Point(x_const, y_max))
+
+        # other cases
+        poly1d = cls._fit_line(x_coords, y_coords)
         start = Point(x_min, poly1d(x_min))
         end = Point(x_max, poly1d(x_max))
         window = BBox(x_min, y_min, x_max, y_max, "")
@@ -303,6 +310,9 @@ class Line:
         Returns:
 
         """
+        # poly_coeffs = np.polyfit(x_coords, y_coords, deg=1)
+        # return np.poly1d(poly_coeffs)
+
         poly_model = odr.polynomial(1)
         data = odr.Data(x_coords, y_coords)
         odr_obj = odr.ODR(data, poly_model)
@@ -354,7 +364,7 @@ class Line:
         proj_point_y = m * proj_point_x + k
         return Point(proj_point_x, proj_point_y)
 
-    def plot(self, ax=None, color=None, **kwargs):
+    def plot(self, ax=None, color=None, draw_arrow: bool = True, **kwargs):
         if ax is None:
             ax = plt.gca()
         ax.plot(
@@ -364,18 +374,19 @@ class Line:
             **kwargs,
         )
 
-        dx = np.sign(self.unit_vector[0])
-        dy = self.slope * dx
-        ax.arrow(
-            self.center.x,
-            self.center.y,
-            dx,
-            dy,
-            shape="full",
-            edgecolor="black",
-            facecolor=color,
-            width=0.5,
-        )
+        if draw_arrow:
+            dx = np.sign(self.unit_vector[0])
+            dy = self.slope * dx
+            ax.arrow(
+                self.center.x,
+                self.center.y,
+                dx,
+                dy,
+                shape="full",
+                edgecolor="black",
+                facecolor=color,
+                width=0.5,
+            )
 
     def draw(self, img: np.ndarray, color=(0, 255, 0), thickness=10) -> np.ndarray:
         original_image_np = img.astype(np.uint8)
