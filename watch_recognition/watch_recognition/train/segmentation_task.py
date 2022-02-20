@@ -5,17 +5,33 @@ from functools import partial
 from typing import Dict
 from uuid import uuid1
 
-from watch_recognition.datasets import get_watch_hands_mask_dataset
-
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 
 import numpy as np
 import segmentation_models as sm
 import tensorflow as tf
+import tensorflow.python.keras.backend as K
 
 from watch_recognition.data_preprocessing import load_binary_masks_from_coco_dataset
+from watch_recognition.datasets import get_watch_hands_mask_dataset
 from watch_recognition.models import get_segmentation_model
 from watch_recognition.reports import visualize_high_loss_examples
+
+
+def TverskyLoss(targets, inputs, alpha=0.5, beta=0.5, smooth=1e-6):
+    # https://www.kaggle.com/bigironsphere/loss-function-library-keras-pytorch
+    # flatten label and prediction tensors
+    inputs = K.flatten(inputs)
+    targets = K.flatten(targets)
+
+    # True Positives, False Positives & False Negatives
+    TP = K.sum((inputs * targets))
+    FP = K.sum(((1 - targets) * inputs))
+    FN = K.sum((targets * (1 - inputs)))
+
+    Tversky = (TP + smooth) / (TP + alpha * FP + beta * FN + smooth)
+
+    return 1 - Tversky
 
 
 def get_args() -> Dict:
@@ -104,31 +120,20 @@ def train_and_export(
 
     image_size = (image_size, image_size)
 
-    X, y, _, float_hashes = load_binary_masks_from_coco_dataset(
+    X_train, y_train, _, float_hashes = load_binary_masks_from_coco_dataset(
         os.path.join(data_dir, "segmentation/train/"),
         image_size=image_size,
     )
 
-    print(X.shape, y.shape)
+    print(X_train.shape, y_train.shape)
     X_val, y_val, _, float_hashes_val = load_binary_masks_from_coco_dataset(
         os.path.join(data_dir, "segmentation/validation/"),
         image_size=image_size,
     )
 
-    X = np.concatenate((X, X_val))
-    y = np.concatenate((y, y_val))
-    hashes = np.concatenate((float_hashes, float_hashes_val))
-    train_indices = hashes > 0.2
-
-    X_train = X[train_indices]
-    X_val = X[~train_indices]
-
-    y_train = y[train_indices]
-    y_val = y[~train_indices]
-
     N = len(X_train)
 
-    MODEL_NAME = f"effnet-b3-FPN-{image_size}-{N}-weighted-jl/{model_id}"
+    MODEL_NAME = f"effnet-b3-FPN-{image_size}-{N}-tversky/{model_id}"
 
     dataset_train = get_watch_hands_mask_dataset(
         X_train,
@@ -136,7 +141,7 @@ def train_and_export(
         image_size=image_size,
         batch_size=batch_size,
         augment=True,
-        class_weights=[1, 45],
+        # class_weights=[1, 45],
     )
     print(dataset_train)
     dataset_val = get_watch_hands_mask_dataset(
@@ -145,7 +150,7 @@ def train_and_export(
         image_size=image_size,
         batch_size=batch_size,
         augment=False,
-        class_weights=[1, 45],
+        # class_weights=[1, 45],
     )
     dataset_val = dataset_val.cache()
 
@@ -159,7 +164,9 @@ def train_and_export(
     )
     model.summary()
 
-    loss = sm.losses.JaccardLoss()
+    # loss = sm.losses.JaccardLoss()
+    loss = TverskyLoss
+
     optimizer = tf.keras.optimizers.Adam(learning_rate)
 
     model.compile(
@@ -168,6 +175,8 @@ def train_and_export(
         metrics=[
             sm.metrics.FScore(beta=1, threshold=0.1),
             sm.metrics.IOUScore(threshold=0.1),
+            sm.metrics.Recall(),
+            sm.metrics.Precision(),
         ],
     )
 
@@ -179,12 +188,13 @@ def train_and_export(
         logdir = os.path.join(export_dir, f"tensorboard_logs/{MODEL_NAME}/")
 
     print(f"tensorboard logs will be saved in {logdir}")
-
+    train_summary_path = os.path.join(logdir, "train/")
     file_writer_distance_metrics_train = tf.summary.create_file_writer(
-        os.path.join(logdir, "/train")
+        train_summary_path
     )
+    validation_summary_path = os.path.join(logdir, "validation/")
     file_writer_distance_metrics_validation = tf.summary.create_file_writer(
-        os.path.join(logdir, "/validation")
+        validation_summary_path
     )
     if use_cloud_tb:
         model_path = os.path.join(os.environ["AIP_MODEL_DIR"], MODEL_NAME)
@@ -209,25 +219,25 @@ def train_and_export(
                 cooldown=3,
                 verbose=1,
             ),
-            # tf.keras.callbacks.LambdaCallback(
-            #     on_epoch_end=partial(
-            #         visualize_high_loss_examples,
-            #         dataset=dataset_train,
-            #         loss=loss,
-            #         file_writer=file_writer_distance_metrics_train,
-            #         model=model,
-            #         every_n_epoch=5,
-            #     )
-            # ),
-            # tf.keras.callbacks.LambdaCallback(
-            #     on_epoch_end=partial(
-            #         visualize_high_loss_examples,
-            #         dataset=dataset_val,
-            #         loss=loss,
-            #         file_writer=file_writer_distance_metrics_validation,
-            #         model=model,
-            #     )
-            # ),
+            tf.keras.callbacks.LambdaCallback(
+                on_epoch_end=partial(
+                    visualize_high_loss_examples,
+                    dataset=dataset_train,
+                    loss=loss,
+                    file_writer=file_writer_distance_metrics_train,
+                    model=model,
+                    every_n_epoch=5,
+                )
+            ),
+            tf.keras.callbacks.LambdaCallback(
+                on_epoch_end=partial(
+                    visualize_high_loss_examples,
+                    dataset=dataset_val,
+                    loss=loss,
+                    file_writer=file_writer_distance_metrics_validation,
+                    model=model,
+                )
+            ),
             tf.keras.callbacks.ModelCheckpoint(
                 filepath=model_path,
                 save_weights_only=False,

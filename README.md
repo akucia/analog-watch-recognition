@@ -1,5 +1,11 @@
 # Demo - version 2
 
+![Alt text](example_data/IMG_0039_render.jpg?raw=true "Watch crop with center and top")
+![Alt text](example_data/IMG_0040_render.jpg?raw=true "Detected mask of watch hands")
+![Alt text](example_data/Zrzut ekranu 2021-08-25 o 22.24.14_render.jpg?raw=true "KDE of pixel angles")
+![Alt text](example_data/Zrzut ekranu 2021-08-25 o 22.24.24_render.jpg?raw=true "Fitted lines to segmented pixels")
+
+
 https://user-images.githubusercontent.com/17779555/151705227-a892424b-279c-4a43-9076-494a55717d0c.mov
 
 models used:

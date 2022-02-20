@@ -1,7 +1,7 @@
 import os
 from typing import Dict
 
-import numpy as np
+from watch_recognition.train.utils import unison_shuffled_copies
 
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 
@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from watch_recognition.data_preprocessing import load_keypoints_data_as_kp
 from watch_recognition.datasets import get_watch_keypoints_dataset
-from watch_recognition.models import DeeplabV3Plus, IouLoss2, get_segmentation_model
+from watch_recognition.models import get_segmentation_model
 from watch_recognition.reports import log_scalar_metrics, visualize_high_loss_examples
 
 
@@ -64,14 +64,6 @@ def get_args() -> Dict:
     )
     args, _ = parser.parse_known_args()
     return args.__dict__
-
-
-def unison_shuffled_copies(a, b, seed=42):
-    """https://stackoverflow.com/a/4602224/8814045"""
-    np.random.seed(seed)
-    assert len(a) == len(b)
-    p = np.random.permutation(len(a))
-    return a[p], b[p]
 
 
 def train_and_export(

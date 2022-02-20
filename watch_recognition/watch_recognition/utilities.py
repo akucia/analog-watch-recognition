@@ -1,5 +1,4 @@
 import dataclasses
-from functools import cached_property
 from itertools import combinations
 from typing import List, Optional, Tuple, Union
 
@@ -9,7 +8,6 @@ import numpy as np
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from numpy.linalg import LinAlgError
-from numpy.polynomial import Polynomial
 from scipy import odr
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
@@ -283,7 +281,7 @@ class Line:
         l2 = l1.clip(window)
         return l2
 
-    @cached_property
+    @property
     def poly1d(self) -> np.poly1d:
         x_coords = [self.start.x, self.end.x]
         y_coords = [self.start.y, self.end.y]
@@ -346,15 +344,26 @@ class Line:
         dy = self.end.y - self.start.y
         return np.arctan2(dy, dx)
 
+    def angle_between(self, other):
+        vec_1 = self.vector
+        vec_2 = other.vector
+        unit_vector_1 = vec_1 / np.linalg.norm(vec_1)
+        unit_vector_2 = vec_2 / np.linalg.norm(vec_2)
+        dot_product = np.dot(unit_vector_1, unit_vector_2)
+        angle = np.arccos(dot_product)
+        return angle
+
     @property
     def length(self) -> float:
         return self.start.distance(self.end)
 
     def scale(self, x: float, y: float) -> "Line":
-        return Line(self.start.scale(x, y), self.end.scale(x, y))
+        return Line(self.start.scale(x, y), self.end.scale(x, y), score=self.score)
 
     def translate(self, x: float, y: float) -> "Line":
-        return Line(self.start.translate(x, y), self.end.translate(x, y))
+        return Line(
+            self.start.translate(x, y), self.end.translate(x, y), score=self.score
+        )
 
     def projection_point(self, point: Point) -> Point:
         line_fit = self.poly1d
@@ -406,7 +415,7 @@ class Line:
             new_p = Point(x, y)
             new_points.append(new_p)
         start, end = new_points
-        return Line(start, end)
+        return Line(start, end, score=self.score)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -423,9 +432,7 @@ def mean_line(lines: List[Line], weighted=True) -> Line:
         d = l1.start.distance(l2.end)
         if d > max_distance:
             max_distance = d
-            # best_line = Line(l1.start, l2.end)
     line_length = max_distance
-    print(line_length, np.mean(lengths))
     center = Point(*np.median(np.array([l.center.as_array for l in lines]), axis=0))
     end = center.translate(line_length / 2, mean_slope * line_length / 2)
     start = center.translate(-line_length / 2, -mean_slope * line_length / 2)
@@ -448,9 +455,7 @@ def predictions_to_polygon(predicted_img, debug=False, approximation_tolerance=0
     regions = regionprops(label_image)
     region = sorted(regions, key=lambda r: r.area, reverse=True)[0]
     contour = find_contours(label_image == region.label, fully_connected="high")[0]
-    print(len(contour))
     contour = approximate_polygon(contour, tolerance=approximation_tolerance)
-    print(len(contour))
     polygon_coords = contour[:, ::-1]
     if debug:
         fig, ax = plt.subplots(figsize=(10, 6))

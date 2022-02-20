@@ -8,6 +8,7 @@ import tensorflow as tf
 from watch_recognition.targets_encoding import (
     add_sample_weights,
     encode_keypoints_to_angle,
+    encode_keypoints_to_hands_angles,
     encode_keypoints_to_mask,
     set_shapes,
     set_shapes_with_sample_weight,
@@ -208,7 +209,7 @@ def view_image(ds):
 
 
 def get_watch_angle_dataset(
-    X, y, augment: bool = True, bin_size=90, image_size=(224, 224)
+    X, y, augment: bool = True, bin_size=90, image_size=(224, 224), batch_size=32
 ) -> tf.data.Dataset:
     encode_kp = partial(encode_keypoints_to_angle, bin_size=bin_size)
     set_shape_f = partial(
@@ -225,8 +226,31 @@ def get_watch_angle_dataset(
     dataset = (
         dataset.map(encode_kp, num_parallel_calls=AUTOTUNE)
         .map(set_shape_f, num_parallel_calls=AUTOTUNE)
-        .shuffle(8 * 32)
-        .batch(32)
+        .shuffle(8 * batch_size)
+        .batch(batch_size)
+        .prefetch(AUTOTUNE)
+    )
+    return dataset
+
+
+def get_hands_angles_dataset(
+    X, y, augment: bool = True, image_size=(96, 96), batch_size=32
+) -> tf.data.Dataset:
+    encode_kp = partial(encode_keypoints_to_hands_angles)
+    set_shape_f = partial(set_shapes, img_shape=(*image_size, 3), target_shape=(2,))
+
+    dataset = tf.data.Dataset.from_tensor_slices((X, y))
+    AUTOTUNE = tf.data.experimental.AUTOTUNE
+    if augment:
+        dataset = dataset.map(
+            augment_kp_angle_cls_data,
+            num_parallel_calls=AUTOTUNE,
+        )
+    dataset = (
+        dataset.map(encode_kp, num_parallel_calls=AUTOTUNE)
+        .map(set_shape_f, num_parallel_calls=AUTOTUNE)
+        .shuffle(8 * batch_size)
+        .batch(batch_size)
         .prefetch(AUTOTUNE)
     )
     return dataset
@@ -245,7 +269,7 @@ def get_watch_hands_mask_dataset(
         )
 
     if class_weights:
-        add_sample_weights_f = partial(add_sample_weights, class_weights=[1, 10])
+        add_sample_weights_f = partial(add_sample_weights, class_weights=class_weights)
         dataset = dataset.map(add_sample_weights_f)
         set_shape_f = partial(
             set_shapes_with_sample_weight,

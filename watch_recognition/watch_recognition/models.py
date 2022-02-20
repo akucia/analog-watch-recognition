@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import numpy as np
 import segmentation_models as sm
 import tensorflow as tf
+from matplotlib import pyplot as plt
 from segmentation_models.base import Loss
 from segmentation_models.base.functional import average, get_reduce_axes
 from segmentation_models.losses import SMOOTH
@@ -142,14 +143,22 @@ class IouLoss2(Loss):
 
 
 def points_to_time(
-    center: Point, hour: Point, minute: Point, top: Point
+    center: Point, hour: Point, minute: Point, top: Point, debug: bool = False
 ) -> Tuple[float, float]:
+    if debug:
+        top.plot(color="green")
+        hour.plot(color="red")
+        center.plot(color="k")
+        minute.plot(color="orange")
+        plt.gca().invert_yaxis()
+        plt.legend()
+    assert hour.name == "Hour", hour.name
+    assert minute.name == "Minute", minute.name
     hour = hour.as_array - center.as_array
     minute = minute.as_array - center.as_array
     top = top.as_array - center.as_array
-    read_hour = (
-        np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1])) / 360 * 12
-    )
+    hour_deg = np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1]))
+    read_hour = hour_deg / 360 * 12
     read_hour = np.floor(read_hour).astype(int)
     read_hour = read_hour % 12
     if read_hour == 0:

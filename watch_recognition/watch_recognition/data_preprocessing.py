@@ -14,7 +14,7 @@ from skimage.filters import gaussian
 from skimage.transform import rotate
 from tqdm import tqdm
 
-from watch_recognition.utilities import Point
+from watch_recognition.utilities import Line, Point
 
 
 def load_binary_masks_from_coco_dataset(
@@ -202,6 +202,16 @@ def keypoints_to_angle(center, top):
     reference_vector = reference_vector / np.linalg.norm(reference_vector)
     angle = np.rad2deg(np.arctan2(*top) - np.arctan2(*reference_vector))
     return int(angle)
+
+
+def keypoint_to_sin_cos_angle(center, kp):
+    c = Point(*center)
+    k = Point(*kp)
+    angle = Line(c, k).angle
+    sin_hour = float(np.sin(angle))
+    cos_hour = float(np.cos(angle))
+
+    return np.array([sin_hour, cos_hour])
 
 
 def binarize(value, bin_size):

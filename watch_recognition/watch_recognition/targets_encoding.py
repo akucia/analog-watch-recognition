@@ -1,6 +1,6 @@
 import dataclasses
 from collections import defaultdict
-from itertools import combinations
+from itertools import chain, combinations
 from typing import List, Tuple
 
 import cv2
@@ -8,6 +8,7 @@ import numpy as np
 import tensorflow as tf
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
+from numpy import mean
 from scipy.optimize import minimize
 from scipy.signal import find_peaks, find_peaks_cwt, peak_widths
 from skimage.draw import circle_perimeter, disk, line
@@ -17,8 +18,12 @@ from sklearn.metrics import euclidean_distances
 from sklearn.neighbors import KernelDensity
 from tensorflow.python.keras.utils.np_utils import to_categorical
 
-from watch_recognition.data_preprocessing import binarize, keypoints_to_angle
-from watch_recognition.utilities import Line, Point
+from watch_recognition.data_preprocessing import (
+    binarize,
+    keypoint_to_sin_cos_angle,
+    keypoints_to_angle,
+)
+from watch_recognition.utilities import BBox, Line, Point
 
 
 def set_shapes(img, target, img_shape=(224, 224, 3), target_shape=(28, 28, 4)):
@@ -202,12 +207,29 @@ def encode_keypoints_to_angle(image, keypoints, bin_size=90):
     return image, angle
 
 
+def encode_keypoints_to_hands_angles(image, keypoints):
+    angle = tf.numpy_function(
+        func=encode_keypoints_to_hands_angle,
+        inp=[
+            keypoints,
+        ],
+        Tout=tf.float32,
+    )
+    return image, angle
+
+
 def encode_keypoints_to_angle_np(keypoints, bin_size=90):
     center = keypoints[0, :2]
     top = keypoints[1, :2]
     angle = keypoints_to_angle(center, top)
     angle = binarize(angle, bin_size)
     return to_categorical(angle, num_classes=360 // bin_size)
+
+
+def encode_keypoints_to_hands_angle(keypoints):
+    center = keypoints[0, :2]
+    hour = keypoints[2, :2]
+    return keypoint_to_sin_cos_angle(center, hour).astype("float32")
 
 
 def decode_single_point(mask, threshold=0.1) -> Point:
@@ -515,6 +537,9 @@ def fit_lines_to_hands_mask(
     center: Point,
     use_largest_region: bool = True,
     debug: bool = False,
+    min_peak_height: float = 0.01,
+    min_prominence: float = 5e-4,
+    min_peak_width: float = 3,
 ) -> List[Line]:
     if use_largest_region:
         label_image = label(padded_mask)
@@ -523,12 +548,30 @@ def fit_lines_to_hands_mask(
         if not regions:
             return []
         region = regions[0]
+
+        (
+            ymin,
+            xmin,
+            ymax,
+            xmax,
+        ) = region.bbox
+        region_bbox = BBox(xmin, ymin, xmax, ymax, name="")
+
         padded_mask = label_image == region.label
+        if debug:
+            region_bbox.plot()
+            center.plot()
+            plt.imshow(padded_mask)
+            plt.show()
+        if not region_bbox.contains(center):
+            return []
+
     # TODO proper debug handling
     # TODO optionally restrict to the largest shape found in the mask
     if debug:
         plt.imshow(padded_mask)
         center.plot()
+        plt.show()
     vectors = []
     points = []
     for i, row in enumerate(padded_mask):
@@ -542,10 +585,11 @@ def fit_lines_to_hands_mask(
         return []
     vectors = np.array(vectors)
     angles = np.rad2deg(np.arctan2(vectors[:, 1], vectors[:, 0]))
+    angles = np.where(angles < 0, angles + 180, angles)
     X = angles.copy()[:, np.newaxis]
     # TODO there's a problem with linked boundaries here
     step = 0.5
-    X_plot = np.arange(-180, 180, step)[:, np.newaxis]  # KDE requires 2D inputs
+    X_plot = np.arange(0, 180, step)[:, np.newaxis]  # KDE requires 2D inputs
     # print(X_plot)
     ax = None
     if debug:
@@ -560,8 +604,13 @@ def fit_lines_to_hands_mask(
     kde = KernelDensity(kernel=kernel, bandwidth=1.5).fit(X)
     log_dens = kde.score_samples(X_plot)
     exp_dens = np.exp(log_dens)
+
     peaks, properties = find_peaks(
-        exp_dens, height=5e-3, width=5, distance=5, prominence=5e-4
+        exp_dens,
+        height=min_peak_height,
+        width=min_peak_width,
+        distance=5,
+        prominence=min_prominence,
     )
     if debug:
         print(properties)
@@ -611,6 +660,7 @@ def fit_lines_to_hands_mask(
             lw=lw,
             linestyle="-",
         )
+        ax[0].axhline(min_peak_height, color="red")
         Y = -0.005 - 0.01 * np.random.random(X.shape[0])
         ax[0].plot(X[:, 0], Y, "+k")
 
@@ -626,10 +676,46 @@ def fit_lines_to_hands_mask(
         plt.tight_layout()
         plt.savefig("debug_plots.jpg")
         plt.show()
+    hands = remove_complementary_hands(hands, center)
     return hands
 
 
-def line_selector(all_hands_lines: List[Line]) -> Tuple[Tuple[Line, Line], List[Line]]:
+def remove_complementary_hands(hands: List[Line], center) -> List[Line]:
+    angles_between_hands = np.zeros((len(hands), len(hands)))
+    complementary_hands = []
+    new_hands = []
+    hands_and_index = list(enumerate(hands))
+    for (i, hand_a), (j, hand_b) in combinations(hands_and_index, 2):
+        angle_between = hand_a.angle_between(hand_b)
+        angles_between_hands[i][j] = angle_between
+
+    angles_between_hands = np.rad2deg(angles_between_hands)
+    complementary_hands_on_the_same_side = angles_between_hands < 5
+    complementary_hands_on_the_opposite_sides = angles_between_hands > 175
+    elements_to_remove = np.nonzero(complementary_hands_on_the_opposite_sides)
+    i_s, j_s = elements_to_remove
+    new_hands = [
+        hand for k, hand in hands_and_index if k not in np.concatenate((i_s, j_s))
+    ]
+    for i, j in zip(i_s, j_s):
+        start = hands[i].end
+        end = hands[j].end
+        if start.distance(center) > end.distance(center):
+            end, start = start, end
+        new_hands.append(
+            Line(
+                start,
+                end,
+                score=float(mean([hands[i].score, hands[j].score])),
+            )
+        )
+
+    return new_hands
+
+
+def line_selector(
+    all_hands_lines: List[Line], center: Point
+) -> Tuple[Tuple[Line, Line], List[Line]]:
     # select which line is hour and which is a minute hand
 
     # nothing to do
@@ -655,17 +741,20 @@ def line_selector(all_hands_lines: List[Line]) -> Tuple[Tuple[Line, Line], List[
     elif len(all_hands_lines) == 4:
         selected_lines = sorted_lines[1:3]
         rejected_lines = sorted_lines[:1] + sorted_lines[3:]
+    # give up, something must have gone terribly wrong
     else:
-        n_lines = len(sorted_lines)
-        selected_lines = sorted_lines[n_lines // 2 - 1 : n_lines // 2 + 1]
-        rejected_lines = (
-            sorted_lines[: n_lines // 2 - 1] + sorted_lines[n_lines // 2 + 1 :]
-        )
+        return tuple(), []
     if len(selected_lines) != 2:
         raise NotImplementedError(
             f"I don't know what to do with {len(sorted_lines)} recognized hand lines"
         )
+    # selected_lines = [
+    #     dataclasses.replace(selected_line, start=center)
+    #     for selected_line in selected_lines
+    # ]
     # if there are two lines: shorter is hour, longer is minutes
-    minute, hour = sorted(selected_lines, key=lambda l: l.length, reverse=True)
+    minute, hour = sorted(
+        selected_lines, key=lambda l: l.end.distance(center), reverse=True
+    )
 
     return (minute, hour), rejected_lines

@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
-from PIL import Image
+from PIL import Image, ImageOps
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
 
@@ -95,7 +95,11 @@ class HandPredictor:
         self.cache = {}
 
     def predict(
-        self, image: Image, center_point: Point
+        self,
+        image: Image,
+        center_point: Point,
+        threshold: float = 0.999,
+        debug: bool = False,
     ) -> Tuple[Tuple[Line, Line], List[Line]]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
@@ -104,22 +108,30 @@ class HandPredictor:
         # if image_hash in self.cache:
         #     return self.cache[image_hash]
         # TODO switch to ImageOps.pad
+        # ImageOps.pad(image, size=self.input_size, method=BICUBIC)
         with image.resize(self.input_size, BICUBIC) as resized_image:
             image_np = np.expand_dims(resized_image, 0)
             predicted = self.model.predict(image_np)[0]
-            predicted = predicted > 0.1
+
+            predicted = predicted > threshold
             predicted = (predicted * 255).astype("uint8").squeeze()
             scale_x = image.width / self.output_size[0]
             scale_y = image.height / self.output_size[1]
             center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
+
             all_hands_lines = fit_lines_to_hands_mask(
-                predicted, center=center_scaled_to_segmask
+                predicted, center=center_scaled_to_segmask, debug=debug
             )
             all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
-            return line_selector(all_hands_lines)
+            return line_selector(all_hands_lines, center=center_point)
 
     def predict_from_image_and_bbox(
-        self, image: Image, bbox: BBox, center_point: Point
+        self,
+        image: Image,
+        bbox: BBox,
+        center_point: Point,
+        threshold: float = 0.5,
+        debug: bool = False,
     ) -> Tuple[Tuple[Line, Line], List[Line]]:
         """Runs predictions on full image using bbox to crop area of interest before
         running the model.
@@ -127,7 +139,9 @@ class HandPredictor:
         """
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
             center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
-            valid_lines, other_lines = self.predict(crop, center_point_inside_bbox)
+            valid_lines, other_lines = self.predict(
+                crop, center_point_inside_bbox, threshold=threshold, debug=debug
+            )
 
             valid_lines = [line.translate(bbox.left, bbox.top) for line in valid_lines]
             other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
@@ -245,20 +259,30 @@ class RotationPredictor:
         self.bin_size = 360 // self.output_size
         self.cache = {}
 
-    def predict(self, image: Image) -> float:
+    def predict(
+        self, image: Image, debug: bool = False, threshold: float = 0.5
+    ) -> float:
         image_hash = _hash_image(image)
-        if image_hash in self.cache:
-            return self.cache[image_hash]
+        # if image_hash in self.cache:
+        #     return self.cache[image_hash]
         # TODO switch to ImageOps.pad
         with image.resize(self.input_size, BICUBIC) as resized_image:
             image_np = np.expand_dims(resized_image, 0)
             predicted = self.model.predict(image_np)[0]
-            angle = predicted.argmax() * self.bin_size
+            if debug:
+                print((predicted * 100).astype(int))
+            argmax = predicted.argmax()
+            if predicted[argmax] > threshold:
+                angle = argmax * self.bin_size
+            else:
+                angle = 0
             self.cache[image_hash] = angle
             return angle
 
-    def predict_and_correct(self, image: ImageType) -> Tuple[ImageType, float]:
-        angle = self.predict(image)
+    def predict_and_correct(
+        self, image: ImageType, debug: bool = False
+    ) -> Tuple[ImageType, float]:
+        angle = self.predict(image, debug=debug)
         return image.rotate(-angle, resample=BICUBIC), -angle
 
 
