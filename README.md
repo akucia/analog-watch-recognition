@@ -5,7 +5,6 @@
 <img src="example_data/Zrzut%20ekranu%202021-08-25%20o%2022.24.14_render.jpg?raw=true" width=400> <img src="example_data/Zrzut%20ekranu%202021-08-25%20o%2022.24.24_render.jpg?raw=true" width=400 >
 
 
-
 https://user-images.githubusercontent.com/17779555/151705227-a892424b-279c-4a43-9076-494a55717d0c.mov
 
 models used:
@@ -25,6 +24,8 @@ models used:
 ### Final selected and rejected lines
 ![Alt text](example_data/selected_lines.jpg?raw=true "Selected and rejected lines")
 
+## Running models
+Checkout example notebook: `notebooks/demo-on-examples.ipynb`
 ## Models description
 _TODO_
 

@@ -1,6 +1,7 @@
 import dataclasses
 import hashlib
 from functools import lru_cache
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
@@ -149,9 +150,11 @@ class HandPredictor:
 
 
 class TFLiteDetector:
-    def __init__(self, model_path):
+    def __init__(self, model_path: Path):
         self.temp_file = "/tmp/test-image.png"
-        self.model = tf.lite.Interpreter(model_path=model_path)
+        if model_path.is_dir():
+            model_path /= "model.tflite"
+        self.model = tf.lite.Interpreter(model_path=str(model_path))
         _, input_height, input_width, _ = self.model.get_input_details()[0]["shape"]
         self.input_size = (input_width, input_height)
         self.model.allocate_tensors()
