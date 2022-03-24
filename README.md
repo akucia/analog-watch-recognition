@@ -24,6 +24,12 @@ models used:
 ### Final selected and rejected lines
 ![Alt text](example_data/selected_lines.jpg?raw=true "Selected and rejected lines")
 
+## Installation
+Install `watch_recognition` module, run pip in the main repository dir
+```bash
+pip install watch_recognition/
+```
+Tested on Python 3.7 and 3.8
 ## Running models
 Checkout example notebook: `notebooks/demo-on-examples.ipynb`
 ## Models description

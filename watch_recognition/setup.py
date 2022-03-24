@@ -7,7 +7,7 @@ setuptools.setup(
     author_email="author@example.com",
     description="Reading time from analog clocks",
     long_description_content_type="",
-    url="",
+    url="https://github.com/akucia/analog-watch-recognition",
     packages=setuptools.find_packages(),
     python_requires=">=3.7",
     install_requires=[
@@ -20,7 +20,7 @@ setuptools.setup(
         "scikit-image~=0.18.2",
         "Pillow==8.3.2",
         "scikit-learn~=0.24.1",
-        "pycocotools",
+        "pycocotools==2.0.4",
         "click==8.0.1",
         "requests",
         "segmentation_models==1.0.1",
