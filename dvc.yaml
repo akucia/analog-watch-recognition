@@ -5,7 +5,25 @@ stages:
     - scripts/download-images.py
     - datasets/watch-faces.json
     outs:
-    - datasets/train
-    - datasets/test
-    - datasets/val
+    - datasets/train:
+        persist: true
+    - datasets/test:
+        persist: true
+    - datasets/val:
+       persist: true
     - datasets/watch-faces-local.json
+
+  train-detector:
+    cmd: python watch_recognition/watch_recognition/train/object_detection_task.py
+    deps:
+      - datasets/train
+      - datasets/test
+      - datasets/val
+      - datasets/watch-faces-local.json
+    metrics:
+      - metrics/detector.json
+    plots:
+      - metrics/detector/scalars:
+          cache: false
+    outs:
+      - models/detector/

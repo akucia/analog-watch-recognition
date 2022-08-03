@@ -49,14 +49,14 @@ def main(
         split_path = image_gs_path.replace("gs://", "").split("/")
         bucket_name = split_path[0]
         file_path = "/".join(split_path[1:])
-        download_path = str(dataset_file.parent / file_path)
-        download_blob(bucket_name, file_path, download_path)
-        task["image"] = download_path
+        download_path = dataset_file.parent / file_path
+        download_blob(bucket_name, file_path, str(download_path))
+        task["image"] = str(download_path.relative_to(dataset_file.parent))
 
     output_file = dataset_file.parent / (dataset_file.stem + "-local.json")
 
     with output_file.open("w") as f:
-        json.dump(tasks, f)
+        json.dump(tasks, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -315,3 +315,4 @@ runs.json
 /notebooks/
 /configs/
 !/scripts/
+!/models/detector/
