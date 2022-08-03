@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 
+import click
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -710,11 +711,14 @@ def load_label_studio_dataset(
         yield img_np, np.array(image_bboxes), np.array(class_labels)
 
 
-def main():
+@click.command()
+@click.option("--epochs", default=1)
+@click.option("--batch-size", default=32)
+@click.option("--max-images", default=None)
+def main(epochs: int, batch_size: int, max_images: Optional[int]):
     label_encoder = LabelEncoder()
 
     num_classes = 1
-    batch_size = 2
 
     learning_rates = [2.5e-06, 0.000625, 0.00125, 0.0025, 0.00025, 2.5e-05]
     learning_rate_boundaries = [125, 250, 500, 240000, 360000]
@@ -740,7 +744,7 @@ def main():
             dataset_path,
             image_size=(512, 512),
             label_mapping={"WatchFace": 1},
-            max_num_images=1,
+            max_num_images=max_images,
             split="train",
         ),
         output_signature=(
@@ -755,7 +759,7 @@ def main():
             dataset_path,
             image_size=(512, 512),
             label_mapping={"WatchFace": 1},
-            max_num_images=1,
+            max_num_images=max_images,
             split="val",
         ),
         output_signature=(
@@ -794,8 +798,6 @@ def main():
 
     # train_steps = 4 * 100000
     # epochs = train_steps // train_steps_per_epoch
-
-    epochs = 1
 
     # Running 100 training and 50 validation steps,
     # remove `.take` when training on the full dataset
