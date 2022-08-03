@@ -314,3 +314,4 @@ runs.json
 /cloud_scripts/
 /notebooks/
 /configs/
+!/scripts/
