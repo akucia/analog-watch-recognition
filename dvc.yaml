@@ -1,0 +1,11 @@
+stages:
+  download-images:
+    cmd: python scripts/download-images.py datasets/watch-faces.json
+    deps:
+    - scripts/download-images.py
+    - datasets/watch-faces.json
+    outs:
+    - datasets/train
+    - datasets/test
+    - datasets/val
+    - datasets/watch-faces-local.json

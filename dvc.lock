@@ -1,0 +1,27 @@
+schema: '2.0'
+stages:
+  download-images:
+    cmd: python scripts/download-images.py datasets/watch-faces.json
+    deps:
+    - path: datasets/watch-faces.json
+      md5: 605e6eac418a2477cbba8db2c8e083ac
+      size: 23710
+    - path: scripts/download-images.py
+      md5: c4f9fe6160364264a2453e1b57cdd1ad
+      size: 1756
+    outs:
+    - path: datasets/test
+      md5: 642ea9c490e8ea8cf62856a737b3b710.dir
+      size: 714215
+      nfiles: 1
+    - path: datasets/train
+      md5: a02de7cf81b049cf33940a69ecb94c2e.dir
+      size: 14153128
+      nfiles: 31
+    - path: datasets/val
+      md5: 925b466cd67b6fd4351e4107217ce7d0.dir
+      size: 511575
+      nfiles: 4
+    - path: datasets/watch-faces-local.json
+      md5: 3226d3d826cf17d81ac57251d2d86e34
+      size: 17288
