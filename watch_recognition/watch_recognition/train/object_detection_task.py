@@ -680,13 +680,13 @@ def load_label_studio_dataset(
     image_size: Tuple[int, int] = (400, 400),
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
-):
+):  # TODO add types
     with source.open("r") as f:
         tasks = json.load(f)
     if split is not None:
         tasks = [task for task in tasks if task["image"].startswith(split)]
 
-    for idx, task in enumerate(tasks):
+    for idx, task in enumerate(tasks, start=1):
         if max_num_images is not None and idx > max_num_images:
             return
         image_bboxes = []
@@ -803,8 +803,8 @@ def main(epochs: int, batch_size: int, max_images: Optional[int]):
     # remove `.take` when training on the full dataset
 
     model.fit(
-        train_dataset.take(100),
-        validation_data=val_dataset.take(50),
+        train_dataset,
+        validation_data=val_dataset,
         epochs=epochs,
         callbacks=callbacks_list,
         verbose=1,

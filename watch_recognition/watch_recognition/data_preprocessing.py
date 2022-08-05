@@ -61,7 +61,7 @@ def load_binary_masks_from_coco_dataset(
                 img_pil = ImageOps.pad(img_pil, size=image_size)
             all_images.append(np.array(img_pil))
             md5hash = hashlib.md5(img_pil.tobytes())
-            float_hash = int(md5hash.hexdigest(), base=16) / 16 ** 32
+            float_hash = int(md5hash.hexdigest(), base=16) / 16**32
             all_hashes.append(float_hash)
 
         masks = np.array([coco.annToMask(ann) for ann in anns])
@@ -89,7 +89,7 @@ def load_single_kp_example(
     image_name: str,
     image_size: Optional[Tuple[int, int]] = (224, 224),
 ):
-    labels_df = pd.read_csv(source / f"tags.csv")
+    labels_df = pd.read_csv(source / "tags.csv")
     image_path = source / image_name
 
     img = tf.keras.preprocessing.image.load_img(
@@ -192,7 +192,9 @@ def load_keypoints_data_as_kp(
     return all_images, all_keypoints, all_filename
 
 
-def load_image(image_path: str, image_size: Tuple[int, int]):
+def load_image(
+    image_path: str, image_size: Tuple[int, int], preserve_aspect_ratio: bool = False
+):
     if image_path.startswith("gs://"):
         file = tf.io.gfile.GFile(image_path, "rb")
     else:
@@ -201,7 +203,10 @@ def load_image(image_path: str, image_size: Tuple[int, int]):
         if img.mode != "RGB":
             img = img.convert("RGB")
         if image_size is not None:
-            img = img.resize(image_size, BICUBIC)
+            if preserve_aspect_ratio:
+                img = ImageOps.pad(img, size=image_size)
+            else:
+                img = img.resize(image_size, BICUBIC)
 
         image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
     file.close()
