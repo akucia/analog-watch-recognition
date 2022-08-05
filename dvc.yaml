@@ -14,7 +14,7 @@ stages:
     - datasets/watch-faces-local.json
 
   train-detector:
-    cmd: python watch_recognition/watch_recognition/train/object_detection_task.py --epochs ${detector.epochs} --batch-size ${detector.batch-size} --ma
+    cmd: python watch_recognition/watch_recognition/train/object_detection_task.py --epochs ${detector.epochs} --batch-size ${detector.batch-size} --max-images 1
     params:
       - detector.epochs
       - detector.batch-size
