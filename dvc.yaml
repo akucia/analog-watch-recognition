@@ -23,6 +23,7 @@ stages:
       - datasets/test
       - datasets/val
       - datasets/watch-faces-local.json
+      - watch_recognition/watch_recognition/train/object_detection_task.py
     metrics:
       - metrics/detector.json
     plots:
@@ -30,3 +31,5 @@ stages:
           cache: false
     outs:
       - models/detector/
+      - example_predictions/:
+          persist: true

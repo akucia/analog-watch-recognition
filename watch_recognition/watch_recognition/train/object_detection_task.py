@@ -91,31 +91,21 @@ def compute_iou(boxes1, boxes2):
 
 
 def visualize_detections(
-    image, boxes, classes, scores, figsize=(7, 7), linewidth=1, color=[0, 0, 1]
+    image, boxes, classes, scores, figsize=(10, 10), savefile=None
 ):
     """Visualize Detections"""
     image = np.array(image, dtype=np.uint8)
     plt.figure(figsize=figsize)
+    plt.tight_layout()
     plt.axis("off")
     plt.imshow(image)
     ax = plt.gca()
     for box, _cls, score in zip(boxes, classes, scores):
         text = "{}: {:.2f}".format(_cls, score)
-        x1, y1, x2, y2 = box
-        w, h = x2 - x1, y2 - y1
-        patch = plt.Rectangle(
-            [x1, y1], w, h, fill=False, edgecolor=color, linewidth=linewidth
-        )
-        ax.add_patch(patch)
-        ax.text(
-            x1,
-            y1,
-            text,
-            bbox={"facecolor": color, "alpha": 0.4},
-            clip_box=ax.clipbox,
-            clip_on=True,
-        )
-    plt.show()
+        bbox = BBox(*box, name=text)
+        bbox.plot(ax=ax)
+    if savefile is not None:
+        plt.savefig(savefile)
     return ax
 
 
@@ -234,7 +224,11 @@ def random_flip_horizontal(image, boxes):
 
 
 def resize_and_pad_image(
-    image, min_side=800.0, max_side=1333.0, jitter=[640, 1024], stride=128.0
+    image,
+    min_side=800.0,
+    max_side=1333.0,
+    jitter: Optional[Tuple[int, int]] = (640, 1024),
+    stride=128.0,
 ):
     """Resizes and pads image while preserving aspect ratio.
 
@@ -295,8 +289,10 @@ def preprocess_data(image, bbox, class_id):
     """
     class_id = tf.cast(class_id, dtype=tf.int32)
 
-    image, bbox = random_flip_horizontal(image, bbox)
-    image, image_shape, _ = resize_and_pad_image(image)
+    # image, bbox = random_flip_horizontal(image, bbox)
+    image, image_shape, _ = resize_and_pad_image(
+        image, min_side=384, max_side=384, jitter=None
+    )
 
     bbox = tf.stack(
         [
@@ -556,7 +552,7 @@ class DecodePredictions(tf.keras.layers.Layer):
         max_detections_per_class=100,
         max_detections=100,
         box_variance=[0.1, 0.1, 0.2, 0.2],
-        **kwargs
+        **kwargs,
     ):
         super(DecodePredictions, self).__init__(**kwargs)
         self.num_classes = num_classes
@@ -692,12 +688,14 @@ def load_label_studio_dataset(
         image_bboxes = []
         class_labels = []
         image_path = source.parent / task["image"]
-        img_np = load_image(str(image_path), image_size=image_size)
+        img_np = load_image(
+            str(image_path), image_size=image_size, preserve_aspect_ratio=True
+        )
         # height = img_np.shape[0]
         # width = img_np.shape[1]
         for obj in task["label"]:
             # label studio keeps
-            bbox = BBox.from_center_width_height(
+            bbox = BBox.from_ltwh(
                 obj["x"],
                 obj["y"],
                 obj["width"],
@@ -714,23 +712,23 @@ def load_label_studio_dataset(
 @click.command()
 @click.option("--epochs", default=1)
 @click.option("--batch-size", default=32)
-@click.option("--max-images", default=None)
+@click.option("--max-images", default=None, type=int)
 def main(epochs: int, batch_size: int, max_images: Optional[int]):
     label_encoder = LabelEncoder()
 
     num_classes = 1
 
-    learning_rates = [2.5e-06, 0.000625, 0.00125, 0.0025, 0.00025, 2.5e-05]
-    learning_rate_boundaries = [125, 250, 500, 240000, 360000]
-    learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
-        boundaries=learning_rate_boundaries, values=learning_rates
-    )
+    # learning_rates = [2.5e-06, 0.000625, 0.00125, 0.0025, 0.00025, 2.5e-05]
+    # learning_rate_boundaries = [125, 250, 500, 240000, 360000]
+    # learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
+    #     boundaries=learning_rate_boundaries, values=learning_rates
+    # )
 
     resnet50_backbone = get_backbone()
     loss_fn = RetinaNetLoss(num_classes)
     model = RetinaNet(num_classes, resnet50_backbone)
 
-    optimizer = tf.optimizers.SGD(learning_rate=learning_rate_fn, momentum=0.9)
+    optimizer = tf.optimizers.Adam(learning_rate=3e-4)
     model.compile(loss=loss_fn, optimizer=optimizer)
 
     callbacks_list = [
@@ -739,38 +737,40 @@ def main(epochs: int, batch_size: int, max_images: Optional[int]):
 
     dataset_path = Path("datasets/watch-faces-local.json")
 
-    train_dataset = tf.data.Dataset.from_generator(
+    label_to_cls = {"WatchFace": 0}
+    cls_to_label = {v: k for k, v in label_to_cls.items()}
+    raw_train_dataset = tf.data.Dataset.from_generator(
         lambda: load_label_studio_dataset(
             dataset_path,
-            image_size=(512, 512),
-            label_mapping={"WatchFace": 1},
+            image_size=(384, 384),
+            label_mapping=label_to_cls,
             max_num_images=max_images,
             split="train",
         ),
         output_signature=(
-            tf.TensorSpec(shape=(512, 512, 3), dtype=tf.uint8),
+            tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8),
             tf.TensorSpec(shape=(None, 4), dtype=tf.float32),
             tf.TensorSpec(shape=(None,), dtype=tf.int32),
         ),
     )
 
-    val_dataset = tf.data.Dataset.from_generator(
+    raw_val_dataset = tf.data.Dataset.from_generator(
         lambda: load_label_studio_dataset(
             dataset_path,
-            image_size=(512, 512),
-            label_mapping={"WatchFace": 1},
+            image_size=(384, 384),
+            label_mapping=label_to_cls,
             max_num_images=max_images,
             split="val",
         ),
         output_signature=(
-            tf.TensorSpec(shape=(512, 512, 3), dtype=tf.uint8),
+            tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8),
             tf.TensorSpec(shape=(None, 4), dtype=tf.float32),
             tf.TensorSpec(shape=(None,), dtype=tf.int32),
         ),
     )
 
     autotune = tf.data.AUTOTUNE
-    train_dataset = train_dataset.map(preprocess_data, num_parallel_calls=autotune)
+    train_dataset = raw_train_dataset.map(preprocess_data, num_parallel_calls=autotune)
     train_dataset = train_dataset.shuffle(8 * batch_size)
     train_dataset = train_dataset.padded_batch(
         batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=True
@@ -778,17 +778,17 @@ def main(epochs: int, batch_size: int, max_images: Optional[int]):
     train_dataset = train_dataset.map(
         label_encoder.encode_batch, num_parallel_calls=autotune
     )
-    train_dataset = train_dataset.apply(tf.data.experimental.ignore_errors())
+    # train_dataset = train_dataset.apply(tf.data.experimental.ignore_errors())
     train_dataset = train_dataset.prefetch(autotune)
 
-    val_dataset = val_dataset.map(preprocess_data, num_parallel_calls=autotune)
+    val_dataset = raw_val_dataset.map(preprocess_data, num_parallel_calls=autotune)
     val_dataset = val_dataset.padded_batch(
         batch_size=1, padding_values=(0.0, 1e-8, -1), drop_remainder=True
     )
     val_dataset = val_dataset.map(
         label_encoder.encode_batch, num_parallel_calls=autotune
     )
-    val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
+    # val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
     val_dataset = val_dataset.prefetch(autotune)
 
     # Uncomment the following lines, when training on full dataset
@@ -816,11 +816,36 @@ def main(epochs: int, batch_size: int, max_images: Optional[int]):
     # latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
     # model.load_weights(latest_checkpoint)
 
-    image = tf.keras.Input(shape=[None, None, 3], name="image")
+    image = tf.keras.Input(shape=[384, 384, 3], name="image")
     predictions = model(image, training=False)
     detections = DecodePredictions(confidence_threshold=0.5)(image, predictions)
     inference_model = tf.keras.Model(inputs=image, outputs=detections)
     inference_model.save("models/detector/")
+
+    def prepare_image(image):
+        image, _, ratio = resize_and_pad_image(
+            image, jitter=None, max_side=384, min_side=384
+        )
+        image = tf.keras.applications.resnet.preprocess_input(image)
+        return tf.expand_dims(image, axis=0), ratio
+
+    for i, (image, bbox, cls) in enumerate(raw_train_dataset.take(1)):
+        image = tf.cast(image, dtype=tf.float32)
+        input_image, ratio = prepare_image(image)
+        detections = inference_model.predict(input_image)
+        num_detections = detections.valid_detections[0]
+        class_names = [
+            cls_to_label[x] for x in detections.nmsed_classes[0][:num_detections]
+        ]
+        save_file = Path(f"example_predictions/train_{i}.jpg")
+        save_file.parent.mkdir(exist_ok=True)
+        visualize_detections(
+            image,
+            detections.nmsed_boxes[0][:num_detections] / ratio,
+            class_names,
+            detections.nmsed_scores[0][:num_detections],
+            savefile=save_file,
+        )
 
 
 if __name__ == "__main__":

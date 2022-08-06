@@ -7,7 +7,6 @@ import matplotlib.patches as mpatches
 import numpy as np
 from matplotlib import patches
 from matplotlib import pyplot as plt
-from numpy.linalg import LinAlgError
 from scipy import odr
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
@@ -33,7 +32,7 @@ class Point:
         diff = np.array(self.as_coordinates_tuple) - np.array(
             other.as_coordinates_tuple
         )
-        return float(np.sqrt((diff ** 2).sum()))
+        return float(np.sqrt((diff**2).sum()))
 
     def rotate_around_origin_point(self, origin: "Point", angle: float) -> "Point":
         theta = np.radians(angle)
@@ -229,6 +228,15 @@ class BBox:
 
         # Add the patch to the Axes
         ax.add_patch(rect)
+        if self.name:
+            ax.text(
+                self.x_min,
+                self.y_min,
+                self.name,
+                bbox={"facecolor": color, "alpha": 0.4},
+                clip_box=ax.clipbox,
+                clip_on=True,
+            )
 
     def draw(
         self, image: np.ndarray, color: Tuple[int, int, int] = (255, 0, 255)
@@ -369,7 +377,7 @@ class Line:
         line_fit = self.poly1d
         m = line_fit.coeffs[0]
         k = line_fit.coeffs[1]
-        proj_point_x = (point.x + m * point.y - m * k) / (m ** 2 + 1)
+        proj_point_x = (point.x + m * point.y - m * k) / (m**2 + 1)
         proj_point_y = m * proj_point_x + k
         return Point(proj_point_x, proj_point_y)
 
@@ -427,7 +435,6 @@ def mean_line(lines: List[Line], weighted=True) -> Line:
     lengths = [l.length for l in lines]
     mean_slope = np.average([l.slope for l in lines], weights=lengths)
     max_distance = 0
-    best_line = None
     for l1, l2 in combinations(lines, 2):
         d = l1.start.distance(l2.end)
         if d > max_distance:
