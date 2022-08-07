@@ -3,7 +3,7 @@ Adapted from keras examples https://keras.io/examples/vision/retinanet/
 """
 import json
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import click
 import matplotlib.pyplot as plt
@@ -11,6 +11,7 @@ import numpy as np
 import tensorflow as tf
 from dvclive.keras import DvcLiveCallback
 from tensorflow import keras
+from tqdm import tqdm
 
 from watch_recognition.data_preprocessing import load_image
 from watch_recognition.utilities import BBox
@@ -102,7 +103,7 @@ def visualize_detections(
     ax = plt.gca()
     for box, _cls, score in zip(boxes, classes, scores):
         text = "{}: {:.2f}".format(_cls, score)
-        bbox = BBox(*box, name=text)
+        bbox = BBox(*box, name=text, score=score)
         bbox.plot(ax=ax)
     if savefile is not None:
         plt.savefig(savefile)
@@ -682,9 +683,10 @@ def load_label_studio_dataset(
     if split is not None:
         tasks = [task for task in tasks if task["image"].startswith(split)]
 
-    for idx, task in enumerate(tasks, start=1):
-        if max_num_images is not None and idx > max_num_images:
-            return
+    if max_num_images:
+        tasks = tasks[:max_num_images]
+
+    for task in tasks:
         image_bboxes = []
         class_labels = []
         image_path = source.parent / task["image"]
@@ -707,6 +709,79 @@ def load_label_studio_dataset(
             class_labels.append(label_mapping[bbox.name])
         image_bboxes = np.array(image_bboxes).reshape(-1, 4)
         yield img_np, np.array(image_bboxes), np.array(class_labels)
+
+
+def label_studio_dataset_to_coco(
+    source: Path,
+    output_file: Union[Path, str],
+    label_mapping: Optional[Dict[str, int]] = None,
+    image_size: Optional[Tuple[int, int]] = None,
+    max_num_images: Optional[int] = None,
+    split: Optional[str] = "train",
+):  # TODO add types
+    with source.open("r") as f:
+        tasks = json.load(f)
+    if split is not None:
+        tasks = [task for task in tasks if task["image"].startswith(split)]
+    info = {}
+    images = []
+    categories = {}
+    annotations = []
+    if max_num_images:
+        tasks = tasks[:max_num_images]
+    object_counter = 1
+    for task in tqdm(tasks):
+        image_path = source.parent / task["image"]
+        img_np = load_image(
+            str(image_path), image_size=image_size, preserve_aspect_ratio=True
+        )
+        img_height = img_np.shape[0]
+        img_width = img_np.shape[1]
+        image_id = image_path.stem
+        images.append(
+            {
+                "file_name": image_path.name,
+                "coco_url": str(image_path),
+                "id": image_id,
+                "height": img_height,
+                "width": img_width,
+            }
+        )
+
+        for i, obj in enumerate(task["label"]):
+            # label studio keeps
+            label_name = obj["rectanglelabels"][0]
+            if label_name not in categories:
+                categories[label_name] = {
+                    "supercategory": "watch",
+                    "id": len(categories),
+                    "name": label_name,
+                }
+            bbox = (
+                BBox.from_ltwh(
+                    obj["x"],
+                    obj["y"],
+                    obj["width"],
+                    obj["height"],
+                    categories[label_name]["id"],
+                )
+                .scale(1 / 100, 1 / 100)
+                .scale(img_width, img_height)
+            )
+
+            annotations.append(
+                bbox.to_coco_object(image_id=image_id, object_id=object_counter)
+            )
+            object_counter += 1
+
+    dataset = {
+        "info": info,
+        "images": images,
+        "categories": list(categories.values()),
+        "annotations": annotations,
+    }
+    with Path(output_file).open("w") as f:
+        json.dump(dataset, f, indent=2)
 
 
 @click.command()

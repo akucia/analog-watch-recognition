@@ -111,7 +111,7 @@ class BBox:
     y_min: float
     x_max: float
     y_max: float
-    name: str
+    name: str = ""
     score: Optional[float] = None
 
     @classmethod
@@ -203,6 +203,15 @@ class BBox:
         return self.width / self.height
 
     @property
+    def corners(self) -> List[Point]:
+        return [
+            Point(self.x_min, self.y_min),
+            Point(self.x_max, self.y_min),
+            Point(self.x_max, self.y_max),
+            Point(self.y_min, self.y_max),
+        ]
+
+    @property
     def as_label_studio_object(self) -> dict:
         return {
             "rectanglelabels": [self.name],
@@ -213,6 +222,40 @@ class BBox:
             "width": self.width * 100,
             "height": self.height * 100,
         }
+
+    def to_coco_object(
+        self, image_id: str, object_id: str, category_id: Optional[str] = None
+    ) -> dict:
+        return {
+            "segmentation": [point.as_coordinates_tuple for point in self.corners],
+            "area": self.area,
+            "iscrowd": 0,
+            "image_id": image_id,
+            "bbox": [self.x_min, self.y_min, self.width, self.height],
+            "category_id": category_id if category_id is not None else self.name,
+            "id": object_id,
+            "score": self.score,
+        }
+
+    def intersection(self, other: "BBox") -> "BBox":
+        x_min = max(self.x_min, other.x_min)
+        x_max = min(self.x_max, other.x_max)
+
+        y_min = max(self.y_min, other.y_min)
+        y_max = min(self.y_max, other.y_max)
+        return BBox(
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+        )
+
+    def iou(self, other: "BBox") -> float:
+        intersection_area = self.intersection(other).area
+        if not intersection_area:
+            return 0.0
+        union_area = self.area + other.area - intersection_area
+        return intersection_area / union_area
 
     def plot(self, ax=None, color="red", **kwargs):
         if ax is None:

@@ -33,3 +33,10 @@ stages:
       - models/detector/
       - example_predictions/:
           persist: true
+  eval-detector:
+    cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
+    deps:
+      - models/detector/
+    metrics:
+      - metrics/coco_train.json
+      - metrics/coco_val.json
