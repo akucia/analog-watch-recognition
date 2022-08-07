@@ -1,0 +1,5 @@
+[core]
+    remote = watch-recognition-dvc
+    autostage = true
+['remote "watch-recognition-dvc"']
+    url = gs://watch-recognition-dvc

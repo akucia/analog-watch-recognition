@@ -122,18 +122,16 @@ def train_and_export(
 
     X_train, y_train, _, float_hashes = load_binary_masks_from_coco_dataset(
         os.path.join(data_dir, "segmentation/train/"),
-        image_size=image_size,
+        image_size=(320, 320),
     )
 
     print(X_train.shape, y_train.shape)
     X_val, y_val, _, float_hashes_val = load_binary_masks_from_coco_dataset(
         os.path.join(data_dir, "segmentation/validation/"),
-        image_size=image_size,
+        image_size=(320, 320),
     )
 
-    N = len(X_train)
-
-    MODEL_NAME = f"effnet-b3-FPN-{image_size}-{N}-tversky/{model_id}"
+    n_train_examples = len(X_train)
 
     dataset_train = get_watch_hands_mask_dataset(
         X_train,
@@ -141,8 +139,8 @@ def train_and_export(
         image_size=image_size,
         batch_size=batch_size,
         augment=True,
-        # class_weights=[1, 45],
     )
+
     print(dataset_train)
     dataset_val = get_watch_hands_mask_dataset(
         X_val,
@@ -150,22 +148,21 @@ def train_and_export(
         image_size=image_size,
         batch_size=batch_size,
         augment=False,
-        # class_weights=[1, 45],
     )
     dataset_val = dataset_val.cache()
 
     print(dataset_val)
 
+    backbone_name = "efficientnetb0"
     model = get_segmentation_model(
-        unet_output_layer=None,
         image_size=image_size,
         n_outputs=1,
         output_activation="sigmoid",
+        backbone=backbone_name,
     )
     model.summary()
 
-    # loss = sm.losses.JaccardLoss()
-    loss = TverskyLoss
+    loss = sm.losses.JaccardLoss()
 
     optimizer = tf.keras.optimizers.Adam(learning_rate)
 
@@ -173,13 +170,14 @@ def train_and_export(
         loss=loss,
         optimizer=optimizer,
         metrics=[
-            sm.metrics.FScore(beta=1, threshold=0.1),
-            sm.metrics.IOUScore(threshold=0.1),
-            sm.metrics.Recall(),
-            sm.metrics.Precision(),
+            sm.metrics.iou_score,
+            sm.metrics.f1_score,
+            sm.metrics.precision,
+            sm.metrics.recall,
         ],
     )
-
+    TYPE = "segmentation"
+    MODEL_NAME = f"{backbone_name}-{TYPE}-{image_size[0]}-{n_train_examples}"
     start = datetime.now()
     if use_cloud_tb:
         logdir = os.path.join(os.environ["AIP_TENSORBOARD_LOG_DIR"], MODEL_NAME)

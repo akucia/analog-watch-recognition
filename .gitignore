@@ -302,7 +302,7 @@ runs.json
 *.mov
 *.avi
 
-cloud_train
+/cloud_train/
 /Mask_RCNN/
 /label-studio-ml-backend/
 /label-studio-converter/
@@ -310,3 +310,10 @@ cloud_train
 /deblur-gan/
 /notebooks/frames/
 /watch-recognition-ml-backend/
+/new-images/
+/cloud_scripts/
+/notebooks/
+/configs/
+!/scripts/
+!/models/detector/
+/example_predictions

@@ -1,0 +1,43 @@
+stages:
+  download-images:
+    cmd: python scripts/download-images.py datasets/watch-faces.json
+    deps:
+    - scripts/download-images.py
+    - datasets/watch-faces.json
+    outs:
+    - datasets/train:
+        persist: true
+    - datasets/test:
+        persist: true
+    - datasets/val:
+       persist: true
+    - datasets/watch-faces-local.json
+
+  train-detector:
+    cmd: python watch_recognition/watch_recognition/train/object_detection_task.py --epochs ${detector.epochs} --batch-size ${detector.batch-size}
+    params:
+      - detector.epochs
+      - detector.batch-size
+    deps:
+      - datasets/train
+      - datasets/test
+      - datasets/val
+      - datasets/watch-faces-local.json
+      - watch_recognition/watch_recognition/train/object_detection_task.py
+    metrics:
+      - metrics/detector.json
+    plots:
+      - metrics/detector/scalars:
+          cache: false
+    outs:
+      - models/detector/
+  eval-detector:
+    cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
+    deps:
+      - models/detector/
+      - watch_recognition/watch_recognition/eval/object_detection_eval.py
+    outs:
+      - example_predictions/
+    metrics:
+      - metrics/coco_train.json
+      - metrics/coco_val.json

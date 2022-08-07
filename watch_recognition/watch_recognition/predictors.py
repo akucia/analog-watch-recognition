@@ -1,12 +1,13 @@
+import abc
 import dataclasses
 import hashlib
-from functools import lru_cache
+from abc import ABC
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
-from PIL import Image, ImageOps
+from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
 
@@ -20,12 +21,18 @@ from watch_recognition.targets_encoding import (
 from watch_recognition.utilities import BBox, Line, Point
 
 
-class KPPredictor:
+class KPPredictor(ABC):
     def __init__(self, model_path):
         self.model = tf.keras.models.load_model(model_path, compile=False)
         self.input_size = tuple(self.model.inputs[0].shape[1:3])
         self.output_size = tuple(self.model.outputs[0].shape[1:3])
         self.cache = {}
+
+    @abc.abstractmethod
+    def _decode_keypoints(
+        self, image: Image, predicted: np.ndarray
+    ) -> Tuple[Point, Point]:
+        pass
 
     def predict(
         self, image: Image, rotation_predictor: Optional["RotationPredictor"] = None
@@ -44,33 +51,15 @@ class KPPredictor:
         with image.resize(self.input_size, BICUBIC) as resized_image:
             image_np = np.expand_dims(resized_image, 0)
             predicted = self.model.predict(image_np)[0]
-            # transpose to get different kp channels into 0th axis
-            predicted = predicted.transpose((2, 0, 1))
-            # TODO check if these are correct coords
-            # Center
-            center = decode_single_point(predicted[0])
-            scale_x = image.width / self.output_size[0]
-            scale_y = image.height / self.output_size[1]
-            center = dataclasses.replace(center, name="Center")
-            center = center.scale(scale_x, scale_y)
-            # Top
-            top_points = extract_points_from_map(
-                predicted[1],
+            center, top = self._decode_keypoints(image, predicted)
+        if correction_angle:
+            center = center.rotate_around_origin_point(
+                Point(image.width / 2, image.height / 2), angle=correction_angle
             )
-            if not top_points:
-                top_points = [decode_single_point(predicted[1])]
-
-            top = sorted(top_points, key=lambda x: x.score)[-1]
-            top = dataclasses.replace(top, name="Top")
-            top = top.scale(scale_x, scale_y)
-            if correction_angle:
-                center = center.rotate_around_origin_point(
-                    Point(image.width / 2, image.height / 2), angle=correction_angle
-                )
-                top = top.rotate_around_origin_point(
-                    Point(image.width / 2, image.height / 2), angle=correction_angle
-                )
-            return [center, top]
+            top = top.rotate_around_origin_point(
+                Point(image.width / 2, image.height / 2), angle=correction_angle
+            )
+        return [center, top]
 
     def predict_from_image_and_bbox(
         self,
@@ -86,6 +75,39 @@ class KPPredictor:
             points = self.predict(crop, rotation_predictor=rotation_predictor)
             points = [point.translate(bbox.left, bbox.top) for point in points]
             return points
+
+
+class KPHeatmapPredictor(KPPredictor):
+    def _decode_keypoints(self, image, predicted):
+        # transpose to get different kp channels into 0th axis
+        predicted = predicted.transpose((2, 0, 1))
+        # Center
+        center = decode_single_point(predicted[0])
+        scale_x = image.width / self.output_size[0]
+        scale_y = image.height / self.output_size[1]
+        center = dataclasses.replace(center, name="Center")
+        center = center.scale(scale_x, scale_y)
+        # Top
+        top_points = extract_points_from_map(
+            predicted[1],
+        )
+        if not top_points:
+            top_points = [decode_single_point(predicted[1])]
+        top = sorted(top_points, key=lambda x: x.score)[-1]
+        top = dataclasses.replace(top, name="Top")
+        top = top.scale(scale_x, scale_y)
+        return center, top
+
+
+class KPRegressionPredictor(KPPredictor):
+    def _decode_keypoints(self, image, predicted) -> Tuple[Point, Point]:
+        center = Point(predicted[0], predicted[1], name="Center")
+        top = Point(predicted[2], 0.25, name="Top")
+        scale_x = image.width
+        scale_y = image.height
+        center = center.scale(scale_x, scale_y)
+        top = top.scale(scale_x, scale_y)
+        return center, top
 
 
 class HandPredictor:

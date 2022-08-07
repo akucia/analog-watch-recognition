@@ -57,29 +57,31 @@ def load_binary_masks_from_coco_dataset(
         annIds = coco.getAnnIds(imgIds=img["id"], catIds=catIds, iscrowd=None)
         anns = coco.loadAnns(annIds)
         with Image.fromarray(img_np) as img_pil:
-            padded_img = ImageOps.pad(img_pil, size=image_size)
-            all_images.append(np.array(padded_img))
+            if image_size is not None:
+                img_pil = ImageOps.pad(img_pil, size=image_size)
+            all_images.append(np.array(img_pil))
             md5hash = hashlib.md5(img_pil.tobytes())
-            float_hash = int(md5hash.hexdigest(), base=16) / 16 ** 32
+            float_hash = int(md5hash.hexdigest(), base=16) / 16**32
             all_hashes.append(float_hash)
 
         masks = np.array([coco.annToMask(ann) for ann in anns])
         mask = ((np.sum(masks, axis=0) > 0) * 255).astype("uint8")
         with Image.fromarray(mask) as mask_pil:
-            padded_mask = ImageOps.pad(mask_pil, size=image_size, method=NEAREST)
-            padded_mask = (np.array(padded_mask) > 0).astype("float32")
-            padded_mask = np.expand_dims(padded_mask, axis=-1)
+            if image_size is not None:
+                mask_pil = ImageOps.pad(mask_pil, size=image_size, method=NEAREST)
+            mask_pil = (np.array(mask_pil) > 0).astype("float32")
+            mask_pil = np.expand_dims(mask_pil, axis=-1)
             if blur_masks:
-                padded_mask = gaussian(padded_mask)
-                padded_mask /= padded_mask.max()
-            all_masks.append(padded_mask)
+                mask_pil = gaussian(mask_pil)
+                mask_pil /= mask_pil.max()
+            all_masks.append(mask_pil)
 
     all_images = np.array(all_images)
     all_masks = np.array(all_masks)
-    all_filename = np.array(all_filenames)
+    all_filenames = np.array(all_filenames)
     all_hashes = np.array(all_hashes)
 
-    return all_images, all_masks, all_filename, all_hashes
+    return all_images, all_masks, all_filenames, all_hashes
 
 
 def load_single_kp_example(
@@ -87,7 +89,7 @@ def load_single_kp_example(
     image_name: str,
     image_size: Optional[Tuple[int, int]] = (224, 224),
 ):
-    labels_df = pd.read_csv(source / f"tags.csv")
+    labels_df = pd.read_csv(source / "tags.csv")
     image_path = source / image_name
 
     img = tf.keras.preprocessing.image.load_img(
@@ -145,25 +147,37 @@ def load_keypoints_data_as_kp(
                 point = np.array(
                     (tag_data["x"].values[0], tag_data["y"].values[0], 0, 0)
                 )
+                # if tag == "Center":
+                #     img_center = np.array([0.5, 0.5, 0, 0])
+                #     distance_to_center = np.sqrt(((point - img_center) ** 2).sum())
+                #     if distance_to_center > 0.1:
+                #         print(f"{image_name} has weird center point - skipping...")
+                #         break
+
                 point[0] *= image_np.shape[0]
                 point[1] *= image_np.shape[1]
-                int_point = np.round(point).astype(int)
-                kp = tuple(int_point)
-            else:
-                kp = (-100, -100, 0, 0)
+                # int_point = np.round(point).astype(int)
+                kp = tuple(point)
+                # else:
+                #     kp = (-100, -100, 0, 0)
                 # raise ValueError(f"no keypoint data for {tag} on {image_name}")
 
-            points.append(kp)
+                points.append(kp)
+        if len(points) < 4:
+            continue
         points = np.array(points)
 
         if autorotate:
             angle = keypoints_to_angle(points[0, :2], points[1, :2])
             image_np = rotate(image_np.astype("float32"), -angle).astype("uint8")
-            origin_point = Point(image_np.shape[0] / 2, image_np.shape[1] / 2)
+            # center_point = Point(*points[0, :2])
+            # todo to rotate around center point I would need to translate the
+            #  center of the image to exactly match the center point
+            image_center_point = Point(image_np.shape[0] / 2, image_np.shape[1] / 2)
             for i in range(4):
                 points[i, :2] = np.array(
                     Point(*points[i, :2])
-                    .rotate_around_origin_point(origin_point, angle)
+                    .rotate_around_origin_point(image_center_point, angle)
                     .as_coordinates_tuple
                 )
 
@@ -178,7 +192,9 @@ def load_keypoints_data_as_kp(
     return all_images, all_keypoints, all_filename
 
 
-def load_image(image_path: str, image_size: Tuple[int, int]):
+def load_image(
+    image_path: str, image_size: Tuple[int, int], preserve_aspect_ratio: bool = False
+):
     if image_path.startswith("gs://"):
         file = tf.io.gfile.GFile(image_path, "rb")
     else:
@@ -187,7 +203,10 @@ def load_image(image_path: str, image_size: Tuple[int, int]):
         if img.mode != "RGB":
             img = img.convert("RGB")
         if image_size is not None:
-            img = img.resize(image_size, BICUBIC)
+            if preserve_aspect_ratio:
+                img = ImageOps.pad(img, size=image_size)
+            else:
+                img = img.resize(image_size, BICUBIC)
 
         image_np = tf.keras.preprocessing.image.img_to_array(img).astype("uint8")
     file.close()

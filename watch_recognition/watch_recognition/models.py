@@ -1,7 +1,10 @@
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 import segmentation_models as sm
+
+sm.set_framework("tf.keras")
+
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from segmentation_models.base import Loss
@@ -221,39 +224,22 @@ def get_model(image_size: Tuple[int, int] = (224, 224)) -> tf.keras.Model:
 def get_segmentation_model(
     image_size: Tuple[int, int] = (224, 224),
     n_outputs: int = 4,
-    unet_output_layer: Optional[str] = "decoder_stage0b_relu",
     output_activation: str = "softmax",
+    backbone="efficientnetb3",
 ) -> tf.keras.Model:
+
     inputs = tf.keras.Input(
         shape=(*image_size, 3),
     )
     sm_model = sm.FPN(
-        "efficientnetb3",
+        backbone,
         classes=n_outputs,
         activation=output_activation,
         input_shape=(*image_size, 3),
     )
-    if unet_output_layer is not None:
-        outputs = [sm_model.get_layer(unet_output_layer).output]
-    else:
-        outputs = sm_model.outputs
+    outputs = sm_model(inputs)
 
-    base_model = tf.keras.Model(inputs=sm_model.inputs, outputs=outputs)
-
-    x = base_model(inputs)
-    if unet_output_layer is not None:
-        output = tf.keras.layers.Conv2D(
-            filters=n_outputs,
-            kernel_size=1,
-            strides=1,
-            padding="same",
-            activation=output_activation,
-        )(x)
-    else:
-
-        output = x
-
-    model = tf.keras.models.Model(inputs=inputs, outputs=output)
+    model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
     return model
 
 

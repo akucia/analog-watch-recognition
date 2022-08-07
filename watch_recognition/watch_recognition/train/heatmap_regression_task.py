@@ -13,7 +13,7 @@ import segmentation_models as sm
 import tensorflow as tf
 
 from watch_recognition.data_preprocessing import load_keypoints_data_as_kp
-from watch_recognition.datasets import get_watch_keypoints_dataset
+from watch_recognition.datasets import get_watch_keypoints_heatmap_dataset
 from watch_recognition.models import get_segmentation_model
 from watch_recognition.reports import log_scalar_metrics, visualize_high_loss_examples
 
@@ -103,7 +103,7 @@ def train_and_export(
 
     print(X_val.shape, y_val.shape)
 
-    dataset_train = get_watch_keypoints_dataset(
+    dataset_train = get_watch_keypoints_heatmap_dataset(
         X,
         y,
         augment=False,
@@ -113,7 +113,7 @@ def train_and_export(
     )
     print(dataset_train)
 
-    dataset_val = get_watch_keypoints_dataset(
+    dataset_val = get_watch_keypoints_heatmap_dataset(
         X_val,
         y_val,
         augment=False,
