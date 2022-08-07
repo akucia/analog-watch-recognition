@@ -16,9 +16,7 @@ from watch_recognition.train.object_detection_task import (
 from watch_recognition.utilities import BBox
 
 
-def generate_coco_annotations_from_model(
-    model, coco_ds_file, output_file, cls_to_label
-):
+def generate_coco_annotations_from_model(model, coco_ds_file, cls_to_label):
     coco = COCO(coco_ds_file)
     annotations = []
     object_counter = 1
@@ -55,8 +53,7 @@ def generate_coco_annotations_from_model(
                 )
                 object_counter += 1
             annotations.extend(coco_predictions)
-    with open(output_file, "w") as f:
-        json.dump(annotations, f, indent=2, cls=NpEncoder)
+    return annotations
 
 
 class NpEncoder(json.JSONEncoder):
@@ -99,22 +96,20 @@ def main():
     for split in ["train"]:
         print(f"evaluating {split}")
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
-        coco_tmp_detections_file = Path(f"/tmp/coco-{split}-results.json")
         label_studio_dataset_to_coco(
             dataset_path,
             output_file=coco_tmp_dataset_file,
             label_mapping=label_to_cls,
             split="train",
         )
-        generate_coco_annotations_from_model(
+        results = generate_coco_annotations_from_model(
             model,
             coco_tmp_dataset_file,
-            coco_tmp_detections_file,
             cls_to_label=cls_to_label,
         )
 
         coco_gt = COCO(coco_tmp_dataset_file)
-        coco_dt = coco_gt.loadRes(coco_tmp_detections_file)
+        coco_dt = coco_gt.loadRes(results)
 
         coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
         coco_eval.evaluate()
