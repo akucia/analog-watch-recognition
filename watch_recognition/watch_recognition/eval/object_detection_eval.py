@@ -56,20 +56,6 @@ def generate_coco_annotations_from_model(model, coco_ds_file, cls_to_label):
     return annotations
 
 
-class NpEncoder(json.JSONEncoder):
-    """Source: https://bobbyhadz.com/blog/python-typeerror-object-of-type-float32-is-not-json-serializable"""
-
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        if isinstance(obj, np.floating):
-            # 👇️ alternatively use str()
-            return float(obj)
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-        return json.JSONEncoder.default(self, obj)
-
-
 def prepare_image(image):
     image, _, ratio = resize_and_pad_image(image, jitter=None, max_side=384)
     image = tf.keras.applications.resnet.preprocess_input(image)
