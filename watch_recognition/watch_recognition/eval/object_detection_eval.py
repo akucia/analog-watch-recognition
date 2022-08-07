@@ -79,33 +79,36 @@ def main():
         7: "AR @maxDets=10",
         8: "AR @maxDets=100",
     }
-    for split in ["train"]:
+    for split in ["train", "val"]:
         print(f"evaluating {split}")
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
         label_studio_dataset_to_coco(
             dataset_path,
             output_file=coco_tmp_dataset_file,
             label_mapping=label_to_cls,
-            split="train",
+            split=split,
         )
         results = generate_coco_annotations_from_model(
             model,
             coco_tmp_dataset_file,
             cls_to_label=cls_to_label,
         )
-
         coco_gt = COCO(coco_tmp_dataset_file)
-        coco_dt = coco_gt.loadRes(results)
-
-        coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        coco_eval.summarize()
-
         metrics = {"Num Images": len(coco_gt.imgs)}
+        if results:
 
-        for k, v in selected_coco_metrics.items():
-            metrics[v] = coco_eval.stats[k]
+            coco_dt = coco_gt.loadRes(results)
+
+            coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
+            coco_eval.evaluate()
+            coco_eval.accumulate()
+            coco_eval.summarize()
+
+            for k, v in selected_coco_metrics.items():
+                metrics[v] = coco_eval.stats[k]
+        else:
+            for k, v in selected_coco_metrics.items():
+                metrics[v] = 0
         with open(f"metrics/coco_{split}.json", "w") as f:
             json.dump(metrics, f, indent=2)
 
