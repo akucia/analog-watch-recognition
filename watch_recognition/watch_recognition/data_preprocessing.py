@@ -193,7 +193,9 @@ def load_keypoints_data_as_kp(
 
 
 def load_image(
-    image_path: str, image_size: Tuple[int, int], preserve_aspect_ratio: bool = False
+    image_path: str,
+    image_size: Optional[Tuple[int, int]],
+    preserve_aspect_ratio: bool = False,
 ):
     if image_path.startswith("gs://"):
         file = tf.io.gfile.GFile(image_path, "rb")
@@ -204,7 +206,7 @@ def load_image(
             img = img.convert("RGB")
         if image_size is not None:
             if preserve_aspect_ratio:
-                img = img.thumbnail(size=image_size)
+                img.thumbnail(size=image_size)
             else:
                 img = img.resize(image_size, BICUBIC)
 
