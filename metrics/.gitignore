@@ -1,2 +1,4 @@
 /detector
 /detector.json
+/coco_train.json
+/coco_val.json

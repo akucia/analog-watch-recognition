@@ -67,3 +67,17 @@ stages:
       md5: 89cb5b806e39ca42445a9c10c9c57c2c.dir
       size: 444657501
       nfiles: 4
+  eval-detector:
+    cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
+    deps:
+    - path: models/detector/
+      md5: 89cb5b806e39ca42445a9c10c9c57c2c.dir
+      size: 444657501
+      nfiles: 4
+    outs:
+    - path: metrics/coco_train.json
+      md5: d3219d0e5a6d3f0a5d1f88047c62b864
+      size: 257
+    - path: metrics/coco_val.json
+      md5: f93ef6d94041398748196948444aeca1
+      size: 159
