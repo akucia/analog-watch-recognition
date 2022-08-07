@@ -11,7 +11,9 @@ from tqdm import tqdm
 
 from watch_recognition.train.object_detection_task import (
     label_studio_dataset_to_coco,
+    load_label_studio_dataset,
     resize_and_pad_image,
+    visualize_detections,
 )
 from watch_recognition.utilities import BBox
 
@@ -72,7 +74,7 @@ def main():
     cls_to_label = {0: "WatchFace"}
 
     selected_coco_metrics = {
-        0: "mAP @IoU=0.50:0.95",
+        0: "AP @IoU=0.50:0.95",
         1: "AP @IoU=0.50",
         2: "AP @IoU=0.75",
         6: "AR @maxDets=1",
@@ -81,6 +83,42 @@ def main():
     }
     for split in ["train", "val"]:
         print(f"evaluating {split}")
+
+        for i, (image, bbox, cls) in enumerate(
+            load_label_studio_dataset(
+                dataset_path,
+                image_size=(384, 384),
+                label_mapping=label_to_cls,
+                max_num_images=5,
+                split=split,
+            )
+        ):
+            image = tf.cast(image, dtype=tf.float32)
+            input_image, ratio = prepare_image(image)
+            ratio = ratio.numpy()
+            nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = model.predict(
+                input_image
+            )
+            nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
+                nmsed_boxes[0],
+                nmsed_scores[0],
+                nmsed_classes[0],
+                valid_detections[0],
+            )
+            nmsed_boxes = nmsed_boxes[:valid_detections]
+            nmsed_classes = nmsed_classes[:valid_detections]
+            nmsed_scores = nmsed_scores[:valid_detections]
+            nmsed_boxes = nmsed_boxes / ratio
+            class_names = [cls_to_label[x] for x in nmsed_classes[:valid_detections]]
+            save_file = Path(f"example_predictions/{split}_{i}.jpg")
+            save_file.parent.mkdir(exist_ok=True)
+            visualize_detections(
+                image,
+                nmsed_boxes[:valid_detections] / ratio,
+                class_names,
+                nmsed_scores[:valid_detections],
+                savefile=save_file,
+            )
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
         label_studio_dataset_to_coco(
             dataset_path,

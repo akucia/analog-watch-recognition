@@ -316,3 +316,4 @@ runs.json
 /configs/
 !/scripts/
 !/models/detector/
+/example_predictions

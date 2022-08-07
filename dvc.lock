@@ -27,7 +27,7 @@ stages:
       size: 22882
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py
-      --epochs 150 --batch-size 1 --max-images 1
+      --epochs 150 --batch-size 4
     deps:
     - path: datasets/test
       md5: 642ea9c490e8ea8cf62856a737b3b710.dir
@@ -49,35 +49,42 @@ stages:
       size: 34641
     params:
       params.yaml:
-        detector.batch-size: 1
+        detector.batch-size: 4
         detector.epochs: 150
     outs:
     - path: example_predictions/
-      md5: 99005771825e44446b258cbfcb579946.dir
-      size: 148327
+      md5: 364e20c1ebf624a2a45d8f68c5726885.dir
+      size: 147231
       nfiles: 1
     - path: metrics/detector.json
-      md5: 4e89389f2cdb66a856cdffd936556655
-      size: 135
+      md5: cfb4b18a070f7709c3f0d10ded527ed5
+      size: 134
     - path: metrics/detector/scalars
-      md5: 073e31dc64b632321283ff9ab5cab589.dir
-      size: 11477
+      md5: b11344b4b5bdc6f29c435c420b978500.dir
+      size: 11328
       nfiles: 2
     - path: models/detector/
-      md5: 89cb5b806e39ca42445a9c10c9c57c2c.dir
+      md5: 1e2c7e700dd6115cf773267dc99bbda4.dir
       size: 444657501
       nfiles: 4
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
     - path: models/detector/
-      md5: 89cb5b806e39ca42445a9c10c9c57c2c.dir
+      md5: 1e2c7e700dd6115cf773267dc99bbda4.dir
       size: 444657501
       nfiles: 4
+    - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
+      md5: 214247ccadb3b57db6ab7e30c0f65d30
+      size: 5408
     outs:
+    - path: example_predictions/
+      md5: e83d107b31099fc98d634af38621f3f7.dir
+      size: 1303834
+      nfiles: 9
     - path: metrics/coco_train.json
-      md5: d3219d0e5a6d3f0a5d1f88047c62b864
-      size: 257
+      md5: 9cecdbb90bcec56d89e1f05789a697c2
+      size: 246
     - path: metrics/coco_val.json
-      md5: f93ef6d94041398748196948444aeca1
-      size: 159
+      md5: d5394f0b05bcc12cc44bf803b1804c6a
+      size: 203
