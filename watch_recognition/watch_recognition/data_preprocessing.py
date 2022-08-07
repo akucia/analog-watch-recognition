@@ -204,7 +204,7 @@ def load_image(
             img = img.convert("RGB")
         if image_size is not None:
             if preserve_aspect_ratio:
-                img = ImageOps.pad(img, size=image_size)
+                img = img.thumbnail(size=image_size)
             else:
                 img = img.resize(image_size, BICUBIC)
 

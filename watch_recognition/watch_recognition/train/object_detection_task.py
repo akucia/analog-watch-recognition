@@ -290,10 +290,8 @@ def preprocess_data(image, bbox, class_id):
     """
     class_id = tf.cast(class_id, dtype=tf.int32)
 
-    # image, bbox = random_flip_horizontal(image, bbox)
-    image, image_shape, _ = resize_and_pad_image(
-        image, min_side=384, max_side=384, jitter=None
-    )
+    image, bbox = random_flip_horizontal(image, bbox)
+    image, image_shape, _ = resize_and_pad_image(image, max_side=384, jitter=(128, 384))
 
     bbox = tf.stack(
         [
@@ -788,7 +786,12 @@ def label_studio_dataset_to_coco(
 @click.option("--epochs", default=1)
 @click.option("--batch-size", default=32)
 @click.option("--max-images", default=None, type=int)
-def main(epochs: int, batch_size: int, max_images: Optional[int]):
+@click.option("--seed", default=None, type=int)
+def main(
+    epochs: int, batch_size: int, max_images: Optional[int], seed: Optional[int] = None
+):
+    if seed is not None:
+        tf.keras.utils.set_random_seed(seed)
     label_encoder = LabelEncoder()
 
     num_classes = 1
