@@ -891,16 +891,14 @@ def main(epochs: int, batch_size: int, max_images: Optional[int]):
     # latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
     # model.load_weights(latest_checkpoint)
 
-    image = tf.keras.Input(shape=[384, 384, 3], name="image")
+    image = tf.keras.Input(shape=[None, None, 3], name="image")
     predictions = model(image, training=False)
     detections = DecodePredictions(confidence_threshold=0.5)(image, predictions)
     inference_model = tf.keras.Model(inputs=image, outputs=detections)
     inference_model.save("models/detector/")
 
     def prepare_image(image):
-        image, _, ratio = resize_and_pad_image(
-            image, jitter=None, max_side=384, min_side=384
-        )
+        image, _, ratio = resize_and_pad_image(image, jitter=None, max_side=384)
         image = tf.keras.applications.resnet.preprocess_input(image)
         return tf.expand_dims(image, axis=0), ratio
 
