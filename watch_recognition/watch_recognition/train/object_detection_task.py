@@ -106,7 +106,7 @@ def visualize_detections(
         bbox = BBox(*box, name=text, score=score)
         bbox.plot(ax=ax)
     if savefile is not None:
-        plt.savefig(savefile)
+        plt.savefig(savefile, bbox_inches="tight")
     return ax
 
 

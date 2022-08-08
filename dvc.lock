@@ -27,7 +27,7 @@ stages:
       size: 22882
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py
-      --epochs 150 --batch-size 4
+      --epochs 100 --batch-size 4 --seed 42
     deps:
     - path: datasets/test
       md5: 642ea9c490e8ea8cf62856a737b3b710.dir
@@ -45,46 +45,43 @@ stages:
       md5: 7ba193a6156731f611445d5122806c54
       size: 22882
     - path: watch_recognition/watch_recognition/train/object_detection_task.py
-      md5: e50b680acded64b25db73145b6a80a98
-      size: 34641
+      md5: a8945d5aa4cf273522628b2149557f39
+      size: 34790
     params:
       params.yaml:
         detector.batch-size: 4
-        detector.epochs: 150
+        detector.epochs: 100
+        seed: 42
     outs:
-    - path: example_predictions/
-      md5: 364e20c1ebf624a2a45d8f68c5726885.dir
-      size: 147231
-      nfiles: 1
     - path: metrics/detector.json
-      md5: cfb4b18a070f7709c3f0d10ded527ed5
-      size: 134
+      md5: 387ef51e4658b5e01ad5aa416a0857de
+      size: 132
     - path: metrics/detector/scalars
-      md5: b11344b4b5bdc6f29c435c420b978500.dir
-      size: 11328
+      md5: f63cc9a20eba88483e330d110e4a29c1.dir
+      size: 7481
       nfiles: 2
     - path: models/detector/
-      md5: 1e2c7e700dd6115cf773267dc99bbda4.dir
+      md5: 341ac318bd8d5e2a4e389359396826bc.dir
       size: 444657501
       nfiles: 4
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
     - path: models/detector/
-      md5: 1e2c7e700dd6115cf773267dc99bbda4.dir
+      md5: 341ac318bd8d5e2a4e389359396826bc.dir
       size: 444657501
       nfiles: 4
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
-      md5: 214247ccadb3b57db6ab7e30c0f65d30
+      md5: 025aba9c3385dec3f06edf21de78f7e4
       size: 5408
     outs:
     - path: example_predictions/
-      md5: e83d107b31099fc98d634af38621f3f7.dir
-      size: 1303834
+      md5: a2c789070e2ffc584ffceca0b6908ac6.dir
+      size: 1221467
       nfiles: 9
     - path: metrics/coco_train.json
-      md5: 9cecdbb90bcec56d89e1f05789a697c2
-      size: 246
+      md5: dba2e14ce39b9a235ef64cabdeb259db
+      size: 245
     - path: metrics/coco_val.json
-      md5: d5394f0b05bcc12cc44bf803b1804c6a
-      size: 203
+      md5: fd5cd13a8e31fb588a047833358df89b
+      size: 200
