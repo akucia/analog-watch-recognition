@@ -3,7 +3,7 @@ import dataclasses
 import hashlib
 from abc import ABC
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -18,7 +18,7 @@ from watch_recognition.targets_encoding import (
     fit_lines_to_hands_mask,
     line_selector,
 )
-from watch_recognition.utilities import BBox, Line, Point
+from watch_recognition.utilities import BBox, Line, Point, retinanet_prepare_image
 
 
 class KPPredictor(ABC):
@@ -30,12 +30,12 @@ class KPPredictor(ABC):
 
     @abc.abstractmethod
     def _decode_keypoints(
-        self, image: Image, predicted: np.ndarray
+        self, image: ImageType, predicted: np.ndarray
     ) -> Tuple[Point, Point]:
         pass
 
     def predict(
-        self, image: Image, rotation_predictor: Optional["RotationPredictor"] = None
+        self, image: ImageType, rotation_predictor: Optional["RotationPredictor"] = None
     ) -> List[Point]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
@@ -63,7 +63,7 @@ class KPPredictor(ABC):
 
     def predict_from_image_and_bbox(
         self,
-        image: Image,
+        image: ImageType,
         bbox: BBox,
         rotation_predictor: Optional["RotationPredictor"] = None,
     ) -> List[Point]:
@@ -119,7 +119,7 @@ class HandPredictor:
 
     def predict(
         self,
-        image: Image,
+        image: ImageType,
         center_point: Point,
         threshold: float = 0.999,
         debug: bool = False,
@@ -127,9 +127,6 @@ class HandPredictor:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
-        image_hash = _hash_image(image)
-        # if image_hash in self.cache:
-        #     return self.cache[image_hash]
         # TODO switch to ImageOps.pad
         # ImageOps.pad(image, size=self.input_size, method=BICUBIC)
         with image.resize(self.input_size, BICUBIC) as resized_image:
@@ -150,7 +147,7 @@ class HandPredictor:
 
     def predict_from_image_and_bbox(
         self,
-        image: Image,
+        image: ImageType,
         bbox: BBox,
         center_point: Point,
         threshold: float = 0.5,
@@ -232,7 +229,7 @@ class TFLiteDetector:
         resized_img = resized_img[tf.newaxis, :]
         return resized_img, original_image
 
-    def predict(self, image: Image) -> List[BBox]:
+    def predict(self, image: ImageType) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
         image_hash = _hash_image(image)
         if image_hash in self.cache:
@@ -271,6 +268,48 @@ class TFLiteDetector:
         return bboxes
 
 
+class RetinanetDetector:
+    def __init__(
+        self,
+        model_path: Path,
+        class_to_label_name: Dict[int, str],
+        input_size: Tuple[int, int] = (334, 334),
+    ):
+        self.model = tf.keras.models.load_model(model_path)
+        self.input_size = input_size
+        self.class_to_label_name = class_to_label_name
+        self.cache = {}
+
+    def predict(self, image: ImageType) -> List[BBox]:
+        """Run object detection on the input image and draw the detection results"""
+        image_hash = _hash_image(image)
+        if image_hash in self.cache:
+            return self.cache[image_hash]
+        # TODO integrate the image preprocessing with the exported model
+        input_image, ratio = retinanet_prepare_image(np.array(image))
+        ratio = ratio.numpy()
+        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = self.model.predict(
+            input_image
+        )
+        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
+            nmsed_boxes[0],
+            nmsed_scores[0],
+            nmsed_classes[0],
+            valid_detections[0],
+        )
+        nmsed_boxes = nmsed_boxes[:valid_detections]
+        nmsed_classes = nmsed_classes[:valid_detections]
+        nmsed_scores = nmsed_scores[:valid_detections]
+        nmsed_boxes = nmsed_boxes / ratio
+        bboxes = []
+        for box, cls, score in zip(nmsed_boxes, nmsed_classes, nmsed_scores):
+            bbox = BBox(*box, name=self.class_to_label_name[cls], score=score)
+            bboxes.append(bbox)
+
+        self.cache[image_hash] = bboxes
+        return bboxes
+
+
 def _hash_image(image: ImageType) -> str:
     md5hash = hashlib.md5(image.tobytes())
     return md5hash.hexdigest()
@@ -285,7 +324,7 @@ class RotationPredictor:
         self.cache = {}
 
     def predict(
-        self, image: Image, debug: bool = False, threshold: float = 0.5
+        self, image: ImageType, debug: bool = False, threshold: float = 0.5
     ) -> float:
         image_hash = _hash_image(image)
         # if image_hash in self.cache:
@@ -326,8 +365,8 @@ class ClockTimePredictor:
                 image, box, rotation_predictor=self.rotation_predictor
             )
             # TODO remove debug drawing and move it to a different method
-            frame = pred_center.draw_marker(frame, thickness=2)
-            frame = pred_top.draw_marker(frame, thickness=2)
+            # frame = pred_center.draw_marker(frame, thickness=2)
+            # frame = pred_top.draw_marker(frame, thickness=2)
             minute_and_hour, other = self.hands_predictor.predict_from_image_and_bbox(
                 image, box, pred_center
             )
@@ -336,10 +375,10 @@ class ClockTimePredictor:
                 read_hour, read_minute = points_to_time(
                     pred_center, pred_hour.end, pred_minute.end, pred_top
                 )
-                frame = pred_minute.draw(frame, thickness=3)
-                frame = pred_minute.end.draw_marker(frame, thickness=2)
-                frame = pred_hour.draw(frame, thickness=5)
-                frame = pred_hour.end.draw_marker(frame, thickness=2)
+                # frame = pred_minute.draw(frame, thickness=3)
+                # frame = pred_minute.end.draw_marker(frame, thickness=2)
+                # frame = pred_hour.draw(frame, thickness=5)
+                # frame = pred_hour.end.draw_marker(frame, thickness=2)
 
                 time = f"{read_hour:.0f}:{read_minute:.0f}"
                 box = dataclasses.replace(box, name=time)

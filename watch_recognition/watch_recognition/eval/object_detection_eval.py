@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-import numpy as np
 import tensorflow as tf
 from PIL import Image
 from pycocotools.coco import COCO
@@ -9,40 +8,25 @@ from pycocotools.cocoeval import COCOeval
 from tensorflow import keras
 from tqdm import tqdm
 
+from watch_recognition.predictors import RetinanetDetector
 from watch_recognition.train.object_detection_task import (
     label_studio_dataset_to_coco,
     load_label_studio_dataset,
-    resize_and_pad_image,
     visualize_detections,
 )
-from watch_recognition.utilities import BBox
+from watch_recognition.utilities import retinanet_prepare_image
 
 
-def generate_coco_annotations_from_model(model, coco_ds_file, cls_to_label):
+def generate_coco_annotations_from_model(
+    detector: RetinanetDetector, coco_ds_file, cls_to_label
+):
     coco = COCO(coco_ds_file)
     annotations = []
     object_counter = 1
+    label_to_cls = {v: k for k, v in cls_to_label.items()}
     for image_id in tqdm(coco.imgs):
         with Image.open(coco.imgs[image_id]["coco_url"]) as img:
-            img_arr = np.array(img)
-            input_image, ratio = prepare_image(img_arr)
-            ratio = ratio.numpy()
-            nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = model.predict(
-                input_image
-            )
-            nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-                nmsed_boxes[0],
-                nmsed_scores[0],
-                nmsed_classes[0],
-                valid_detections[0],
-            )
-            nmsed_boxes = nmsed_boxes[:valid_detections]
-            nmsed_classes = nmsed_classes[:valid_detections]
-            nmsed_scores = nmsed_scores[:valid_detections]
-            nmsed_boxes = nmsed_boxes / ratio
-            predictions = []
-            for box, cls, score in zip(nmsed_boxes, nmsed_classes, nmsed_scores):
-                predictions.append(BBox(*box, name=cls_to_label[int(cls)], score=score))
+            predictions = detector.predict(img)
 
             coco_predictions = []
             for box in predictions:
@@ -50,7 +34,7 @@ def generate_coco_annotations_from_model(model, coco_ds_file, cls_to_label):
                     box.to_coco_object(
                         image_id=image_id,
                         object_id=object_counter,
-                        category_id=coco.cats[cls]["id"],
+                        category_id=coco.cats[label_to_cls[box.name]]["id"],
                     )
                 )
                 object_counter += 1
@@ -58,20 +42,16 @@ def generate_coco_annotations_from_model(model, coco_ds_file, cls_to_label):
     return annotations
 
 
-def prepare_image(image):
-    image, _, ratio = resize_and_pad_image(image, jitter=None, max_side=384)
-    image = tf.keras.applications.resnet.preprocess_input(image)
-    return tf.expand_dims(image, axis=0), ratio
-
-
 def main():
     model = keras.models.load_model("models/detector/")
-    model.summary()
 
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
     # model is trained with 0 as a valid cls but coco metrics ignore cls 0
     cls_to_label = {0: "WatchFace"}
+    detector = RetinanetDetector(
+        Path("models/detector/"), class_to_label_name=cls_to_label
+    )
 
     selected_coco_metrics = {
         0: "AP @IoU=0.50:0.95",
@@ -94,7 +74,7 @@ def main():
             )
         ):
             image = tf.cast(image, dtype=tf.float32)
-            input_image, ratio = prepare_image(image)
+            input_image, ratio = retinanet_prepare_image(image)
             ratio = ratio.numpy()
             nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = model.predict(
                 input_image
@@ -127,7 +107,7 @@ def main():
             split=split,
         )
         results = generate_coco_annotations_from_model(
-            model,
+            detector,
             coco_tmp_dataset_file,
             cls_to_label=cls_to_label,
         )
