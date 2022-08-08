@@ -15,7 +15,7 @@ from label_studio_sdk import Client
 from PIL import Image
 from tqdm import tqdm
 
-from watch_recognition.predictors import TFLiteDetector
+from watch_recognition.predictors import RetinanetDetector
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +117,9 @@ def main(
         presign_ttl=60,
         title=bucket_name,
     )
-
-    detector = TFLiteDetector(
-        download_and_uzip_model(
-            url="https://storage.googleapis.com/akuc-ml-public/models/efficientdet_lite0-detector.tar.gz"
-        )
+    cls_to_label = {0: "WatchFace"}
+    detector = RetinanetDetector(
+        Path("models/detector/"), class_to_label_name=cls_to_label
     )
     dataset = []
     image_paths = list(source_dir.glob("*.jp*g"))
