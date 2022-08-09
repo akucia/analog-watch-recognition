@@ -4,46 +4,46 @@ stages:
     cmd: python scripts/download-images.py datasets/watch-faces.json
     deps:
     - path: datasets/watch-faces.json
-      md5: 605e6eac418a2477cbba8db2c8e083ac
-      size: 23710
+      md5: b1f94d04cb224014d29051382bd899c9
+      size: 27492
     - path: scripts/download-images.py
       md5: 163a2ddbebf57d03fc4ac6640fff005b
       size: 1804
     outs:
     - path: datasets/test
-      md5: 642ea9c490e8ea8cf62856a737b3b710.dir
-      size: 714215
-      nfiles: 1
+      md5: c316cc0b182e5924a1f5bb8820cd87b8.dir
+      size: 6465792
+      nfiles: 2
     - path: datasets/train
-      md5: a02de7cf81b049cf33940a69ecb94c2e.dir
-      size: 14153128
-      nfiles: 31
+      md5: 30e90e50ccb58663b4630a6b353c7227.dir
+      size: 24166019
+      nfiles: 36
     - path: datasets/val
       md5: 925b466cd67b6fd4351e4107217ce7d0.dir
       size: 511575
       nfiles: 4
     - path: datasets/watch-faces-local.json
-      md5: 7ba193a6156731f611445d5122806c54
-      size: 22882
+      md5: e25cc9842a8699ffc5224948c1f372ed
+      size: 26526
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py
       --epochs 100 --batch-size 4 --seed 42
     deps:
     - path: datasets/test
-      md5: 642ea9c490e8ea8cf62856a737b3b710.dir
-      size: 714215
-      nfiles: 1
+      md5: c316cc0b182e5924a1f5bb8820cd87b8.dir
+      size: 6465792
+      nfiles: 2
     - path: datasets/train
-      md5: a02de7cf81b049cf33940a69ecb94c2e.dir
-      size: 14153128
-      nfiles: 31
+      md5: 30e90e50ccb58663b4630a6b353c7227.dir
+      size: 24166019
+      nfiles: 36
     - path: datasets/val
       md5: 925b466cd67b6fd4351e4107217ce7d0.dir
       size: 511575
       nfiles: 4
     - path: datasets/watch-faces-local.json
-      md5: 7ba193a6156731f611445d5122806c54
-      size: 22882
+      md5: e25cc9842a8699ffc5224948c1f372ed
+      size: 26526
     - path: watch_recognition/watch_recognition/train/object_detection_task.py
       md5: 745c27ea88bb198362030ff8353a153c
       size: 32713
@@ -54,21 +54,21 @@ stages:
         seed: 42
     outs:
     - path: metrics/detector.json
-      md5: 7562dcbede1e9ac9d9d9e1c374f9d76a
+      md5: 1341a4754630dbfcc46b99715c351cfc
       size: 132
     - path: metrics/detector/scalars
-      md5: fb24475339471650937f5674dc9e5b59.dir
+      md5: 97689eeaffc714f157e33ef3984a11ef.dir
       size: 7478
       nfiles: 2
     - path: models/detector/
-      md5: c5a95f3e5bb0ed749509bd68da0a5b08.dir
+      md5: a97fbe50867ccf42118097aed1b624cc.dir
       size: 444657501
       nfiles: 4
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
     - path: models/detector/
-      md5: c5a95f3e5bb0ed749509bd68da0a5b08.dir
+      md5: a97fbe50867ccf42118097aed1b624cc.dir
       size: 444657501
       nfiles: 4
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
@@ -76,12 +76,12 @@ stages:
       size: 4573
     outs:
     - path: example_predictions/
-      md5: 30d18552d95ee4801dacd15e05302128.dir
-      size: 1223211
+      md5: 0603f8561734fae3f45b547291d8ccb0.dir
+      size: 1069477
       nfiles: 9
     - path: metrics/coco_train.json
-      md5: 7289d2f77d32c8cf09defedeaaeb844f
+      md5: 3e3bcb98ab957b80a18627f020a4fd5c
       size: 245
     - path: metrics/coco_val.json
-      md5: 9f79b9725d9258ec917ce73abd016cea
+      md5: 8c0324fdd216c709c36b4a26052068e0
       size: 206
