@@ -15,7 +15,13 @@ from label_studio_sdk import Client
 from PIL import Image
 from tqdm import tqdm
 
-from watch_recognition.predictors import RetinanetDetector
+from watch_recognition.models import points_to_time
+from watch_recognition.predictors import (
+    HandPredictor,
+    KPHeatmapPredictor,
+    RetinanetDetector,
+    RotationPredictor,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +82,6 @@ def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
     default="watch-recognition",
     help="Specify the GStorage bucket tu upload images",
 )
-@click.option(
-    "--service-account-file",
-    help="Specify the google cloud service account file for signing urls",
-)
 @click.option("--verbose", default=False)
 @click.option("--label-studio-project")
 @click.option("--label-studio-host", default=os.getenv("LABEL_STUDIO_URL"))
@@ -90,7 +92,6 @@ def main(
     source_dir: str,
     export_file: Optional[str],
     bucket_name: str,
-    service_account_file: str,
     verbose: bool,
     label_studio_project: int,
     label_studio_host: str,
@@ -111,19 +112,37 @@ def main(
         image_name = file_name_from_gstorage_url(image_url)
         imported_blobs.add(image_name)
 
-    project.connect_google_import_storage(
-        bucket=bucket_name,
-        google_application_credentials=service_account_file,
-        presign_ttl=60,
-        title=bucket_name,
-    )
+    # project.connect_google_import_storage(
+    #     bucket=bucket_name,
+    #     google_application_credentials=service_account_file,
+    #     presign_ttl=60,
+    #     title=bucket_name,
+    # )
     cls_to_label = {0: "WatchFace"}
     detector = RetinanetDetector(
         Path("models/detector/"), class_to_label_name=cls_to_label
     )
+
+    hand_predictor = HandPredictor(
+        download_and_uzip_model(
+            url="https://storage.googleapis.com/akuc-ml-public/models/effnet-b3-FPN-160-tversky-hands.tar.gz"
+        )
+    )
+    kp_predictor = KPHeatmapPredictor(
+        download_and_uzip_model(
+            url="https://storage.googleapis.com/akuc-ml-public/models/efficientnetb0-unet-96-hands-kp.tar.gz"
+        )
+    )
+    rp = RotationPredictor(
+        download_and_uzip_model(
+            url="https://storage.googleapis.com/akuc-ml-public/models/efficientnetb0-8-angle.tar.gz"
+        )
+    )
     dataset = []
     image_paths = list(source_dir.glob("*.jp*g"))
-    for img_path in tqdm(image_paths):
+    progress_bar = tqdm(image_paths)
+    for img_path in progress_bar:
+        progress_bar.set_description(img_path.name)
         if img_path.parent.name.lower() in {"train", "test", "val"}:
             fold = img_path.parent.name.lower()
         else:
@@ -154,35 +173,102 @@ def main(
             pil_img = pil_img.convert("RGB")
             bboxes = detector.predict(pil_img)
 
-        bboxes = [
-            dataclasses.replace(bbox, name="WatchFace").scale(
-                1 / pil_img.width,
-                1 / pil_img.height,
-            )
-            for bbox in bboxes
-        ]
+            bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
+            polygons = []
+            keypoints = []
+            transcriptions = []
+            for box in bboxes:
+                pred_center, pred_top = kp_predictor.predict_from_image_and_bbox(
+                    pil_img, box, rotation_predictor=rp
+                )
+                keypoints.append(
+                    dataclasses.replace(pred_center, name="Center", score=1.0)
+                )
+                keypoints.append(dataclasses.replace(pred_top, name="Top", score=1.0))
+                (
+                    minute_and_hour,
+                    other,
+                    polygon,
+                ) = hand_predictor.predict_from_image_and_bbox(
+                    pil_img, box, pred_center, debug=False
+                )
+                polygons.append(polygon)
+                if minute_and_hour:
+                    pred_minute, pred_hour = minute_and_hour
+                    minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
+                    hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
+                    read_hour, read_minute = points_to_time(
+                        pred_center, hour_kp, minute_kp, pred_top
+                    )
 
-        predictions = [
-            {
-                "result": [
+                    time = f"{read_hour:02.0f}:{read_minute:02.0f}"
+                    transcriptions.append(time)
+                else:
+                    transcriptions.append("??:??")
+            # TODO add Polygons
+            print(transcriptions)
+            results = []
+
+            # TODO add Transcriptions
+            # The code below adds them as a separate rectangle,
+            # which is not ideal and won't allow for edits
+            # for i, (transcription, bbox) in enumerate(zip(transcriptions, bboxes)):
+            #     value = bbox.as_label_studio_object
+            #     value["text"] = [transcription]
+            #     del value['rectanglelabels']
+            #     results.append(
+            #         {
+            #             "value": value,
+            #             "to_name": "image",
+            #             "from_name": "transcription",
+            #             "type": "textarea",
+            #             "id": i,
+            #         }
+            #     )
+            for bbox in bboxes:
+                results.append(
                     {
-                        "value": bbox.as_label_studio_object,
+                        "value": bbox.scale(
+                            1 / pil_img.width, 1 / pil_img.height
+                        ).as_label_studio_object,
                         "to_name": "image",
-                        "from_name": "label",
+                        "from_name": "bbox",
                         "type": "rectanglelabels",
                     }
-                ]
+                )
+            polygons = [
+                dataclasses.replace(polygon, name="Hands") for polygon in polygons
+            ]
+            for polygon in polygons:
+                results.append(
+                    {
+                        "value": polygon.scale(
+                            1 / pil_img.width, 1 / pil_img.height
+                        ).as_label_studio_object,
+                        "to_name": "image",
+                        "from_name": "polygon",
+                        "type": "polygonlabels",
+                    }
+                )
+            for kp in keypoints:
+                results.append(
+                    {
+                        "value": kp.scale(
+                            1 / pil_img.width, 1 / pil_img.height
+                        ).as_label_studio_object,
+                        "to_name": "image",
+                        "from_name": "kp",
+                        "type": "keypointlabels",
+                    }
+                )
+            image_data = {
+                "data": {
+                    "image": blob_url,
+                },
+                "predictions": [{"result": results}],
             }
-            for bbox in bboxes
-        ]
-        image_data = {
-            "data": {
-                "image": blob_url,
-            },
-            "predictions": predictions,
-        }
-        dataset.append(image_data)
-        project.import_tasks([image_data])
+            dataset.append(image_data)
+            project.import_tasks([image_data])
     if export_file:
         with Path(export_file).open("w") as f:
             json.dump(dataset, f, indent=2)

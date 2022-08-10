@@ -73,23 +73,20 @@ https://labelstud.io/
 
 ```xml
 <View>
-  <KeyPointLabels name="keypoint" toName="img" strokewidth="5">
-    <Label value="Center" background="blue">
-    </Label>
-    <Label value="Top" background="red">
-    </Label>
-    <Label value="Hour" background="green">
-    </Label>
-    <Label value="Minute" background="orange">
-    </Label>
-  </KeyPointLabels>
-  <RectangleLabels name="bbox" toName="img">
-    <Label value="WatchFace"/>
-  </RectangleLabels>
-  <Image name="img" value="$image" zoom="true" zoomControl="true" width='100%' maxWidth='1500' >
-  </Image>
+    <Image name="image" value="$image" zoom="true" zoomControl="true"/>
+      <KeyPointLabels name="kp" toName="image">
+        <Label value="Center" background="#FFA39E"/>
+        <Label value="Top" background="#D4380D"/>
+        <Label value="Crown" background="#FFC069"/>
+    </KeyPointLabels>
+    <PolygonLabels name="polygon" toName="image" strokeWidth="3" pointSize="small" opacity="0.9">
+        <Label value="Hands" background="#45fc03"/>
+    </PolygonLabels>
+    <RectangleLabels name="bbox" toName="image">
+        <Label value="WatchFace" background="#FFA39E"/>
+    </RectangleLabels>
+      <TextArea name="transcription" toName="image" editable="true" perRegion="true" required="false" maxSubmissions="1" rows="5" placeholder="Recognized Time" displayMode="region-list"/>    
 </View>
-
 ```
 References 
 1. OpenImagesDataset https://opensource.google/projects/open-images-dataset

@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 from watch_recognition.predictors import RetinanetDetector
 from watch_recognition.train.object_detection_task import (
-    label_studio_dataset_to_coco,
-    load_label_studio_dataset,
+    label_studio_bbox_detection_dataset_to_coco,
+    load_label_studio_bbox_detection_dataset,
     visualize_detections,
 )
 from watch_recognition.utilities import retinanet_prepare_image
@@ -65,7 +65,7 @@ def main():
         print(f"evaluating {split}")
 
         for i, (image, bbox, cls) in enumerate(
-            load_label_studio_dataset(
+            load_label_studio_bbox_detection_dataset(
                 dataset_path,
                 image_size=(384, 384),
                 label_mapping=label_to_cls,
@@ -100,7 +100,7 @@ def main():
                 savefile=save_file,
             )
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
-        label_studio_dataset_to_coco(
+        label_studio_bbox_detection_dataset_to_coco(
             dataset_path,
             output_file=coco_tmp_dataset_file,
             label_mapping=label_to_cls,

@@ -18,7 +18,13 @@ from watch_recognition.targets_encoding import (
     fit_lines_to_hands_mask,
     line_selector,
 )
-from watch_recognition.utilities import BBox, Line, Point, retinanet_prepare_image
+from watch_recognition.utilities import (
+    BBox,
+    Line,
+    Point,
+    Polygon,
+    retinanet_prepare_image,
+)
 
 
 class KPPredictor(ABC):
@@ -123,7 +129,7 @@ class HandPredictor:
         center_point: Point,
         threshold: float = 0.999,
         debug: bool = False,
-    ) -> Tuple[Tuple[Line, Line], List[Line]]:
+    ) -> Tuple[Tuple[Line, Line], List[Line], Polygon]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
@@ -135,15 +141,19 @@ class HandPredictor:
 
             predicted = predicted > threshold
             predicted = (predicted * 255).astype("uint8").squeeze()
+            polygon = Polygon.from_binary_mask(predicted)
+
             scale_x = image.width / self.output_size[0]
             scale_y = image.height / self.output_size[1]
+
             center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
 
             all_hands_lines = fit_lines_to_hands_mask(
                 predicted, center=center_scaled_to_segmask, debug=debug
             )
             all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
-            return line_selector(all_hands_lines, center=center_point)
+            polygon = polygon.scale(scale_x, scale_y)
+            return *line_selector(all_hands_lines, center=center_point), polygon
 
     def predict_from_image_and_bbox(
         self,
@@ -152,20 +162,21 @@ class HandPredictor:
         center_point: Point,
         threshold: float = 0.5,
         debug: bool = False,
-    ) -> Tuple[Tuple[Line, Line], List[Line]]:
+    ) -> Tuple[Tuple[Line, Line], List[Line], Polygon]:
         """Runs predictions on full image using bbox to crop area of interest before
         running the model.
         Returns keypoints in pixel coordinates of the image
         """
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
             center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
-            valid_lines, other_lines = self.predict(
+            valid_lines, other_lines, polygon = self.predict(
                 crop, center_point_inside_bbox, threshold=threshold, debug=debug
             )
 
             valid_lines = [line.translate(bbox.left, bbox.top) for line in valid_lines]
             other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
-            return valid_lines, other_lines
+            polygon = polygon.translate(bbox.left, bbox.top)
+            return valid_lines, other_lines, polygon
 
 
 class TFLiteDetector:

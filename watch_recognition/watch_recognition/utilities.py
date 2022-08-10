@@ -9,6 +9,7 @@ import tensorflow as tf
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from scipy import odr
+from skimage import measure
 from skimage.measure import approximate_polygon, find_contours, label, regionprops
 
 
@@ -476,6 +477,48 @@ class Line:
 @dataclasses.dataclass(frozen=True)
 class Polygon:
     coords: np.ndarray
+    name: str = ""
+
+    @classmethod
+    def from_binary_mask(
+        cls, mask: np.ndarray, simplification_tolerance: float = 1.0
+    ) -> "Polygon":
+        if mask.dtype == np.bool:
+            raise ValueError(f"argument mask must be of type {np.bool}")
+
+        labels = measure.label(mask)
+        contour = measure.find_contours(labels == 1, 0.5)
+        if contour:
+            appr_poly = approximate_polygon(
+                contour[0], tolerance=simplification_tolerance
+            )
+            return Polygon(appr_poly[:, ::-1])
+        return Polygon(np.array([]).reshape(-1, 2))
+
+    def scale(self, x: float, y: float) -> "Polygon":
+        coords = self.coords.copy()
+        coords[:, 0] *= x
+        coords[:, 1] *= y
+        return Polygon(coords=coords)
+
+    def translate(self, x: float, y: float) -> "Polygon":
+        coords = self.coords.copy()
+        coords[:, 0] += x
+        coords[:, 1] += y
+        return Polygon(coords=coords)
+
+    @property
+    def is_empty(self) -> bool:
+        return self.coords.size > 0
+
+    @property
+    def as_label_studio_object(self) -> dict:
+        return {
+            "polygonlabels": [self.name],
+            # label studio requires coordinates from 0-100 (aka percentage of the image)
+            # upper left corner coordinates
+            "points": (self.coords * 100).tolist(),
+        }
 
 
 def mean_line(lines: List[Line], weighted=True) -> Line:

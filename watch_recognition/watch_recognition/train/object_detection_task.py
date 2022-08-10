@@ -3,7 +3,7 @@ Adapted from keras examples https://keras.io/examples/vision/retinanet/
 """
 import json
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Iterator, Optional, Tuple, Union
 
 import click
 import matplotlib.pyplot as plt
@@ -618,13 +618,13 @@ class RetinaNetLoss(tf.losses.Loss):
         return loss
 
 
-def load_label_studio_dataset(
+def load_label_studio_bbox_detection_dataset(
     source: Path,
     label_mapping: Optional[Dict[str, int]],
     image_size: Tuple[int, int] = (400, 400),
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
-):  # TODO add types
+) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     with source.open("r") as f:
         tasks = json.load(f)
     if split is not None:
@@ -640,9 +640,7 @@ def load_label_studio_dataset(
         img_np = load_image(
             str(image_path), image_size=image_size, preserve_aspect_ratio=True
         )
-        # height = img_np.shape[0]
-        # width = img_np.shape[1]
-        for obj in task["label"]:
+        for obj in task["bbox"]:
             # label studio keeps
             bbox = BBox.from_ltwh(
                 obj["x"],
@@ -658,7 +656,7 @@ def load_label_studio_dataset(
         yield img_np, np.array(image_bboxes), np.array(class_labels)
 
 
-def label_studio_dataset_to_coco(
+def label_studio_bbox_detection_dataset_to_coco(
     source: Path,
     output_file: Union[Path, str],
     label_mapping: Optional[Dict[str, int]] = None,
@@ -717,7 +715,7 @@ def label_studio_dataset_to_coco(
             )
 
             annotations.append(
-                bbox.to_coco_object(image_id=image_id, object_id=object_counter)
+                bbox.to_coco_object(image_id=image_id, object_id=obj["annotation_id"])
             )
             object_counter += 1
 
@@ -743,15 +741,11 @@ def main(
         tf.keras.utils.set_random_seed(seed)
     label_encoder = LabelEncoder()
 
-    num_classes = 1
-
-    # learning_rates = [2.5e-06, 0.000625, 0.00125, 0.0025, 0.00025, 2.5e-05]
-    # learning_rate_boundaries = [125, 250, 500, 240000, 360000]
-    # learning_rate_fn = tf.optimizers.schedules.PiecewiseConstantDecay(
-    #     boundaries=learning_rate_boundaries, values=learning_rates
-    # )
-
     resnet50_backbone = get_backbone()
+    label_to_cls = {"WatchFace": 0}  # TODO this should be in params.yaml
+    cls_to_label = {v: k for k, v in label_to_cls.items()}
+    num_classes = len(label_to_cls)
+
     loss_fn = RetinaNetLoss(num_classes)
     model = RetinaNet(num_classes, resnet50_backbone)
 
@@ -764,10 +758,8 @@ def main(
 
     dataset_path = Path("datasets/watch-faces-local.json")
 
-    label_to_cls = {"WatchFace": 0}
-    cls_to_label = {v: k for k, v in label_to_cls.items()}
     raw_train_dataset = tf.data.Dataset.from_generator(
-        lambda: load_label_studio_dataset(
+        lambda: load_label_studio_bbox_detection_dataset(
             dataset_path,
             image_size=(384, 384),
             label_mapping=label_to_cls,
@@ -781,20 +773,20 @@ def main(
         ),
     )
 
-    raw_val_dataset = tf.data.Dataset.from_generator(
-        lambda: load_label_studio_dataset(
-            dataset_path,
-            image_size=(384, 384),
-            label_mapping=label_to_cls,
-            max_num_images=max_images,
-            split="val",
-        ),
-        output_signature=(
-            tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8),
-            tf.TensorSpec(shape=(None, 4), dtype=tf.float32),
-            tf.TensorSpec(shape=(None,), dtype=tf.int32),
-        ),
-    )
+    # raw_val_dataset = tf.data.Dataset.from_generator(
+    #     lambda: load_label_studio_bbox_detection_dataset(
+    #         dataset_path,
+    #         image_size=(384, 384),
+    #         label_mapping=label_to_cls,
+    #         max_num_images=max_images,
+    #         split="val",
+    #     ),
+    #     output_signature=(
+    #         tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8),
+    #         tf.TensorSpec(shape=(None, 4), dtype=tf.float32),
+    #         tf.TensorSpec(shape=(None,), dtype=tf.int32),
+    #     ),
+    # )
 
     autotune = tf.data.AUTOTUNE
     train_dataset = raw_train_dataset.map(preprocess_data, num_parallel_calls=autotune)
@@ -805,30 +797,19 @@ def main(
     train_dataset = train_dataset.map(
         label_encoder.encode_batch, num_parallel_calls=autotune
     )
-    # train_dataset = train_dataset.apply(tf.data.experimental.ignore_errors())
     train_dataset = train_dataset.prefetch(autotune)
 
-    val_dataset = raw_val_dataset.map(preprocess_data, num_parallel_calls=autotune)
-    val_dataset = val_dataset.padded_batch(
-        batch_size=1, padding_values=(0.0, 1e-8, -1), drop_remainder=True
-    )
-    val_dataset = val_dataset.map(
-        label_encoder.encode_batch, num_parallel_calls=autotune
-    )
-    # val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
-    val_dataset = val_dataset.prefetch(autotune)
+    # val_dataset = raw_val_dataset.map(preprocess_data, num_parallel_calls=autotune)
+    # val_dataset = val_dataset.padded_batch(
+    #     batch_size=1, padding_values=(0.0, 1e-8, -1), drop_remainder=True
+    # )
+    # val_dataset = val_dataset.map(
+    #     label_encoder.encode_batch, num_parallel_calls=autotune
+    # )
+    # # val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
+    # val_dataset = val_dataset.prefetch(autotune)
 
-    # Uncomment the following lines, when training on full dataset
-    # train_steps_per_epoch = dataset_info.splits["train"].num_examples // batch_size
-    # val_steps_per_epoch = \
-    #     dataset_info.splits["validation"].num_examples // batch_size
-
-    # train_steps = 4 * 100000
-    # epochs = train_steps // train_steps_per_epoch
-
-    # Running 100 training and 50 validation steps,
-    # remove `.take` when training on the full dataset
-
+    val_dataset = None
     model.fit(
         train_dataset,
         validation_data=val_dataset,

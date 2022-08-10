@@ -12,7 +12,7 @@ stages:
     - datasets/val:
        persist: true
     - datasets/watch-faces-local.json
-
+# TODO stage for generating detection dataset from label-studio dataset?
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py --epochs ${detector.epochs} --batch-size ${detector.batch-size} --seed ${seed}
     params:
