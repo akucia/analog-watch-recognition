@@ -10,10 +10,10 @@ from tqdm import tqdm
 
 from watch_recognition.predictors import RetinanetDetector
 from watch_recognition.train.object_detection_task import (
-    label_studio_bbox_detection_dataset_to_coco,
     load_label_studio_bbox_detection_dataset,
     visualize_detections,
 )
+from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.utilities import retinanet_prepare_image
 
 

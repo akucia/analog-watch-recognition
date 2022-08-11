@@ -3,7 +3,7 @@ Adapted from keras examples https://keras.io/examples/vision/retinanet/
 """
 import json
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Tuple, Union
+from typing import Dict, Iterator, Optional, Tuple
 
 import click
 import matplotlib.pyplot as plt
@@ -11,7 +11,6 @@ import numpy as np
 import tensorflow as tf
 from dvclive.keras import DvcLiveCallback
 from tensorflow import keras
-from tqdm import tqdm
 
 from watch_recognition.data_preprocessing import load_image
 from watch_recognition.utilities import BBox, resize_and_pad_image
@@ -656,79 +655,6 @@ def load_label_studio_bbox_detection_dataset(
         yield img_np, np.array(image_bboxes), np.array(class_labels)
 
 
-def label_studio_bbox_detection_dataset_to_coco(
-    source: Path,
-    output_file: Union[Path, str],
-    label_mapping: Optional[Dict[str, int]] = None,
-    image_size: Optional[Tuple[int, int]] = None,
-    max_num_images: Optional[int] = None,
-    split: Optional[str] = "train",
-):  # TODO add types
-    with source.open("r") as f:
-        tasks = json.load(f)
-    if split is not None:
-        tasks = [task for task in tasks if task["image"].startswith(split)]
-    info = {}
-    images = []
-    categories = {}
-    annotations = []
-    if max_num_images:
-        tasks = tasks[:max_num_images]
-    object_counter = 1
-    for task in tqdm(tasks):
-        image_path = source.parent / task["image"]
-        img_np = load_image(
-            str(image_path), image_size=image_size, preserve_aspect_ratio=True
-        )
-        img_height = img_np.shape[0]
-        img_width = img_np.shape[1]
-        image_id = image_path.stem
-        images.append(
-            {
-                "file_name": image_path.name,
-                "coco_url": str(image_path),
-                "id": image_id,
-                "height": img_height,
-                "width": img_width,
-            }
-        )
-
-        for i, obj in enumerate(task["label"]):
-            # label studio keeps
-            label_name = obj["rectanglelabels"][0]
-            if label_name not in categories:
-                categories[label_name] = {
-                    "supercategory": "watch",
-                    "id": len(categories),
-                    "name": label_name,
-                }
-            bbox = (
-                BBox.from_ltwh(
-                    obj["x"],
-                    obj["y"],
-                    obj["width"],
-                    obj["height"],
-                    categories[label_name]["id"],
-                )
-                .scale(1 / 100, 1 / 100)
-                .scale(img_width, img_height)
-            )
-
-            annotations.append(
-                bbox.to_coco_object(image_id=image_id, object_id=obj["annotation_id"])
-            )
-            object_counter += 1
-
-    dataset = {
-        "info": info,
-        "images": images,
-        "categories": list(categories.values()),
-        "annotations": annotations,
-    }
-    with Path(output_file).open("w") as f:
-        json.dump(dataset, f, indent=2)
-
-
 @click.command()
 @click.option("--epochs", default=1)
 @click.option("--batch-size", default=32)
@@ -743,7 +669,6 @@ def main(
 
     resnet50_backbone = get_backbone()
     label_to_cls = {"WatchFace": 0}  # TODO this should be in params.yaml
-    cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
 
     loss_fn = RetinaNetLoss(num_classes)
@@ -773,20 +698,20 @@ def main(
         ),
     )
 
-    # raw_val_dataset = tf.data.Dataset.from_generator(
-    #     lambda: load_label_studio_bbox_detection_dataset(
-    #         dataset_path,
-    #         image_size=(384, 384),
-    #         label_mapping=label_to_cls,
-    #         max_num_images=max_images,
-    #         split="val",
-    #     ),
-    #     output_signature=(
-    #         tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8),
-    #         tf.TensorSpec(shape=(None, 4), dtype=tf.float32),
-    #         tf.TensorSpec(shape=(None,), dtype=tf.int32),
-    #     ),
-    # )
+    raw_val_dataset = tf.data.Dataset.from_generator(
+        lambda: load_label_studio_bbox_detection_dataset(
+            dataset_path,
+            image_size=(384, 384),
+            label_mapping=label_to_cls,
+            max_num_images=max_images,
+            split="val",
+        ),
+        output_signature=(
+            tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8),
+            tf.TensorSpec(shape=(None, 4), dtype=tf.float32),
+            tf.TensorSpec(shape=(None,), dtype=tf.int32),
+        ),
+    )
 
     autotune = tf.data.AUTOTUNE
     train_dataset = raw_train_dataset.map(preprocess_data, num_parallel_calls=autotune)
@@ -799,17 +724,16 @@ def main(
     )
     train_dataset = train_dataset.prefetch(autotune)
 
-    # val_dataset = raw_val_dataset.map(preprocess_data, num_parallel_calls=autotune)
-    # val_dataset = val_dataset.padded_batch(
-    #     batch_size=1, padding_values=(0.0, 1e-8, -1), drop_remainder=True
-    # )
-    # val_dataset = val_dataset.map(
-    #     label_encoder.encode_batch, num_parallel_calls=autotune
-    # )
-    # # val_dataset = val_dataset.apply(tf.data.experimental.ignore_errors())
-    # val_dataset = val_dataset.prefetch(autotune)
+    val_dataset = raw_val_dataset.map(preprocess_data, num_parallel_calls=autotune)
+    val_dataset = val_dataset.padded_batch(
+        batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=True
+    )
+    val_dataset = val_dataset.map(
+        label_encoder.encode_batch, num_parallel_calls=autotune
+    )
 
-    val_dataset = None
+    val_dataset = val_dataset.prefetch(autotune)
+
     model.fit(
         train_dataset,
         validation_data=val_dataset,
@@ -818,40 +742,11 @@ def main(
         verbose=1,
     )
 
-    # # Change this to `model_dir` when not using the downloaded weights
-    # weights_dir = "data"
-    #
-    # latest_checkpoint = tf.train.latest_checkpoint(weights_dir)
-    # model.load_weights(latest_checkpoint)
-
     image = tf.keras.Input(shape=[None, None, 3], name="image")
     predictions = model(image, training=False)
     detections = DecodePredictions(confidence_threshold=0.5)(image, predictions)
     inference_model = tf.keras.Model(inputs=image, outputs=detections)
     inference_model.save("models/detector/")
-
-    def prepare_image(image):
-        image, _, ratio = resize_and_pad_image(image, jitter=None, max_side=384)
-        image = tf.keras.applications.resnet.preprocess_input(image)
-        return tf.expand_dims(image, axis=0), ratio
-
-    for i, (image, bbox, cls) in enumerate(raw_train_dataset.take(1)):
-        image = tf.cast(image, dtype=tf.float32)
-        input_image, ratio = prepare_image(image)
-        detections = inference_model.predict(input_image)
-        num_detections = detections.valid_detections[0]
-        class_names = [
-            cls_to_label[x] for x in detections.nmsed_classes[0][:num_detections]
-        ]
-        save_file = Path(f"example_predictions/train_{i}.jpg")
-        save_file.parent.mkdir(exist_ok=True)
-        visualize_detections(
-            image,
-            detections.nmsed_boxes[0][:num_detections] / ratio,
-            class_names,
-            detections.nmsed_scores[0][:num_detections],
-            savefile=save_file,
-        )
 
 
 if __name__ == "__main__":
