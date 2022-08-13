@@ -1,7 +1,6 @@
 import dataclasses
 import json
 import logging
-import os
 import tarfile
 from hashlib import md5
 from pathlib import Path
@@ -84,10 +83,9 @@ def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
 )
 @click.option("--verbose", default=False)
 @click.option("--label-studio-project")
-@click.option("--label-studio-host", default=os.getenv("LABEL_STUDIO_URL"))
-@click.option(
-    "--label-studio-api-token", default=os.getenv("LABEL_STUDIO_ACCESS_TOKEN")
-)
+@click.option("--label-studio-host")
+@click.option("--label-studio-api-token")
+@click.option("--n-images", help="Number of images to add", type=int)
 def main(
     source_dir: str,
     export_file: Optional[str],
@@ -96,6 +94,7 @@ def main(
     label_studio_project: int,
     label_studio_host: str,
     label_studio_api_token: str,
+    n_images: int,
 ):
     if verbose:
         logger.setLevel(logging.DEBUG)
@@ -139,7 +138,9 @@ def main(
         )
     )
     dataset = []
-    image_paths = list(source_dir.glob("*.jp*g"))
+    image_paths = list(source_dir.rglob("*.jp*g"))
+    if n_images:
+        image_paths = image_paths[:n_images]
     progress_bar = tqdm(image_paths)
     for img_path in progress_bar:
         progress_bar.set_description(img_path.name)
