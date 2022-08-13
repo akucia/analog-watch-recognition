@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import tensorflow as tf
 from PIL import Image
 from pycocotools.coco import COCO
@@ -77,7 +79,7 @@ def main():
             input_image, ratio = retinanet_prepare_image(image)
             ratio = ratio.numpy()
             nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = model.predict(
-                input_image
+                input_image, verbose=0
             )
             nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
                 nmsed_boxes[0],
@@ -113,22 +115,39 @@ def main():
         )
         coco_gt = COCO(coco_tmp_dataset_file)
         metrics = {"Num Images": len(coco_gt.imgs)}
-        if results:
 
-            coco_dt = coco_gt.loadRes(results)
+        coco_dt = coco_gt.loadRes(results)
 
-            coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
-            coco_eval.evaluate()
-            coco_eval.accumulate()
-            coco_eval.summarize()
+        coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
+        coco_eval.evaluate()
+        coco_eval.accumulate()
+        coco_eval.summarize()
 
-            for k, v in selected_coco_metrics.items():
-                metrics[v] = coco_eval.stats[k]
-        else:
-            for k, v in selected_coco_metrics.items():
-                metrics[v] = 0
+        for k, v in selected_coco_metrics.items():
+            metrics[v] = coco_eval.stats[k]
         with open(f"metrics/detector/coco_{split}.json", "w") as f:
             json.dump(metrics, f, indent=2)
+
+        precision = coco_eval.eval["precision"]
+        all_recalls = slice(None, None)
+        iou_th_50 = int(np.argwhere(coco_eval.params.iouThrs == 0.50))
+        iou_th_75 = int(np.argwhere(coco_eval.params.iouThrs == 0.75))
+        iou_th_95 = int(np.argwhere(coco_eval.params.iouThrs == 0.95))
+        class_0 = 0
+        areas_all = 0
+        max_dets_100 = 2
+        pr_50 = precision[iou_th_50, all_recalls, class_0, areas_all, max_dets_100]
+        pr_75 = precision[iou_th_75, all_recalls, class_0, areas_all, max_dets_100]
+        pr_95 = precision[iou_th_95, all_recalls, class_0, areas_all, max_dets_100]
+
+        df_50 = pd.DataFrame({"Recall": coco_eval.params.recThrs, "Precision": pr_50})
+        df_50.to_csv(f"metrics/detector/PR-IoU@0.50_{split}.tsv", sep="\t", index=False)
+
+        df_75 = pd.DataFrame({"Recall": coco_eval.params.recThrs, "Precision": pr_75})
+        df_75.to_csv(f"metrics/detector/PR-IoU@0.75_{split}.tsv", sep="\t", index=False)
+
+        df_95 = pd.DataFrame({"Recall": coco_eval.params.recThrs, "Precision": pr_95})
+        df_95.to_csv(f"metrics/detector/PR-IoU@0.95_{split}.tsv", sep="\t", index=False)
 
 
 if __name__ == "__main__":

@@ -1,3 +1,6 @@
+# Metrics
+
+[Metrics table](metrics.md)
 # Demo - version 2
 
 <img src="example_data/IMG_0039_render.jpg?raw=true" width=400> <img src="example_data/IMG_0040_render.jpg?raw=true" width=400>

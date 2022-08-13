@@ -75,8 +75,8 @@ stages:
       size: 153528239
       nfiles: 4
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
-      md5: 733151ca5272796e2e606e2728dfc5f0
-      size: 4642
+      md5: ffd509a84f371198f0a5ba4ec025f557
+      size: 5696
     outs:
     - path: example_predictions/detector/train_0.jpg
       md5: 994cf445ad2d664cc2e1267b7766d3f2
@@ -105,6 +105,24 @@ stages:
     - path: example_predictions/detector/val_3.jpg
       md5: 8661c331151a080bf40ae6d07e078367
       size: 63388
+    - path: metrics/detector/PR-IoU@0.50_train.tsv
+      md5: d3196f21e47a77724bec0b8293e1e81d
+      size: 1059
+    - path: metrics/detector/PR-IoU@0.50_val.tsv
+      md5: d3196f21e47a77724bec0b8293e1e81d
+      size: 1059
+    - path: metrics/detector/PR-IoU@0.75_train.tsv
+      md5: 157e83a725ac178b5cd4f78f8b27b745
+      size: 1824
+    - path: metrics/detector/PR-IoU@0.75_val.tsv
+      md5: d3196f21e47a77724bec0b8293e1e81d
+      size: 1059
+    - path: metrics/detector/PR-IoU@0.95_train.tsv
+      md5: f067141b72653814a7b1498894077c04
+      size: 1256
+    - path: metrics/detector/PR-IoU@0.95_val.tsv
+      md5: 6a8755bb0078042205da94e8fcd04e2d
+      size: 1449
     - path: metrics/detector/coco_train.json
       md5: e07d15c9e09e4555ddbea987e90e6d0a
       size: 246

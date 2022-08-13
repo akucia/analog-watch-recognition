@@ -300,7 +300,8 @@ class RetinanetDetector:
         input_image, ratio = retinanet_prepare_image(np.array(image))
         ratio = ratio.numpy()
         nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = self.model.predict(
-            input_image
+            input_image,
+            verbose=0,
         )
         nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
             nmsed_boxes[0],

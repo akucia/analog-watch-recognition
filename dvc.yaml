@@ -57,3 +57,28 @@ stages:
     metrics:
       - metrics/detector/coco_train.json
       - metrics/detector/coco_val.json
+    plots:
+      - metrics/detector/PR-IoU@0.50_train.tsv:
+          x: Recall
+          y: Precision
+          title: Train PR-IoU@0.50
+      - metrics/detector/PR-IoU@0.75_train.tsv:
+          x: Recall
+          y: Precision
+          title: Train PR-IoU@0.75
+      - metrics/detector/PR-IoU@0.95_train.tsv:
+          x: Recall
+          y: Precision
+          title: Val PR-IoU@0.75
+      - metrics/detector/PR-IoU@0.50_val.tsv:
+          x: Recall
+          y: Precision
+          title: Val PR-IoU@0.50
+      - metrics/detector/PR-IoU@0.75_val.tsv:
+          x: Recall
+          y: Precision
+          title: Val PR-IoU@0.75
+      - metrics/detector/PR-IoU@0.95_val.tsv:
+          x: Recall
+          y: Precision
+          title: Val PR-IoU@0.75
