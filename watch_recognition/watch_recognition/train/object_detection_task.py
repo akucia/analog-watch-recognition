@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from dvclive.keras import DvcLiveCallback
+from PIL import Image
 from tensorflow import keras
 
 from watch_recognition.data_preprocessing import load_image
@@ -357,7 +358,7 @@ class LabelEncoder:
             label = self._encode_sample(images_shape, gt_boxes[i], cls_ids[i])
             labels = labels.write(i, label)
         batch_images = tf.keras.applications.resnet.preprocess_input(batch_images)
-        return batch_images, labels.stack()
+        return {"images": batch_images, "targets": labels.stack()}
 
 
 def get_backbone():
@@ -384,7 +385,7 @@ class FeaturePyramid(keras.layers.Layer):
     """
 
     def __init__(self, backbone=None, **kwargs):
-        super(FeaturePyramid, self).__init__(name="FeaturePyramid", **kwargs)
+        super().__init__(name="FeaturePyramid", **kwargs)
         self.backbone = backbone if backbone else get_backbone()
         self.conv_c3_1x1 = keras.layers.Conv2D(256, 1, 1, "same")
         self.conv_c4_1x1 = keras.layers.Conv2D(256, 1, 1, "same")
@@ -442,6 +443,46 @@ def build_head(output_filters, bias_init):
     return head
 
 
+class DetectorEndpoint(keras.layers.Layer):
+    """
+    Based on https://keras.io/examples/keras_recipes/endpoint_layer_pattern/
+    """
+
+    def __init__(self, num_classes: int, name=None, confidence_threshold: float = 0.5):
+        super().__init__(name=name)
+        self.loss_fn = RetinaNetLoss(num_classes)
+        self.decode = DecodePredictions(
+            num_classes=num_classes,
+            confidence_threshold=confidence_threshold,
+        )
+
+    def call(self, image, outputs, targets=None, sample_weight=None):
+        if targets is not None:
+            # Compute the training-time loss value and add it
+            # to the layer using `self.add_loss()`.
+            loss = self.loss_fn(targets, outputs)
+            self.add_loss(loss)
+
+            # Log the accuracy as a metric (we could log arbitrary metrics,
+            # including different metrics for training and inference.
+            # self.add_metric(self.accuracy_fn(targets, logits, sample_weight))
+        # TODO image preprocessing here?
+        detections = self.decode(image, outputs)
+        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
+            detections.nmsed_boxes,
+            detections.nmsed_scores,
+            detections.nmsed_classes,
+            detections.valid_detections,
+        )
+        # TODO find out how to slice the resulting tensors dynamically
+        # valid_detections is 1d-array od int in per-image, eg [10, 52, 0]
+        # the rest is 3d-array od outputs in per-image, eg [batch_size, N_outputs, 4]
+        # nmsed_boxes = nmsed_boxes[:valid_detections]
+        # nmsed_classes = nmsed_classes[:valid_detections]
+        # nmsed_scores = nmsed_scores[:valid_detections]
+        return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+
 class RetinaNet(keras.Model):
     """A subclassed Keras model implementing the RetinaNet architecture.
 
@@ -451,18 +492,23 @@ class RetinaNet(keras.Model):
         Currently supports ResNet50 only.
     """
 
-    def __init__(self, num_classes, backbone=None, **kwargs):
-        super(RetinaNet, self).__init__(name="RetinaNet", **kwargs)
+    def __init__(self, num_classes, confidence_threshold, backbone=None, **kwargs):
+        super().__init__(name="RetinaNet", **kwargs)
         self.fpn = FeaturePyramid(backbone)
         self.num_classes = num_classes
+        self.detector_endpoint = DetectorEndpoint(
+            num_classes=num_classes, confidence_threshold=confidence_threshold
+        )
 
         prior_probability = tf.constant_initializer(-np.log((1 - 0.01) / 0.01))
         self.cls_head = build_head(9 * num_classes, prior_probability)
         self.box_head = build_head(9 * 4, "zeros")
 
-    def call(self, image, training=False):
-        features = self.fpn(image, training=training)
-        N = tf.shape(image)[0]
+    def call(self, data, training=False):
+        images = data["images"]
+        targets = data.get("targets")
+        features = self.fpn(images, training=training)
+        N = tf.shape(images)[0]
         cls_outputs = []
         box_outputs = []
         for feature in features:
@@ -472,7 +518,9 @@ class RetinaNet(keras.Model):
             )
         cls_outputs = tf.concat(cls_outputs, axis=1)
         box_outputs = tf.concat(box_outputs, axis=1)
-        return tf.concat([box_outputs, cls_outputs], axis=-1)
+        output = tf.concat([box_outputs, cls_outputs], axis=-1)
+
+        return self.detector_endpoint(images, output, targets=targets)
 
 
 class DecodePredictions(tf.keras.layers.Layer):
@@ -501,7 +549,7 @@ class DecodePredictions(tf.keras.layers.Layer):
         box_variance=[0.1, 0.1, 0.2, 0.2],
         **kwargs,
     ):
-        super(DecodePredictions, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.num_classes = num_classes
         self.confidence_threshold = confidence_threshold
         self.nms_iou_threshold = nms_iou_threshold
@@ -660,27 +708,35 @@ def load_label_studio_bbox_detection_dataset(
 @click.option("--batch-size", default=32)
 @click.option("--max-images", default=None, type=int)
 @click.option("--seed", default=None, type=int)
+@click.option("--confidence-threshold", default=0.5, type=float)
+@click.option("--verbosity", default=1, type=int)
 def main(
-    epochs: int, batch_size: int, max_images: Optional[int], seed: Optional[int] = None
+    epochs: int,
+    batch_size: int,
+    max_images: Optional[int],
+    seed: Optional[int],
+    confidence_threshold: Optional[float],
+    verbosity: int,
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
     label_encoder = LabelEncoder()
-
-    resnet50_backbone = get_backbone()
     label_to_cls = {"WatchFace": 0}  # TODO this should be in params.yaml
+    cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
 
-    loss_fn = RetinaNetLoss(num_classes)
-    model = RetinaNet(num_classes, resnet50_backbone)
+    # -- setup train model
+    resnet50_backbone = get_backbone()
+    train_model = RetinaNet(num_classes, confidence_threshold, resnet50_backbone)
 
     optimizer = tf.optimizers.Adam(learning_rate=3e-4)
-    model.compile(loss=loss_fn, optimizer=optimizer)
+    train_model.compile(optimizer=optimizer)
 
     callbacks_list = [
         DvcLiveCallback(path="metrics/detector"),
     ]
 
+    # -- setup dataset pipeline
     dataset_path = Path("datasets/watch-faces-local.json")
 
     raw_train_dataset = tf.data.Dataset.from_generator(
@@ -734,19 +790,60 @@ def main(
 
     val_dataset = val_dataset.prefetch(autotune)
 
-    model.fit(
+    # -- train model
+    train_model.fit(
         train_dataset,
         validation_data=val_dataset,
         epochs=epochs,
         callbacks=callbacks_list,
-        verbose=1,
+        verbose=verbosity,
     )
 
+    #  -- export inference-only model
+    # TODO possibly export step should be a separate script
+    #  this would allow for post-training optimizations like setting
+    #  confidence_threshold without full model re-training
     image = tf.keras.Input(shape=[None, None, 3], name="image")
-    predictions = model(image, training=False)
-    detections = DecodePredictions(confidence_threshold=0.5)(image, predictions)
-    inference_model = tf.keras.Model(inputs=image, outputs=detections)
+    inference_retina = RetinaNet(num_classes, confidence_threshold, resnet50_backbone)
+    # building graph on an input without targets will generate
+    # a model without loss and metrics steps
+    predictions = inference_retina({"images": image})
+    inference_model = keras.Model(inputs=image, outputs=predictions)
+    inference_model.set_weights(train_model.get_weights())
     inference_model.save("models/detector/")
+
+    # run on a single example image for sanity check if exported detector is working
+    example_image_path = Path("example_data/test-image.jpg")
+    with Image.open(example_image_path) as img:
+        example_image_np = np.array(img)
+    # TODO preprocessing and resizing results should be a part of the inference model
+    image = tf.cast(example_image_np, dtype=tf.float32)
+    image, _, ratio = resize_and_pad_image(image, jitter=None, max_side=384)
+    input_image = tf.keras.applications.resnet.preprocess_input(image)
+    input_image = tf.expand_dims(input_image, axis=0).numpy()
+
+    (
+        nmsed_boxes,
+        nmsed_scores,
+        nmsed_classes,
+        valid_detections,
+    ) = inference_model.predict(input_image)
+    valid_detections = valid_detections[0]
+    nmsed_boxes, nmsed_scores, nmsed_classes = (
+        nmsed_boxes[0, :valid_detections],
+        nmsed_scores[0, :valid_detections],
+        nmsed_classes[0, :valid_detections],
+    )
+    class_names = [cls_to_label[x] for x in nmsed_classes]
+    save_file = Path(f"example_predictions/detector/{example_image_path.name}")
+    save_file.parent.mkdir(exist_ok=True)
+    visualize_detections(
+        example_image_np,
+        nmsed_boxes,
+        class_names,
+        nmsed_scores,
+        savefile=save_file,
+    )
 
 
 if __name__ == "__main__":

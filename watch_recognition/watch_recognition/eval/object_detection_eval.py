@@ -90,13 +90,13 @@ def main():
             nmsed_scores = nmsed_scores[:valid_detections]
             nmsed_boxes = nmsed_boxes / ratio
             class_names = [cls_to_label[x] for x in nmsed_classes[:valid_detections]]
-            save_file = Path(f"example_predictions/{split}_{i}.jpg")
+            save_file = Path(f"example_predictions/detector/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
             visualize_detections(
                 image,
-                nmsed_boxes[:valid_detections] / ratio,
+                nmsed_boxes,
                 class_names,
-                nmsed_scores[:valid_detections],
+                nmsed_scores,
                 savefile=save_file,
             )
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
@@ -127,7 +127,7 @@ def main():
         else:
             for k, v in selected_coco_metrics.items():
                 metrics[v] = 0
-        with open(f"metrics/coco_{split}.json", "w") as f:
+        with open(f"metrics/detector/coco_{split}.json", "w") as f:
             json.dump(metrics, f, indent=2)
 
 

@@ -14,7 +14,12 @@ stages:
     - datasets/watch-faces-local.json
 # TODO stage for generating detection dataset from label-studio dataset?
   train-detector:
-    cmd: python watch_recognition/watch_recognition/train/object_detection_task.py --epochs ${detector.epochs} --batch-size ${detector.batch-size} --seed ${seed}
+    cmd: >- 
+      python watch_recognition/watch_recognition/train/object_detection_task.py 
+      --epochs ${detector.epochs} 
+      --batch-size ${detector.batch-size} 
+      --confidence-threshold ${detector.confidence-threshold} 
+      --seed ${seed}
     params:
       - detector.epochs
       - detector.batch-size
@@ -31,6 +36,7 @@ stages:
       - metrics/detector/scalars:
           cache: false
     outs:
+      - example_predictions/detector/test-image.jpg
       - models/detector/:
           persist: true
   eval-detector:
@@ -39,7 +45,15 @@ stages:
       - models/detector/
       - watch_recognition/watch_recognition/eval/object_detection_eval.py
     outs:
-      - example_predictions/
+      - example_predictions/detector/train_0.jpg
+      - example_predictions/detector/train_1.jpg
+      - example_predictions/detector/train_2.jpg
+      - example_predictions/detector/train_3.jpg
+      - example_predictions/detector/train_4.jpg
+      - example_predictions/detector/val_0.jpg
+      - example_predictions/detector/val_1.jpg
+      - example_predictions/detector/val_2.jpg
+      - example_predictions/detector/val_3.jpg
     metrics:
-      - metrics/coco_train.json
-      - metrics/coco_val.json
+      - metrics/detector/coco_train.json
+      - metrics/detector/coco_val.json

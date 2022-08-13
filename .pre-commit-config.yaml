@@ -1,24 +1,6 @@
 repos:
-  - repo: https://github.com/ambv/black
-    rev: 22.6.0
-    hooks:
-      - id: black
-        language_version: python3.10
-
-  - repo: https://github.com/kynan/nbstripout
-    rev: 11fb4a6
-    hooks:
-      - id: nbstripout
-
-  - repo: https://github.com/timothycrosley/isort
-    rev: 5.6.4
-    hooks:
-      - id: isort
-        args: [ "--profile", "black", "--filter-files" ]
-
-
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v1.4.0
+    rev: v4.3.0
     hooks:
       - id: check-merge-conflict
       - id: check-yaml
@@ -26,8 +8,25 @@ repos:
       - id: check-added-large-files
       - id: detect-private-key
 
+  - repo: https://github.com/timothycrosley/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        args: [ "--profile", "black", "--filter-files" ]
+
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.6.0
+    hooks:
+      - id: nbstripout
+
+  - repo: https://github.com/ambv/black
+    rev: 22.6.0
+    hooks:
+      - id: black
+        language_version: python3.10
+
   - repo: https://github.com/iterative/dvc
-    rev: 2.16.0
+    rev: 2.18.0
     hooks:
       - id: dvc-pre-commit
         language_version: python3

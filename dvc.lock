@@ -45,43 +45,47 @@ stages:
       md5: e197c9b76435b67de879087d46b35d29
       size: 145494
     - path: watch_recognition/watch_recognition/train/object_detection_task.py
-      md5: 5a8f61c31ff4646cb49eb593197c3ec8
-      size: 30667
+      md5: 8ced8df7591852eac4572c6f1b02f4f4
+      size: 31944
     params:
       params.yaml:
         detector.batch-size: 4
         detector.epochs: 100
         seed: 42
     outs:
+    - path: example_predictions/train/
+      md5: fe59205101c975bd1a58b881aaf06322.dir
+      size: 132025
+      nfiles: 1
     - path: metrics/detector.json
-      md5: dc4ce48700e9533bc269b2e659837448
+      md5: afff116c71097528f1f66cfba7d3cdab
       size: 132
     - path: metrics/detector/scalars
-      md5: ab130be9078a609b824af10c92d33c69.dir
-      size: 7483
+      md5: 6435cc135dfcd8bd902b63fbb4d3c83f.dir
+      size: 7476
       nfiles: 2
     - path: models/detector/
-      md5: 88a2bd2628b461f8e53d578623b57468.dir
-      size: 444657501
+      md5: 01b75a7b4b6adea5ffb5bb5b36cd12be.dir
+      size: 153528239
       nfiles: 4
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
     - path: models/detector/
-      md5: 88a2bd2628b461f8e53d578623b57468.dir
-      size: 444657501
+      md5: 01b75a7b4b6adea5ffb5bb5b36cd12be.dir
+      size: 153528239
       nfiles: 4
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
-      md5: 30de933934ea52bd0306c96a4063ef5e
-      size: 4670
+      md5: 6bc0ceb2a610f93b3ede55624601beed
+      size: 4638
     outs:
-    - path: example_predictions/
-      md5: c8ba7f748c09e364f1e5b8c6effffe02.dir
-      size: 1317819
+    - path: example_predictions/eval
+      md5: 892f69bd79781d1e1bc0d4f5f69f412d.dir
+      size: 1345493
       nfiles: 9
-    - path: metrics/coco_train.json
-      md5: c2c669105202ea4ab1f7b7ba6860d147
+    - path: metrics/detector/coco_train.json
+      md5: 4b7458a7abc008321e5111462a8a3b15
       size: 231
-    - path: metrics/coco_val.json
-      md5: 6a7702e25d51fe14800691d6e7caba6d
+    - path: metrics/detector/coco_val.json
+      md5: c72944fd5211d44611370a883a31c03d
       size: 206
