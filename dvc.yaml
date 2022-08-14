@@ -111,6 +111,6 @@ stages:
       - models/keypoint/:
           persist: true
   update-metrics:
-    cmd: python scripts/update-metrics-table.py
+    cmd: python scripts/update-metrics-table-and-graph.py
     deps:
       - metrics
