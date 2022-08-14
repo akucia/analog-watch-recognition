@@ -59,6 +59,7 @@ def main():
         0: "AP @IoU=0.50:0.95",
         1: "AP @IoU=0.50",
         2: "AP @IoU=0.75",
+        3: "AP @IoU=0.95",
         6: "AR @maxDets=1",
         7: "AR @maxDets=10",
         8: "AR @maxDets=100",

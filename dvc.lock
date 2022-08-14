@@ -75,8 +75,8 @@ stages:
       size: 153528239
       nfiles: 4
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
-      md5: ffd509a84f371198f0a5ba4ec025f557
-      size: 5696
+      md5: 080fe3096a2ec1867cd3f79e1e2fa8ee
+      size: 5723
     outs:
     - path: example_predictions/detector/train_0.jpg
       md5: abe5faeb206ead93fe3adc579aa97dc1
@@ -124,15 +124,15 @@ stages:
       md5: 6354db935f428137d9b34008eb74bdd9
       size: 1059
     - path: metrics/detector/coco_train.json
-      md5: 77cfcd3e9e884efd342b0a0b2e8749bc
-      size: 260
+      md5: 81308a42e6c35e02468b479a4bef36c8
+      size: 284
     - path: metrics/detector/coco_val.json
-      md5: 336b9140e079dd5d6304ec05742f32ec
-      size: 202
+      md5: b473c16e2972feac4c3582022c23363d
+      size: 226
   update-metrics:
     cmd: python scripts/update-metrics-table.py
     deps:
     - path: metrics
-      md5: e475579581bf51c52fed2e02925da648.dir
-      size: 54391
+      md5: a7b8ec0402acf3e59da0e29b0c5a0ae4.dir
+      size: 54439
       nfiles: 14

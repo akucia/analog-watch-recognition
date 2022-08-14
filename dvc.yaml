@@ -69,7 +69,7 @@ stages:
       - metrics/detector/PR-IoU@0.95_train.tsv:
           x: Recall
           y: Precision
-          title: Val PR-IoU@0.75
+          title: Train PR-IoU@0.95
       - metrics/detector/PR-IoU@0.50_val.tsv:
           x: Recall
           y: Precision
@@ -81,7 +81,7 @@ stages:
       - metrics/detector/PR-IoU@0.95_val.tsv:
           x: Recall
           y: Precision
-          title: Val PR-IoU@0.75
+          title: Val PR-IoU@0.95
 #  train-keypoint:
 #    cmd: >-
 #      python watch_recognition/watch_recognition/train/heatmap_regression_task.py
