@@ -133,6 +133,50 @@ stages:
     cmd: python scripts/update-metrics-table.py
     deps:
     - path: metrics
-      md5: a7b8ec0402acf3e59da0e29b0c5a0ae4.dir
-      size: 54439
-      nfiles: 14
+      md5: 3142adaa855950be2ac120918a0894ba.dir
+      size: 108259
+      nfiles: 20
+  train-keypoint:
+    cmd: python watch_recognition/watch_recognition/train/heatmap_regression_task.py
+      --epochs 50 --batch-size 8 --confidence-threshold 0.1 --seed 42
+    deps:
+    - path: datasets/test
+      md5: c316cc0b182e5924a1f5bb8820cd87b8.dir
+      size: 6465792
+      nfiles: 2
+    - path: datasets/train
+      md5: 14c2aeb4a00a4b2141c061e50e2c209f.dir
+      size: 40396693
+      nfiles: 46
+    - path: datasets/val
+      md5: 33ab1562f9438476fdb1c2ece65a2720.dir
+      size: 3021825
+      nfiles: 5
+    - path: datasets/watch-faces-local.json
+      md5: 679afb6a09b1c87f2243532ba1d6f550
+      size: 217069
+    - path: watch_recognition/watch_recognition/train/heatmap_regression_task.py
+      md5: d06ecd8bdb53deb7e8e71cc767d83e58
+      size: 5653
+    params:
+      params.yaml:
+        keypoint:
+          epochs: 50
+          batch-size: 8
+          confidence-threshold: 0.1
+        seed: 42
+    outs:
+    - path: example_predictions/keypoint/test-image-2.jpg
+      md5: 15bbcf76468bafd64ab271f560063875
+      size: 54130
+    - path: metrics/keypoint.json
+      md5: c17c2360beb6242942913f30622ec477
+      size: 214
+    - path: metrics/keypoint/scalars
+      md5: 96d30d4ced92d2eebcbb6ca516bd5918.dir
+      size: 7527
+      nfiles: 4
+    - path: models/keypoint/
+      md5: a39a20ffcf1e998bd767ee3581fe51b7.dir
+      size: 166100228
+      nfiles: 8

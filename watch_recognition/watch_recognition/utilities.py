@@ -106,6 +106,9 @@ class Point:
         image[self.y, self.x] = value
         return image
 
+    def rename(self, new_name: str) -> "Point":
+        return dataclasses.replace(self, name=new_name)
+
 
 @dataclasses.dataclass(frozen=True)
 class BBox:
@@ -171,6 +174,16 @@ class BBox:
     @property
     def as_coordinates_tuple(self) -> Tuple[float, float, float, float]:
         return self.x_min, self.y_min, self.x_max, self.y_max
+
+    def convert_to_int_coordinates_tuple(
+        self, method: str = "round"
+    ) -> Tuple[int, int, int, int]:
+        if method == "round":
+            return tuple(np.round(self.as_coordinates_tuple).astype(int))
+        elif method == "floor":
+            return tuple(np.floor(self.as_coordinates_tuple).astype(int))
+        else:
+            raise ValueError(f"unrecognized method {method}, choose one of round|floor")
 
     @property
     def width(self) -> float:

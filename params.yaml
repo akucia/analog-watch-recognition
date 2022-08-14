@@ -6,6 +6,6 @@ detector:
   confidence-threshold: 0.5
 
 keypoint:
-  epochs: 100
-  batch-size: 4
+  epochs: 50
+  batch-size: 8
   confidence-threshold: 0.1

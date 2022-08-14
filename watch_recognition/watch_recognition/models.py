@@ -224,8 +224,7 @@ def get_model(image_size: Tuple[int, int] = (224, 224)) -> tf.keras.Model:
 def get_segmentation_model(
     image_size: Tuple[int, int] = (224, 224),
     n_outputs: int = 4,
-    output_activation: str = "softmax",
-    backbone="efficientnetb3",
+    backbone="efficientnetb0",
 ) -> tf.keras.Model:
 
     inputs = tf.keras.Input(
@@ -234,7 +233,7 @@ def get_segmentation_model(
     sm_model = sm.FPN(
         backbone,
         classes=n_outputs,
-        activation=output_activation,
+        activation="sigmoid",
         input_shape=(*image_size, 3),
     )
     outputs = sm_model(inputs)

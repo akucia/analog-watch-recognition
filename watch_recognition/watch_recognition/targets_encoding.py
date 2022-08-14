@@ -1,7 +1,7 @@
 import dataclasses
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -232,13 +232,13 @@ def encode_keypoints_to_hands_angle(keypoints):
     return keypoint_to_sin_cos_angle(center, hour).astype("float32")
 
 
-def decode_single_point(mask, threshold=0.1) -> Point:
+def decode_single_point(mask, threshold=0.1) -> Optional[Point]:
     # this might be faster implementation, and for batch of outputs
     # https://github.com/OlgaChernytska/2D-Hand-Pose-Estimation-RGB/blob/c9f201ca114129fa750f4bac2adf0f87c08533eb/utils/prep_utils.py#L114
 
     mask = np.where(mask < threshold, np.zeros_like(mask), mask)
     if mask.sum() == 0:
-        mask = np.ones_like(mask)
+        return None
     y_idx, x_idx = np.indices(mask.shape)
     x_mask = np.average(x_idx.flatten(), weights=mask.flatten())
     y_mask = np.average(y_idx.flatten(), weights=mask.flatten())
