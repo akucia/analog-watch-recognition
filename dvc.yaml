@@ -82,3 +82,7 @@ stages:
           x: Recall
           y: Precision
           title: Val PR-IoU@0.75
+  update-metrics:
+    cmd: python scripts/update-metrics-table.py
+    deps:
+      - metrics

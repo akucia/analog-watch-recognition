@@ -3,3 +3,6 @@ update-dataset:
 
 add-images:
 	python scripts/add-images-to-label-studio-project.py --source-dir ./new-images/ --label-studio-project ${PROJECT_ID} --label-studio-host ${LABEL_STUDIO_URL} --label-studio-api-token ${LABEL_STUDIO_ACCESS_TOKEN}  --n-images 50
+
+update-metrics:
+	python scripts/update-metrics-table.py

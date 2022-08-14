@@ -1,6 +1,10 @@
 # Metrics
+| Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.loss   | step   | train.loss   |
+|----------------------------------|----------------|---------------------|----------------|-----------------|------------------|-------------------|--------------|-------------|--------|--------------|
+| metrics/detector.json            | -              | -                   | -              | -               | -                | -                 | -            | 0.39622     | 99     | 0.0987       |
+| metrics/detector/coco_train.json | 1.0            | 0.79328             | 0.92459        | 0.66667         | 0.82564          | 0.82564           | 31           | -           | -      | -            |
+| metrics/detector/coco_val.json   | 1.0            | 0.75866             | 1.0            | 0.775           | 0.775            | 0.775             | 4            | -           | -      | -            |
 
-[Metrics table](metrics.md)
 # Demo - version 2
 
 <img src="example_data/IMG_0039_render.jpg?raw=true" width=400> <img src="example_data/IMG_0040_render.jpg?raw=true" width=400>

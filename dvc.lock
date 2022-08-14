@@ -129,3 +129,10 @@ stages:
     - path: metrics/detector/coco_val.json
       md5: 69af15524739cbba2bbd3a0c8ca2edc1
       size: 191
+  update-metrics:
+    cmd: python scripts/update-metrics-table.py
+    deps:
+    - path: metrics
+      md5: cc2c26ee5f8fcbd03ec8b806878592f6.dir
+      size: 54620
+      nfiles: 14
