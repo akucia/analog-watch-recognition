@@ -1,11 +1,27 @@
 # Metrics
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|-----------------|------------------|-------------------|--------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/detector.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | -                | 0.42263     | 99     | -                 | 0.04357      |
+| metrics/detector.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | -                | 0.92117     | 12     | -                 | 0.85252      |
 | metrics/detector/coco_train.json | 0.99933        | 0.74544             | 0.93908        | -1.0           | 0.63103         | 0.79828          | 0.79828           | 46           | -                | -           | -      | -                 | -            |
 | metrics/detector/coco_val.json   | 1.0            | 0.73845             | 0.80198        | -1.0           | 0.76            | 0.76             | 0.76              | 5            | -                | -           | -      | -                 | -            |
 | metrics/keypoint.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | 0.49706          | 0.50294     | 49     | 0.87063           | 0.13394      |
 
+```mermaid
+flowchart TD
+	node1["datasets/watch-faces.json.dvc"]
+	node2["download-images"]
+	node3["eval-detector"]
+	node4["train-detector"]
+	node5["train-keypoint"]
+	node6["update-metrics"]
+	node1-->node2
+	node2-->node4
+	node2-->node5
+	node3-->node6
+	node4-->node3
+	node4-->node6
+	node5-->node6
+```
 # Demo - version 2
 
 <img src="example_data/IMG_0039_render.jpg?raw=true" width=400> <img src="example_data/IMG_0040_render.jpg?raw=true" width=400>

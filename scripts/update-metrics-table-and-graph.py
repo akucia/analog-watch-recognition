@@ -7,10 +7,12 @@ if __name__ == "__main__":
     metrics_start = readme_lines.index("# Metrics\n")
     metrics_end = readme_lines.index("# Demo - version 2\n")
     cmd = ["dvc", "metrics", "show", "--md"]
-    output = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode("utf-8")
+    output_metrics = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode("utf-8")
+    cmd = ["dvc", "dag", "--md"]
+    output_graph = subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode("utf-8")
 
     readme_before_metrics = readme_lines[:metrics_start]
-    new_metrics = [readme_lines[metrics_start]] + [output]
+    new_metrics = [readme_lines[metrics_start]] + [output_metrics, output_graph]
     readme_after_metrics = readme_lines[metrics_end:]
 
     new_readme = readme_before_metrics + new_metrics + readme_after_metrics

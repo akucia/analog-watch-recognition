@@ -31,10 +31,10 @@ stages:
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/object_detection_task.py
     metrics:
-      - metrics/detector.json
-    plots:
-      - metrics/detector/scalars:
+      - metrics/detector.json:
           cache: false
+    plots:
+      - metrics/detector/scalars
     outs:
       - example_predictions/detector/test-image.jpg
       - models/detector/:
@@ -55,8 +55,10 @@ stages:
       - example_predictions/detector/val_2.jpg
       - example_predictions/detector/val_3.jpg
     metrics:
-      - metrics/detector/coco_train.json
-      - metrics/detector/coco_val.json
+      - metrics/detector/coco_train.json:
+          cache: false
+      - metrics/detector/coco_val.json:
+          cache: false
     plots:
       - metrics/detector/PR-IoU@0.50_train.tsv:
           x: Recall
@@ -99,10 +101,10 @@ stages:
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/heatmap_regression_task.py
     metrics:
-      - metrics/keypoint.json
-    plots:
-      - metrics/keypoint/scalars:
+      - metrics/keypoint.json:
           cache: false
+    plots:
+      - metrics/keypoint/scalars/
     outs:
       - example_predictions/keypoint/test-image-2.jpg:
           persist: true

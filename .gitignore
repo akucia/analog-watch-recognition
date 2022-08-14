@@ -316,4 +316,5 @@ runs.json
 /configs/
 !/scripts/
 !/models/detector/
+!/models/keypoint/
 /example_predictions
