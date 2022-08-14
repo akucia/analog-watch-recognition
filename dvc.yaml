@@ -82,6 +82,31 @@ stages:
           x: Recall
           y: Precision
           title: Val PR-IoU@0.75
+#  train-keypoint:
+#    cmd: >-
+#      python watch_recognition/watch_recognition/train/heatmap_regression_task.py
+#      --epochs ${keypoint.epochs}
+#      --batch-size ${keypoint.batch-size}
+#      --confidence-threshold ${keypoint.confidence-threshold}
+#      --seed ${seed}
+#    params:
+#      - keypoint
+#      - seed
+#    deps:
+#      - datasets/train
+#      - datasets/test
+#      - datasets/val
+#      - datasets/watch-faces-local.json
+#      - watch_recognition/watch_recognition/train/heatmap_regression_task.py
+#    metrics:
+#      - metrics/keypoint.json
+#    plots:
+#      - metrics/keypoint/scalars:
+#          cache: false
+#    outs:
+#      - example_predictions/keypoint/test-image-2.jpg
+#      - models/keypoint/:
+#          persist: true
   update-metrics:
     cmd: python scripts/update-metrics-table.py
     deps:

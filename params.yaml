@@ -4,3 +4,8 @@ detector:
   epochs: 100
   batch-size: 4
   confidence-threshold: 0.5
+
+keypoint:
+  epochs: 100
+  batch-size: 4
+  confidence-threshold: 0.1
