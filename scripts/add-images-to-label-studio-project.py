@@ -86,7 +86,7 @@ def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
 @click.option("--label-studio-host")
 @click.option("--label-studio-api-token")
 @click.option("--n-images", help="Number of images to add", type=int)
-@click.option("--shuffle-images", default=False, type=bool)
+@click.option("--shuffle-images", is_flag=True)
 def main(
     source_dir: str,
     export_file: Optional[str],
@@ -132,9 +132,9 @@ def main(
     kp_predictor = KPHeatmapPredictorV2(
         "models/keypoint",
         class_to_label_name={
-            "Top": 0,
-            "Center": 1,
-            "Crown": 2,
+            0: "Top",
+            1: "Center",
+            2: "Crown",
         },
         confidence_threshold=0.5,
     )
