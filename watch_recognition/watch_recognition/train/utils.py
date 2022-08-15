@@ -3,10 +3,11 @@ from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
+from more_itertools import flatten
 from tqdm import tqdm
 
 from watch_recognition.data_preprocessing import load_image
-from watch_recognition.utilities import BBox
+from watch_recognition.utilities import BBox, Point, match_bboxes_to_points
 
 
 def unison_shuffled_copies(a, b, seed=42):
@@ -53,7 +54,8 @@ def label_studio_bbox_detection_dataset_to_coco(
                 "width": img_width,
             }
         )
-
+        bboxes = []
+        keypoints = []
         for i, obj in enumerate(task["bbox"]):
             # label studio keeps
             label_name = obj["rectanglelabels"][0]
@@ -62,24 +64,45 @@ def label_studio_bbox_detection_dataset_to_coco(
                     "supercategory": "watch",
                     "id": len(categories),
                     "name": label_name,
+                    "keypoints": [],
                 }
-            bbox = (
-                BBox.from_ltwh(
-                    obj["x"],
-                    obj["y"],
-                    obj["width"],
-                    obj["height"],
-                    categories[label_name]["id"],
-                )
-                .scale(1 / 100, 1 / 100)
-                .scale(img_width, img_height)
-            )
+            bbox = BBox.from_label_studio_object(obj).scale(img_width, img_height)
+            bboxes.append(bbox)
+        for i, obj in enumerate(task["kp"]):
+            kp = Point.from_label_studio_object(obj).scale(img_width, img_height)
+            keypoints.append(kp)
 
-            annotations.append(
-                bbox.to_coco_object(image_id=image_id, object_id=object_counter)
+        bboxes_to_kps = match_bboxes_to_points(bboxes, keypoints)
+        # It's a mess, but it works
+        # Categories could be a separate class with appropriate API and
+        # serialization
+        for bbox, kps in bboxes_to_kps.items():
+            category = categories[bbox.name]
+            for kp in kps:
+                if kp.name not in category["keypoints"]:
+                    category["keypoints"].append(kp.name)
+            kp_to_name = {kp.name: [kp.x, kp.y, 2] for kp in kps}
+            object_keypoints = []
+            for kp_name in category["keypoints"]:
+                object_keypoints.append(kp_to_name.get(kp_name, [0, 0, 0]))
+            object_keypoints = list(flatten(object_keypoints))
+            coco_object = bbox.rename(category["id"]).to_coco_object(
+                image_id=image_id, object_id=object_counter
             )
+            coco_object["num_keypoints"] = len(object_keypoints) // 3
+            coco_object["keypoints"] = object_keypoints
+
+            annotations.append(coco_object)
             object_counter += 1
-
+    # 2nd pass on the objects might be required to pad with any missing keypoints
+    cat_id_to_category = {cat["id"]: cat for cat in categories.values()}
+    for obj in annotations:
+        category = cat_id_to_category[obj["category_id"]]
+        n_expected_keypoints = len(category["keypoints"])
+        missing_keypoints = n_expected_keypoints - obj["num_keypoints"]
+        for _ in range(missing_keypoints):
+            obj["keypoints"].extend([0, 0, 0])
+            obj["num_keypoints"] += 1
     dataset = {
         "info": info,
         "images": images,

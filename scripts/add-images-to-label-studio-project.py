@@ -4,6 +4,7 @@ import logging
 import tarfile
 from hashlib import md5
 from pathlib import Path
+from random import shuffle
 from typing import Optional
 
 import click
@@ -17,9 +18,8 @@ from tqdm import tqdm
 from watch_recognition.models import points_to_time
 from watch_recognition.predictors import (
     HandPredictor,
-    KPHeatmapPredictor,
+    KPHeatmapPredictorV2,
     RetinanetDetector,
-    RotationPredictor,
 )
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,7 @@ def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
 @click.option("--label-studio-host")
 @click.option("--label-studio-api-token")
 @click.option("--n-images", help="Number of images to add", type=int)
+@click.option("--shuffle-images", default=False, type=bool)
 def main(
     source_dir: str,
     export_file: Optional[str],
@@ -95,6 +96,7 @@ def main(
     label_studio_host: str,
     label_studio_api_token: str,
     n_images: int,
+    shuffle_images: bool,
 ):
     if verbose:
         logger.setLevel(logging.DEBUG)
@@ -127,18 +129,20 @@ def main(
             url="https://storage.googleapis.com/akuc-ml-public/models/effnet-b3-FPN-160-tversky-hands.tar.gz"
         )
     )
-    kp_predictor = KPHeatmapPredictor(
-        download_and_uzip_model(
-            url="https://storage.googleapis.com/akuc-ml-public/models/efficientnetb0-unet-96-hands-kp.tar.gz"
-        )
+    kp_predictor = KPHeatmapPredictorV2(
+        "models/keypoint",
+        class_to_label_name={
+            "Top": 0,
+            "Center": 1,
+            "Crown": 2,
+        },
+        confidence_threshold=0.5,
     )
-    rp = RotationPredictor(
-        download_and_uzip_model(
-            url="https://storage.googleapis.com/akuc-ml-public/models/efficientnetb0-8-angle.tar.gz"
-        )
-    )
+
     dataset = []
     image_paths = list(source_dir.rglob("*.jp*g"))
+    if shuffle_images:
+        shuffle(image_paths)
     if n_images:
         image_paths = image_paths[:n_images]
     progress_bar = tqdm(image_paths)
@@ -179,13 +183,17 @@ def main(
             keypoints = []
             transcriptions = []
             for box in bboxes:
-                pred_center, pred_top = kp_predictor.predict_from_image_and_bbox(
-                    pil_img, box, rotation_predictor=rp
-                )
-                keypoints.append(
-                    dataclasses.replace(pred_center, name="Center", score=1.0)
-                )
-                keypoints.append(dataclasses.replace(pred_top, name="Top", score=1.0))
+                points = kp_predictor.predict_from_image_and_bbox(pil_img, box)
+                pred_center = [p for p in points if p.name == "Center"]
+                if pred_center:
+                    pred_center = pred_center[0]
+                else:
+                    # if there's no center available - skip the bbox
+                    continue
+
+                pred_top = [p for p in points if p.name == "Top"]
+                if pred_top:
+                    pred_top = pred_top[0]
                 (
                     minute_and_hour,
                     other,
@@ -206,11 +214,9 @@ def main(
                     transcriptions.append(time)
                 else:
                     transcriptions.append("??:??")
-            # TODO add Polygons
             print(transcriptions)
+            # TODO add Transcriptions to results
             results = []
-
-            # TODO add Transcriptions
             # The code below adds them as a separate rectangle,
             # which is not ideal and won't allow for edits
             # for i, (transcription, bbox) in enumerate(zip(transcriptions, bboxes)):

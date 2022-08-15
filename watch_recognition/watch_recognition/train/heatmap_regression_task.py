@@ -1,25 +1,26 @@
 import os
 from pathlib import Path
+from typing import Tuple
 
 import click
-import matplotlib.pyplot as plt
 import numpy as np
 import segmentation_models as sm
 import tensorflow as tf
 from dvclive.keras import DvcLiveCallback
-from PIL import Image, ImageOps
+from PIL import Image
 from segmentation_models.metrics import IOUScore
 
 from watch_recognition.label_studio_adapters import (
     load_label_studio_kp_detection_dataset,
 )
 from watch_recognition.models import get_segmentation_model
-from watch_recognition.targets_encoding import decode_single_point
+from watch_recognition.targets_encoding import (
+    _encode_point_to_mask,
+    decode_single_point_from_heatmap,
+)
+from watch_recognition.visualization import visualize_keypoints
 
 os.environ["SM_FRAMEWORK"] = "tf.keras"
-from typing import Tuple
-
-from watch_recognition.targets_encoding import _encode_point_to_mask
 
 
 def encode_kps_to_mask(
@@ -143,12 +144,15 @@ def main(
 
     #  -- export inference-only model
     image = tf.keras.Input(shape=[None, None, 3], name="image")
+    resized_image = tf.keras.layers.Resizing(
+        crop_size[0], crop_size[1], interpolation="bilinear", crop_to_aspect_ratio=False
+    )(image)
     inference_model = get_segmentation_model(
         image_size=image_size,
         n_outputs=num_classes,
         backbone="efficientnetb0",
     )
-    predictions = inference_model(image)
+    predictions = inference_model(resized_image)
     inference_model = tf.keras.Model(inputs=image, outputs=predictions)
     inference_model.set_weights(train_model.get_weights())
     inference_model.save("models/keypoint/")
@@ -157,32 +161,26 @@ def main(
     example_image_path = Path("example_data/test-image-2.jpg")
     save_file = Path(f"example_predictions/keypoint/{example_image_path.name}")
     save_file.parent.mkdir(exist_ok=True)
-    # TODO convert into function "visualize_keypoints"
+    # TODO use predictor?
     with Image.open(example_image_path) as img:
-        padded_img = ImageOps.pad(img, image_size)
-        input_image = np.array(padded_img)
+
+        input_image = np.array(img)
         input_image = tf.expand_dims(input_image, axis=0).numpy()
 
         results = inference_model.predict(input_image)[0]
         points = []
         for cls, name in cls_to_label.items():
-            point = decode_single_point(
+            point = decode_single_point_from_heatmap(
                 results[:, :, cls],
                 threshold=confidence_threshold,
             )
             if point is not None:
                 point = point.rename(name)
                 point = point.scale(
-                    img.width / padded_img.width, img.height / padded_img.height
+                    img.width / results.shape[1], img.height / results.shape[0]
                 )
                 points.append(point)
-        plt.imshow(np.array(img))
-        colors = ["red", "green", "blue"]
-        for point, color in zip(points, colors):
-            point.plot(color=color, size=30)
-        plt.legend()
-        plt.axis("off")
-        plt.savefig(save_file, bbox_inches="tight")
+        visualize_keypoints(img, points, savefile=save_file)
 
 
 if __name__ == "__main__":

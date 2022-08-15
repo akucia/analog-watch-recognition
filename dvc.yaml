@@ -110,7 +110,29 @@ stages:
           persist: true
       - models/keypoint/:
           persist: true
-  update-metrics:
-    cmd: python scripts/update-metrics-table-and-graph.py
+  eval-keypoint:
+    cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py --kp-confidence-threshold ${keypoint.confidence-threshold}
     deps:
-      - metrics
+      - models/keypoint/
+      - models/detector/
+      - watch_recognition/watch_recognition/eval/keypoint_detection_eval.py
+    outs:
+      - example_predictions/keypoint/train_0.jpg
+      - example_predictions/keypoint/train_1.jpg
+      - example_predictions/keypoint/train_2.jpg
+      - example_predictions/keypoint/train_3.jpg
+      - example_predictions/keypoint/train_4.jpg
+      - example_predictions/keypoint/val_0.jpg
+      - example_predictions/keypoint/val_1.jpg
+      - example_predictions/keypoint/val_2.jpg
+      - example_predictions/keypoint/val_3.jpg
+      - example_predictions/keypoint/val_4.jpg
+    metrics:
+      - metrics/keypoint/coco_train.json:
+          cache: false
+      - metrics/keypoint/coco_val.json:
+          cache: false
+  update-metrics:
+      cmd: python scripts/update-metrics-table-and-graph.py
+      deps:
+        - metrics

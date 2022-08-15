@@ -232,7 +232,9 @@ def encode_keypoints_to_hands_angle(keypoints):
     return keypoint_to_sin_cos_angle(center, hour).astype("float32")
 
 
-def decode_single_point(mask, threshold=0.1) -> Optional[Point]:
+def decode_single_point_from_heatmap(
+    mask: np.ndarray, threshold: float = 0.1
+) -> Optional[Point]:
     # this might be faster implementation, and for batch of outputs
     # https://github.com/OlgaChernytska/2D-Hand-Pose-Estimation-RGB/blob/c9f201ca114129fa750f4bac2adf0f87c08533eb/utils/prep_utils.py#L114
 
@@ -285,7 +287,9 @@ def extract_points_from_map(
             labels == component_id, predicted_map, np.zeros_like(predicted_map)
         )
 
-        box_center = np.array(decode_single_point(segmap).as_coordinates_tuple)
+        box_center = np.array(
+            decode_single_point_from_heatmap(segmap).as_coordinates_tuple
+        )
         points.append(Point(*box_center, score=float(score)))
     return points
 
@@ -298,7 +302,7 @@ def convert_mask_outputs_to_keypoints(
 ) -> Tuple[Point, ...]:
     masks = predicted.transpose((2, 0, 1))
 
-    center = decode_single_point(masks[0])
+    center = decode_single_point_from_heatmap(masks[0])
     center = dataclasses.replace(center, name="Center")
 
     # Top
@@ -306,7 +310,7 @@ def convert_mask_outputs_to_keypoints(
         masks[1],
     )
     if not top_points:
-        top_points = [decode_single_point(masks[1])]
+        top_points = [decode_single_point_from_heatmap(masks[1])]
 
     top = sorted(top_points, key=lambda x: x.score)[-1]
     top = dataclasses.replace(top, name="Top")

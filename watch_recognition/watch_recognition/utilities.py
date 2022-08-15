@@ -1,6 +1,7 @@
 import dataclasses
+from collections import defaultdict
 from itertools import combinations
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import matplotlib.patches as mpatches
@@ -66,6 +67,14 @@ class Point:
             "width": 0.3943217665615142,  # magic value used in label studio
             "score": self.score,
         }
+
+    @classmethod
+    def from_label_studio_object(cls, data: dict) -> "Point":
+        return Point(
+            data["x"],
+            data["y"],
+            data["keypointlabels"][0],
+        ).scale(1 / 100, 1 / 100)
 
     def plot(self, ax=None, color="red", marker="x", size=20, **kwargs):
         if ax is None:
@@ -238,6 +247,16 @@ class BBox:
             "height": self.height * 100,
         }
 
+    @classmethod
+    def from_label_studio_object(cls, data) -> "BBox":
+        return BBox.from_ltwh(
+            data["x"],
+            data["y"],
+            data["width"],
+            data["height"],
+            data["rectanglelabels"][0],
+        ).scale(1 / 100, 1 / 100)
+
     def to_coco_object(
         self,
         image_id: str,
@@ -318,6 +337,9 @@ class BBox:
         )
 
         return original_image_np.astype(np.uint8)
+
+    def rename(self, new_name: str) -> "BBox":
+        return dataclasses.replace(self, name=new_name)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -635,3 +657,14 @@ def resize_and_pad_image(
         image, 0, 0, padded_image_shape[0], padded_image_shape[1]
     )
     return image, image_shape, ratio
+
+
+def match_bboxes_to_points(
+    bboxes: List[BBox], points: List[Point]
+) -> Dict[BBox, List[Point]]:
+    rectangles_to_kps = defaultdict(list)
+    for bbox in bboxes:
+        for kp in points:
+            if bbox.contains(kp):
+                rectangles_to_kps[bbox].append(kp)
+    return dict(rectangles_to_kps)

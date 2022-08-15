@@ -3,8 +3,9 @@ import dataclasses
 import hashlib
 from abc import ABC
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
+import cv2
 import numpy as np
 import tensorflow as tf
 from PIL import Image
@@ -13,8 +14,7 @@ from PIL.Image import Image as ImageType
 
 from watch_recognition.models import points_to_time
 from watch_recognition.targets_encoding import (
-    decode_single_point,
-    extract_points_from_map,
+    decode_single_point_from_heatmap,
     fit_lines_to_hands_mask,
     line_selector,
 )
@@ -84,25 +84,97 @@ class KPPredictor(ABC):
 
 
 class KPHeatmapPredictor(KPPredictor):
-    def _decode_keypoints(self, image, predicted):
-        # transpose to get different kp channels into 0th axis
-        predicted = predicted.transpose((2, 0, 1))
-        # Center
-        center = decode_single_point(predicted[0])
-        scale_x = image.width / self.output_size[0]
-        scale_y = image.height / self.output_size[1]
-        center = dataclasses.replace(center, name="Center")
-        center = center.scale(scale_x, scale_y)
-        # Top
-        top_points = extract_points_from_map(
-            predicted[1],
+    def __init__(
+        self, model_path, class_to_label_name, confidence_threshold: float = 0.5
+    ):
+        self.model = tf.keras.models.load_model(model_path, compile=False)
+        self.input_size = (96, 96)
+        self.output_size = (96, 96)
+        self.cache = {}
+        self.confidence_threshold = confidence_threshold
+        self.class_to_label_name = class_to_label_name
+
+    def _decode_keypoints(self, image: Image, predicted: np.ndarray) -> List[Point]:
+        image = np.array(image)
+        img_width, img_height = image.shape[1], image.shape[0]
+        input_image = cv2.resize(image, self.input_size, interpolation=cv2.INTER_CUBIC)
+        input_image = np.expand_dims(input_image, axis=0)
+        results = self.model.predict(input_image, verbose=0)[0]
+        points = []
+        for cls, name in self.class_to_label_name.items():
+            point = decode_single_point_from_heatmap(
+                results[:, :, cls],
+                threshold=self,
+            )
+            if point is not None:
+                point = point.rename(name)
+                point = point.scale(
+                    img_width / self.input_size[1], img_height / self.input_size[0]
+                )
+                points.append(point)
+        return points
+
+
+class KPHeatmapPredictorV2:
+    def __init__(
+        self, model_path, class_to_label_name, confidence_threshold: float = 0.5
+    ):
+        self.model: tf.keras.models.Model = tf.keras.models.load_model(
+            model_path, compile=False
         )
-        if not top_points:
-            top_points = [decode_single_point(predicted[1])]
-        top = sorted(top_points, key=lambda x: x.score)[-1]
-        top = dataclasses.replace(top, name="Top")
-        top = top.scale(scale_x, scale_y)
-        return center, top
+        self.confidence_threshold = confidence_threshold
+        self.class_to_label_name = class_to_label_name
+
+    def predict(self, image: Union[ImageType, np.ndarray]) -> List[Point]:
+        """Runs predictions on a crop of a watch face.
+        Returns keypoints in pixel coordinates of the image
+        """
+
+        image_np = np.array(image)
+        batch_image_np = np.expand_dims(image_np, 0)
+        predicted = self.model.predict(batch_image_np, verbose=0)[0]
+        points = self._decode_keypoints(
+            predicted,
+            crop_image_width=image_np.shape[1],
+            crop_image_height=image_np.shape[0],
+        )
+
+        return points
+
+    def predict_from_image_and_bbox(
+        self,
+        image: ImageType,
+        bbox: BBox,
+    ) -> List[Point]:
+        """Runs predictions on full image using bbox to crop area of interest before
+        running the model.
+        Returns keypoints in pixel coordinates of the image
+        """
+        with image.crop(box=bbox.as_coordinates_tuple) as crop:
+            points = self.predict(crop)
+            points = [point.translate(bbox.left, bbox.top) for point in points]
+            return points
+
+    def _decode_keypoints(
+        self, predicted: np.ndarray, crop_image_width: int, crop_image_height: int
+    ) -> List[Point]:
+        """Decodes predictions for every channel for output heatmap
+        Returns keypoints in pixel coordinates of the BBox crop
+        """
+
+        points = []
+        for cls, name in self.class_to_label_name.items():
+            maybe_point = decode_single_point_from_heatmap(
+                predicted[:, :, cls], threshold=self.confidence_threshold
+            )
+            if maybe_point is not None:
+                maybe_point = maybe_point.rename(name)
+                maybe_point = maybe_point.scale(
+                    crop_image_width / predicted.shape[1],
+                    crop_image_height / predicted.shape[0],
+                )
+                points.append(maybe_point)
+        return points
 
 
 class KPRegressionPredictor(KPPredictor):
@@ -289,13 +361,9 @@ class RetinanetDetector:
         self.model = tf.keras.models.load_model(model_path)
         self.input_size = input_size
         self.class_to_label_name = class_to_label_name
-        self.cache = {}
 
     def predict(self, image: ImageType) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
-        image_hash = _hash_image(image)
-        if image_hash in self.cache:
-            return self.cache[image_hash]
         # TODO integrate the image preprocessing with the exported model
         input_image, ratio = retinanet_prepare_image(np.array(image))
         ratio = ratio.numpy()
@@ -315,10 +383,13 @@ class RetinanetDetector:
         nmsed_boxes = nmsed_boxes / ratio
         bboxes = []
         for box, cls, score in zip(nmsed_boxes, nmsed_classes, nmsed_scores):
-            bbox = BBox(*box, name=self.class_to_label_name[cls], score=score)
+            # cast everything to float to prevent issues with JSON serialization
+            # and stick to types specified by BBox class
+            float_bbox = list(map(float, box))
+            bbox = BBox(
+                *float_bbox, name=self.class_to_label_name[cls], score=float(score)
+            )
             bboxes.append(bbox)
-
-        self.cache[image_hash] = bboxes
         return bboxes
 
 
