@@ -1,32 +1,34 @@
 # Metrics
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|----------------|---------------------|----------------|-----------------|------------------|-------------------|--------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/detector.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | -                | 0.34991     | 49     | -                 | 0.09061      |
-| metrics/detector/coco_train.json | 0.99959        | 0.73458             | 0.93166        | -1.0           | -              | -                   | -              | 0.64583         | 0.77778          | 0.77778           | 60           | -                | -           | -      | -                 | -            |
-| metrics/detector/coco_val.json   | 1.0            | 0.79299             | 1.0            | -1.0           | -              | -                   | -              | 0.8             | 0.8              | 0.8               | 6            | -                | -           | -      | -                 | -            |
-| metrics/keypoint.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | 0.57531          | 0.42469     | 49     | 0.87972           | 0.12028      |
-| metrics/keypoint/coco_train.json | 0.90787        | 0.64236             | 0.57302        | -              | 0.94444        | 0.76944             | 0.73611        | -               | -                | -                 | 60           | -                | -           | -      | -                 | -            |
-| metrics/keypoint/coco_val.json   | 1.0            | 0.61997             | 0.61056        | -              | 1.0            | 0.65                | 0.66667        | -               | -                | -                 | 6            | -                | -           | -      | -                 | -            |
+| metrics/detector.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | -                | 2.3691      | 6      | -                 | 1.58039      |
+| metrics/detector/coco_train.json | 0.99973        | 0.76564             | 0.94837        | -1.0           | -              | -                   | -              | 0.67361         | 0.80972          | 0.80972           | 60           | -                | -           | -      | -                 | -            |
+| metrics/detector/coco_val.json   | 1.0            | 0.73812             | 1.0            | -1.0           | -              | -                   | -              | 0.78333         | 0.78333          | 0.78333           | 6            | -                | -           | -      | -                 | -            |
+| metrics/keypoint.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | 0.6033           | 0.3967      | 9      | 0.80658           | 0.19342      |
+| metrics/keypoint/coco_train.json | 0.82198        | 0.53196             | 0.39326        | -              | 0.88889        | 0.67778             | 0.58333        | -               | -                | -                 | 60           | -                | -           | -      | -                 | -            |
+| metrics/keypoint/coco_val.json   | 1.0            | 0.52838             | 0.16832        | -              | 1.0            | 0.63333             | 0.33333        | -               | -                | -                 | 6            | -                | -           | -      | -                 | -            |
 
 ```mermaid
 flowchart TD
-	node1["datasets/watch-faces.json.dvc"]
-	node2["download-images"]
-	node3["eval-detector"]
-	node4["eval-keypoint"]
-	node5["train-detector"]
-	node6["train-keypoint"]
-	node7["update-metrics"]
-	node1-->node2
-	node2-->node5
-	node2-->node6
+	node1["checkpoints/keypoint.dvc"]
+	node2["datasets/watch-faces.json.dvc"]
+	node3["download-images"]
+	node4["eval-detector"]
+	node5["eval-keypoint"]
+	node6["train-detector"]
+	node7["train-keypoint"]
+	node8["update-metrics"]
+	node1-->node7
+	node2-->node3
+	node3-->node6
 	node3-->node7
-	node4-->node7
-	node5-->node3
-	node5-->node4
-	node5-->node7
+	node4-->node8
+	node5-->node8
 	node6-->node4
-	node6-->node7
+	node6-->node5
+	node6-->node8
+	node7-->node5
+	node7-->node8
 ```
 # Demo - version 2
 

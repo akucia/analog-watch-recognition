@@ -115,7 +115,8 @@ stages:
       - metrics/keypoint.json:
           cache: false
     plots:
-      - metrics/keypoint/scalars/
+      - metrics/keypoint/scalars/:
+          cache: false
     outs:
       - example_predictions/keypoint/test-image-2.jpg:
           persist: true
