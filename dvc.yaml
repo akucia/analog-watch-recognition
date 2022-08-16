@@ -20,6 +20,7 @@ stages:
       --batch-size ${detector.batch-size} 
       --confidence-threshold ${detector.confidence-threshold} 
       --seed ${seed}
+      --fine-tune-from-checkpoint
     params:
       - detector.epochs
       - detector.batch-size
@@ -30,6 +31,7 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/object_detection_task.py
+      - checkpoints/detector/
     metrics:
       - metrics/detector.json:
           cache: false
@@ -40,8 +42,6 @@ stages:
       - example_predictions/detector/test-image.jpg
       - models/detector/:
           persist: true
-      - checkpoints/detector/:
-          checkpoint: true
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
@@ -100,6 +100,7 @@ stages:
       --batch-size ${keypoint.batch-size}
       --confidence-threshold ${keypoint.confidence-threshold}
       --seed ${seed}
+      --fine-tune-from-checkpoint
     params:
       - keypoint
       - seed
@@ -109,6 +110,7 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/heatmap_regression_task.py
+      - checkpoints/keypoint/
     metrics:
       - metrics/keypoint.json:
           cache: false
@@ -119,8 +121,6 @@ stages:
           persist: true
       - models/keypoint/:
           persist: true
-      - checkpoints/keypoint/:
-          checkpoint: true
   eval-keypoint:
     cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py --kp-confidence-threshold ${keypoint.confidence-threshold}
     deps:

@@ -75,7 +75,7 @@ def main(
     image_size = (image_size, image_size)
     # TODO new data loader - augment before cropping
     bbox_labels = ["WatchFace"]
-    checkpoint_path = Path("checkpoints/keypoint/")
+    checkpoint_path = Path("checkpoints/keypoint/checkpoint")
 
     crop_size = image_size
     dataset_train = list(
@@ -138,18 +138,19 @@ def main(
     if fine_tune_from_checkpoint and checkpoint_path.exists():
         train_model.load_weights(checkpoint_path)
 
-    callbacks_list = [
-        DvcLiveCallback(path="metrics/keypoint"),
-        tf.keras.callbacks.ModelCheckpoint(
-            checkpoint_path,
-            monitor="val_loss",
-            verbose=1,
-            save_best_only=True,
-            save_weights_only=True,
-            mode="auto",
-            save_freq="epoch",
-        ),
-    ]
+    callbacks_list = [DvcLiveCallback(path="metrics/keypoint")]
+    if not fine_tune_from_checkpoint:
+        callbacks_list.append(
+            tf.keras.callbacks.ModelCheckpoint(
+                checkpoint_path,
+                monitor="val_loss",
+                verbose=1,
+                save_best_only=True,
+                save_weights_only=True,
+                mode="auto",
+                save_freq="epoch",
+            ),
+        )
     # -- train model
     train_model.fit(
         X,

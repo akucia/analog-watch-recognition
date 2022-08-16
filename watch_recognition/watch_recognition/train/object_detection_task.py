@@ -731,7 +731,7 @@ def main(
     label_to_cls = {"WatchFace": 0}  # TODO this should be in params.yaml
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
-    checkpoint_path = Path("checkpoints/detector/")
+    checkpoint_path = Path("checkpoints/detector/checkpoint")
 
     # -- setup train model
     resnet50_backbone = get_backbone()
@@ -742,18 +742,19 @@ def main(
     optimizer = tf.optimizers.Adam(learning_rate=3e-4)
     train_model.compile(optimizer=optimizer)
 
-    callbacks_list = [
-        DvcLiveCallback(path="metrics/detector"),
-        tf.keras.callbacks.ModelCheckpoint(
-            checkpoint_path,
-            monitor="val_loss",
-            verbose=1,
-            save_best_only=True,
-            save_weights_only=True,
-            mode="auto",
-            save_freq="epoch",
-        ),
-    ]
+    callbacks_list = [DvcLiveCallback(path="metrics/detector")]
+    if not fine_tune_from_checkpoint:
+        callbacks_list.append(
+            tf.keras.callbacks.ModelCheckpoint(
+                checkpoint_path,
+                monitor="val_loss",
+                verbose=1,
+                save_best_only=True,
+                save_weights_only=True,
+                mode="auto",
+                save_freq="epoch",
+            ),
+        )
 
     # -- setup dataset pipeline
     dataset_path = Path("datasets/watch-faces-local.json")

@@ -6,3 +6,9 @@ add-images:
 
 update-metrics:
 	python scripts/update-metrics-table-and-graph.py
+
+generate-detector-checkpoint:
+	python watch_recognition/watch_recognition/train/object_detection_task.py --epochs 50 --batch-size 4 --confidence-threshold 0.5 --seed 42
+
+generate-keypoint-checkpoint:
+	python watch_recognition/watch_recognition/train/heatmap_regression_task.py --epochs 50 --batch-size 4 --confidence-threshold 0.5 --seed 42
