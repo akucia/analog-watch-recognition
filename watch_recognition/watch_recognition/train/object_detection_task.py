@@ -710,6 +710,12 @@ def load_label_studio_bbox_detection_dataset(
 @click.option("--seed", default=None, type=int)
 @click.option("--confidence-threshold", default=0.5, type=float)
 @click.option("--verbosity", default=1, type=int)
+@click.option(
+    "--fine-tune-from-checkpoint",
+    is_flag=True,
+    help="Use previous model's weight to initialize the model. "
+    "If not set ImageNet weights are used instead.",
+)
 def main(
     epochs: int,
     batch_size: int,
@@ -717,6 +723,7 @@ def main(
     seed: Optional[int],
     confidence_threshold: Optional[float],
     verbosity: int,
+    fine_tune_from_checkpoint: bool,
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
@@ -724,16 +731,28 @@ def main(
     label_to_cls = {"WatchFace": 0}  # TODO this should be in params.yaml
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
+    checkpoint_path = Path("checkpoints/detector/")
 
     # -- setup train model
     resnet50_backbone = get_backbone()
     train_model = RetinaNet(num_classes, confidence_threshold, resnet50_backbone)
+    if fine_tune_from_checkpoint and checkpoint_path.exists():
+        train_model.load_weights(checkpoint_path)
 
     optimizer = tf.optimizers.Adam(learning_rate=3e-4)
     train_model.compile(optimizer=optimizer)
 
     callbacks_list = [
         DvcLiveCallback(path="metrics/detector"),
+        tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path,
+            monitor="val_loss",
+            verbose=1,
+            save_best_only=True,
+            save_weights_only=True,
+            mode="auto",
+            save_freq="epoch",
+        ),
     ]
 
     # -- setup dataset pipeline

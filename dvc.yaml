@@ -40,6 +40,8 @@ stages:
       - example_predictions/detector/test-image.jpg
       - models/detector/:
           persist: true
+      - checkpoints/detector/:
+          checkpoint: true
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
@@ -117,6 +119,8 @@ stages:
           persist: true
       - models/keypoint/:
           persist: true
+      - checkpoints/keypoint/:
+          checkpoint: true
   eval-keypoint:
     cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py --kp-confidence-threshold ${keypoint.confidence-threshold}
     deps:

@@ -46,6 +46,12 @@ def encode_kps_to_mask(
 @click.option("--seed", default=None, type=int)
 @click.option("--confidence-threshold", default=0.5, type=float)
 @click.option("--verbosity", default=1, type=int)
+@click.option(
+    "--fine-tune-from-checkpoint",
+    is_flag=True,
+    help="Use previous model's weight to initialize the model. "
+    "If not set ImageNet weights are used instead.",
+)
 def main(
     epochs: int,
     batch_size: int,
@@ -54,6 +60,7 @@ def main(
     seed: int,
     confidence_threshold: float,
     verbosity: int,
+    fine_tune_from_checkpoint: bool,
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
@@ -68,6 +75,7 @@ def main(
     image_size = (image_size, image_size)
     # TODO new data loader - augment before cropping
     bbox_labels = ["WatchFace"]
+    checkpoint_path = Path("checkpoints/keypoint/")
 
     crop_size = image_size
     dataset_train = list(
@@ -127,9 +135,20 @@ def main(
             IOUScore(),
         ],
     )
+    if fine_tune_from_checkpoint and checkpoint_path.exists():
+        train_model.load_weights(checkpoint_path)
 
     callbacks_list = [
         DvcLiveCallback(path="metrics/keypoint"),
+        tf.keras.callbacks.ModelCheckpoint(
+            checkpoint_path,
+            monitor="val_loss",
+            verbose=1,
+            save_best_only=True,
+            save_weights_only=True,
+            mode="auto",
+            save_freq="epoch",
+        ),
     ]
     # -- train model
     train_model.fit(
