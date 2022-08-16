@@ -34,7 +34,8 @@ stages:
       - metrics/detector.json:
           cache: false
     plots:
-      - metrics/detector/scalars
+      - metrics/detector/scalars:
+          cache: false
     outs:
       - example_predictions/detector/test-image.jpg
       - models/detector/:
@@ -64,26 +65,32 @@ stages:
           x: Recall
           y: Precision
           title: Train PR-IoU@0.50
+          cache: false
       - metrics/detector/PR-IoU@0.75_train.tsv:
           x: Recall
           y: Precision
           title: Train PR-IoU@0.75
+          cache: false
       - metrics/detector/PR-IoU@0.95_train.tsv:
           x: Recall
           y: Precision
           title: Train PR-IoU@0.95
+          cache: false
       - metrics/detector/PR-IoU@0.50_val.tsv:
           x: Recall
           y: Precision
           title: Val PR-IoU@0.50
+          cache: false
       - metrics/detector/PR-IoU@0.75_val.tsv:
           x: Recall
           y: Precision
           title: Val PR-IoU@0.75
+          cache: false
       - metrics/detector/PR-IoU@0.95_val.tsv:
           x: Recall
           y: Precision
           title: Val PR-IoU@0.95
+          cache: false
   train-keypoint:
     cmd: >-
       python watch_recognition/watch_recognition/train/heatmap_regression_task.py
