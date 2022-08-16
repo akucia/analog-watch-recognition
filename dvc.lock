@@ -27,8 +27,12 @@ stages:
       size: 267583
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
-      50  --batch-size 4  --confidence-threshold 0.5  --seed 42
+      10  --batch-size 4  --confidence-threshold 0.5  --seed 42 --fine-tune-from-checkpoint
     deps:
+    - path: checkpoints/detector/
+      md5: 4f0ef251a21db42f82d745ffc44d4b34.dir
+      size: 436687933
+      nfiles: 3
     - path: datasets/test
       md5: 7984dcd13dac63d8243a11a0a1ba855b.dir
       size: 7801342
@@ -45,97 +49,96 @@ stages:
       md5: 6e1189368fbea652d848900678674c91
       size: 267583
     - path: watch_recognition/watch_recognition/train/object_detection_task.py
-      md5: e61c66f48f72111e550eb2102482c5b8
-      size: 33069
+      md5: 086744635ca0d700fb3637163ae274b4
+      size: 33179
     params:
       params.yaml:
         detector.batch-size: 4
-        detector.epochs: 50
+        detector.epochs: 10
         seed: 42
     outs:
-    - path: checkpoints/detector/
     - path: example_predictions/detector/test-image.jpg
-      md5: 6ae5033ac9bac792fdc4da32bacd7c81
-      size: 128056
+      md5: ec3a989348c81979605762f7ec27dcc4
+      size: 128356
     - path: metrics/detector.json
-      md5: 9681ac7bb8a6eeaeef74a39f47240c95
-      size: 134
+      md5: 82b9f8739f73e69fe4ca8ee7e47e24a1
+      size: 131
     - path: metrics/detector/scalars
-      md5: 21eb3ef29ac8339385a052e4cc33853d.dir
-      size: 3765
+      md5: af63ee0efbdb2e90230e8a121ebc2122.dir
+      size: 782
       nfiles: 2
     - path: models/detector/
-      md5: 42e34e6b1a2ec95ab08f5471c2314d8d.dir
-      size: 153541794
+      md5: 3457c7fe41ca133b5c6b00fe35f89865.dir
+      size: 153534387
       nfiles: 5
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
     - path: models/detector/
-      md5: 42e34e6b1a2ec95ab08f5471c2314d8d.dir
-      size: 153541794
+      md5: 3457c7fe41ca133b5c6b00fe35f89865.dir
+      size: 153534387
       nfiles: 5
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
       md5: 080fe3096a2ec1867cd3f79e1e2fa8ee
       size: 5723
     outs:
     - path: example_predictions/detector/train_0.jpg
-      md5: 86d13b66b65e06aaed92707a46b682c6
-      size: 106894
+      md5: e3449cd52f2223869ba85aee35f6290c
+      size: 99549
     - path: example_predictions/detector/train_1.jpg
-      md5: 76dbfc520ebd278f6589226091cdce72
+      md5: 8e88f4c1b6adcef0f7c6af45e0fab7bd
       size: 86659
     - path: example_predictions/detector/train_2.jpg
-      md5: 061b9bfa572a042fcf56198fea686612
-      size: 76969
+      md5: e6dc47086ab70cdf854ef5a04d34c7fe
+      size: 77285
     - path: example_predictions/detector/train_3.jpg
-      md5: ab5b78794be00b841da7ba2f48b9874c
-      size: 58072
+      md5: 555fe126c3e5064a3f303391d8c5cf02
+      size: 58104
     - path: example_predictions/detector/train_4.jpg
-      md5: f6c0b7dad308241a2abf39cfc9b44bdd
-      size: 96787
+      md5: a8a9fc1b22a766a11a26afff10f311df
+      size: 96147
     - path: example_predictions/detector/val_0.jpg
-      md5: c4bb41895aff503e5eced6eb0bd91418
-      size: 83896
+      md5: ef10bb0a49b0d7ca1c345904fcf32f7c
+      size: 83502
     - path: example_predictions/detector/val_1.jpg
-      md5: 8a5ea164a2f74dbe2ac20188e282906f
-      size: 133302
+      md5: 413a40008068ba21b86d5f5338516f66
+      size: 133179
     - path: example_predictions/detector/val_2.jpg
-      md5: 2f0ceb134aa9a90a3d2457493c48f29f
-      size: 203737
+      md5: a4d615915e87cbb4296084dda6b61d19
+      size: 215464
     - path: example_predictions/detector/val_3.jpg
-      md5: afdcd529439798e04f7687b500b8f97d
-      size: 112383
+      md5: 83c511be541425a472fe77c048b464d6
+      size: 112194
     - path: metrics/detector/PR-IoU@0.50_train.tsv
-      md5: d4cf37f6b2b4e843dc927b736e62ee71
-      size: 1089
+      md5: d3196f21e47a77724bec0b8293e1e81d
+      size: 1059
     - path: metrics/detector/PR-IoU@0.50_val.tsv
       md5: d3196f21e47a77724bec0b8293e1e81d
       size: 1059
     - path: metrics/detector/PR-IoU@0.75_train.tsv
-      md5: d4f98235e52d5fd16c8485a80004ee97
-      size: 1284
+      md5: 221538d61bdd9eca544de90f41eef7d5
+      size: 1512
     - path: metrics/detector/PR-IoU@0.75_val.tsv
-      md5: d3196f21e47a77724bec0b8293e1e81d
+      md5: 8a736d531c589c40648e33d01a87fd0a
       size: 1059
     - path: metrics/detector/PR-IoU@0.95_train.tsv
-      md5: 969f7bc931fee581f96336f5b7181c96
-      size: 1091
+      md5: 2cb7b30073c0621d50a4b830fcbbf33a
+      size: 1155
     - path: metrics/detector/PR-IoU@0.95_val.tsv
-      md5: 09307fa2fcf62de305771154debf4188
+      md5: eb9c22f401e52e662cc9020d738478e0
       size: 1059
     - path: metrics/detector/coco_train.json
-      md5: ae8e356978cd032c7478c04c1945a0ac
-      size: 284
+      md5: f55b8f7107d9b171a0d0a700ada73ee7
+      size: 270
     - path: metrics/detector/coco_val.json
-      md5: 878771be800f832cad4a7a842e31baad
-      size: 254
+      md5: 73c7d31c040f2d2538b74e7cc79a309e
+      size: 268
   update-metrics:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: b4c3a51e35eee3139e14c06789480732.dir
-      size: 43797
+      md5: 9d74699e0d3d9121847bc3d06e8b6de5.dir
+      size: 45158
       nfiles: 20
   train-keypoint:
     cmd: python watch_recognition/watch_recognition/train/heatmap_regression_task.py
@@ -190,8 +193,8 @@ stages:
       --kp-confidence-threshold 0.5
     deps:
     - path: models/detector/
-      md5: 42e34e6b1a2ec95ab08f5471c2314d8d.dir
-      size: 153541794
+      md5: 3457c7fe41ca133b5c6b00fe35f89865.dir
+      size: 153534387
       nfiles: 5
     - path: models/keypoint/
       md5: 690436e5e98794d3f343fd2dc3c91614.dir
@@ -232,8 +235,8 @@ stages:
       md5: b1de7978c0ef2f9b2208289963bf84d1
       size: 60560
     - path: metrics/keypoint/coco_train.json
-      md5: 02f04e6252497bca72dd6aa5cca1bd33
+      md5: b1d1692d48c5dbb2326fc367c0361935
       size: 261
     - path: metrics/keypoint/coco_val.json
-      md5: 11e397e8662737613f019e55746ab40d
-      size: 230
+      md5: 1e4bad55b0d453ebf8da5f7586e18e36
+      size: 229
