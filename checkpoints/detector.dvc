@@ -1,0 +1,5 @@
+outs:
+- md5: 4f0ef251a21db42f82d745ffc44d4b34.dir
+  size: 436687933
+  nfiles: 3
+  path: detector
