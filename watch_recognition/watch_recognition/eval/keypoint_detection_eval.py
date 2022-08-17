@@ -102,7 +102,7 @@ def main(kp_confidence_threshold):
             save_file.parent.mkdir(exist_ok=True)
             visualize_keypoints(image, points, savefile=save_file)
 
-        coco_tmp_dataset_file = Path(f"coco-kp-{split}.json")
+        coco_tmp_dataset_file = Path(f"/tmp/coco-kp-{split}.json")
         label_studio_bbox_detection_dataset_to_coco(
             dataset_path,
             output_file=coco_tmp_dataset_file,
@@ -114,8 +114,6 @@ def main(kp_confidence_threshold):
             kp_model=kp_detector,
             coco_ds_file=coco_tmp_dataset_file,
         )
-        with open(f"coco-kp-dataset-{split}-tmp.json", "w") as f:
-            json.dump(results, f, indent=2)
         coco_gt = COCO(coco_tmp_dataset_file)
         metrics = {"Num Images": len(coco_gt.imgs)}
 
