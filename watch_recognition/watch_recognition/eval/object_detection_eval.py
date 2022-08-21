@@ -10,11 +10,11 @@ from pycocotools.cocoeval import COCOeval
 from tensorflow import keras
 from tqdm import tqdm
 
-from watch_recognition.predictors import RetinanetDetector
-from watch_recognition.train.object_detection_task import (
+from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
-    visualize_detections,
 )
+from watch_recognition.predictors import RetinanetDetector
+from watch_recognition.train.object_detection_task import visualize_detections
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.utilities import retinanet_prepare_image
 
@@ -28,6 +28,8 @@ def generate_coco_annotations_from_model(
     label_to_cls = {v: k for k, v in cls_to_label.items()}
     for image_id in tqdm(coco.imgs):
         with Image.open(coco.imgs[image_id]["coco_url"]) as img:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
             predictions = detector.predict(img)
 
             coco_predictions = []

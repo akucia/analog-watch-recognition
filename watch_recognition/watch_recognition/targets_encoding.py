@@ -1,6 +1,6 @@
 import dataclasses
 from collections import defaultdict
-from itertools import chain, combinations
+from itertools import combinations
 from typing import List, Optional, Tuple
 
 import cv2
@@ -10,7 +10,7 @@ from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from numpy import mean
 from scipy.optimize import minimize
-from scipy.signal import find_peaks, find_peaks_cwt, peak_widths
+from scipy.signal import find_peaks, peak_widths
 from skimage.draw import circle_perimeter, disk, line
 from skimage.filters import gaussian
 from skimage.measure import label, regionprops
@@ -244,8 +244,10 @@ def decode_single_point_from_heatmap(
     y_idx, x_idx = np.indices(mask.shape)
     x_mask = np.average(x_idx.flatten(), weights=mask.flatten())
     y_mask = np.average(y_idx.flatten(), weights=mask.flatten())
+    flat_mask = mask.flatten()
 
-    return Point(x_mask, y_mask, score=float(mask.flatten().mean()))
+    score = float(np.mean(flat_mask[np.nonzero(flat_mask)]))
+    return Point(x_mask, y_mask, score=score)
 
 
 def extract_points_from_map(
@@ -686,15 +688,12 @@ def fit_lines_to_hands_mask(
 
 def remove_complementary_hands(hands: List[Line], center) -> List[Line]:
     angles_between_hands = np.zeros((len(hands), len(hands)))
-    complementary_hands = []
-    new_hands = []
     hands_and_index = list(enumerate(hands))
     for (i, hand_a), (j, hand_b) in combinations(hands_and_index, 2):
         angle_between = hand_a.angle_between(hand_b)
         angles_between_hands[i][j] = angle_between
 
     angles_between_hands = np.rad2deg(angles_between_hands)
-    complementary_hands_on_the_same_side = angles_between_hands < 5
     complementary_hands_on_the_opposite_sides = angles_between_hands > 175
     elements_to_remove = np.nonzero(complementary_hands_on_the_opposite_sides)
     i_s, j_s = elements_to_remove

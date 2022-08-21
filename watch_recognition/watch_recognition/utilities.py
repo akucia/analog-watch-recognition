@@ -118,6 +118,10 @@ class Point:
     def rename(self, new_name: str) -> "Point":
         return dataclasses.replace(self, name=new_name)
 
+    @property
+    def center(self) -> "Point":
+        return self
+
 
 @dataclasses.dataclass(frozen=True)
 class BBox:
@@ -512,14 +516,17 @@ class Line:
 @dataclasses.dataclass(frozen=True)
 class Polygon:
     coords: np.ndarray
+    # name should be changed to label, and support either str or int
     name: str = ""
 
     @classmethod
     def from_binary_mask(
         cls, mask: np.ndarray, simplification_tolerance: float = 1.0
     ) -> "Polygon":
-        if mask.dtype == np.bool:
-            raise ValueError(f"argument mask must be of type {np.bool}")
+        if mask.dtype != np.bool:
+            raise ValueError(
+                f"argument mask must be of type {np.bool}, got {mask.dtype}"
+            )
 
         labels = measure.label(mask)
         contour = measure.find_contours(labels == 1, 0.5)
@@ -530,17 +537,22 @@ class Polygon:
             return Polygon(appr_poly[:, ::-1])
         return Polygon(np.array([]).reshape(-1, 2))
 
+    def to_binary_mask(self, shape: Tuple[int, int]) -> np.ndarray:
+        mask = np.zeros(shape)
+        cv2.fillPoly(mask, [self.coords.astype(int)], 1)
+        return mask.astype(bool)
+
     def scale(self, x: float, y: float) -> "Polygon":
         coords = self.coords.copy()
         coords[:, 0] *= x
         coords[:, 1] *= y
-        return Polygon(coords=coords)
+        return Polygon(coords=coords, name=self.name)
 
     def translate(self, x: float, y: float) -> "Polygon":
         coords = self.coords.copy()
         coords[:, 0] += x
         coords[:, 1] += y
-        return Polygon(coords=coords)
+        return Polygon(coords=coords, name=self.name)
 
     @property
     def is_empty(self) -> bool:
@@ -554,6 +566,21 @@ class Polygon:
             # upper left corner coordinates
             "points": (self.coords * 100).tolist(),
         }
+
+    @classmethod
+    def from_label_studio_object(cls, data) -> "Polygon":
+        return Polygon(
+            coords=np.array(data["points"]),
+            name=data["polygonlabels"][0],
+        ).scale(1 / 100, 1 / 100)
+
+    @property
+    def center(self) -> "Point":
+        mean_coord = np.mean(self.coords, axis=0)
+        return Point(x=mean_coord[0], y=mean_coord[1])
+
+    def rename(self, new_name: str) -> "Polygon":
+        return dataclasses.replace(self, name=new_name)
 
 
 def mean_line(lines: List[Line], weighted=True) -> Line:
@@ -659,12 +686,12 @@ def resize_and_pad_image(
     return image, image_shape, ratio
 
 
-def match_bboxes_to_points(
-    bboxes: List[BBox], points: List[Point]
-) -> Dict[BBox, List[Point]]:
+def match_objects_to_bboxes(
+    bboxes: List[BBox], objects: List[Union[Point, Polygon, BBox]]
+) -> Dict[BBox, List[Union[Point, Polygon, BBox]]]:
     rectangles_to_kps = defaultdict(list)
     for bbox in bboxes:
-        for kp in points:
-            if bbox.contains(kp):
-                rectangles_to_kps[bbox].append(kp)
+        for obj in objects:
+            if bbox.contains(obj.center):
+                rectangles_to_kps[bbox].append(obj)
     return dict(rectangles_to_kps)

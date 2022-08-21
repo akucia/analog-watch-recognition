@@ -1,21 +1,24 @@
-import argparse
 import os
-from datetime import datetime
-from functools import partial
-from typing import Dict
-from uuid import uuid1
+from pathlib import Path
+from typing import List, Tuple
 
-os.environ["SM_FRAMEWORK"] = "tf.keras"
-
+import click
+import cv2
 import numpy as np
-import segmentation_models as sm
 import tensorflow as tf
 import tensorflow.python.keras.backend as K
+from dvclive.keras import DvcLiveCallback
+from PIL import Image
+from segmentation_models.metrics import IOUScore
 
-from watch_recognition.data_preprocessing import load_binary_masks_from_coco_dataset
-from watch_recognition.datasets import get_watch_hands_mask_dataset
+from watch_recognition.label_studio_adapters import (
+    load_label_studio_polygon_detection_dataset,
+)
 from watch_recognition.models import get_segmentation_model
-from watch_recognition.reports import visualize_high_loss_examples
+from watch_recognition.utilities import Polygon
+from watch_recognition.visualization import visualize_masks
+
+os.environ["SM_FRAMEWORK"] = "tf.keras"
 
 
 def TverskyLoss(targets, inputs, alpha=0.5, beta=0.5, smooth=1e-6):
@@ -34,224 +37,175 @@ def TverskyLoss(targets, inputs, alpha=0.5, beta=0.5, smooth=1e-6):
     return 1 - Tversky
 
 
-def get_args() -> Dict:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--export-dir",
-        type=str,
-        required=False,
-        default=".",
-        help="local or GCS location for writing checkpoints and exporting models",
-    )
-    parser.add_argument(
-        "--data-dir",
-        type=str,
-        required=False,
-        default=None,
-        help="local or GCS location for reading datasets",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=1,
-        help="number of times to go through the data, default=20",
-    )
-    parser.add_argument(
-        "--batch-size",
-        default=32,
-        type=int,
-        help="number of records to read during each training step, default=128",
-    ),
-    parser.add_argument(
-        "--image-size",
-        default=96,
-        type=int,
-        help="number of records to read during each training step, default=128",
-    )
-    parser.add_argument(
-        "--learning-rate",
-        default=1e-3,
-        type=float,
-        help="learning rate for gradient descent, default=.001",
-    )
-    parser.add_argument(
-        "--verbosity",
-        choices=["DEBUG", "ERROR", "FATAL", "INFO", "WARN"],
-        default="INFO",
-    )
-    parser.add_argument(
-        "--model-id",
-        type=str,
-        required=False,
-        default=None,
-    )
-    parser.add_argument(
-        "--use-cloud-tb",
-        type=bool,
-        required=False,
-        default=False,
-    )
-    args, _ = parser.parse_known_args()
-    return args.__dict__
+def encode_polygon_to_mask(
+    polygons: List[Polygon], n_labels: int, mask_size: Tuple[int, int]
+) -> np.ndarray:
+    mask = np.zeros((*mask_size, n_labels))
+    for polygon in polygons:
+        poly_mask = polygon.to_binary_mask(shape=mask_size)
+        cls = int(polygon.name)
+        mask[:, :, cls] += poly_mask
+    return (mask > 0).astype(np.float32)
 
 
-def unison_shuffled_copies(a, b, seed=42):
-    """https://stackoverflow.com/a/4602224/8814045"""
-    np.random.seed(seed)
-    assert len(a) == len(b)
-    p = np.random.permutation(len(a))
-    return a[p], b[p]
-
-
-def train_and_export(
-    image_size,
-    data_dir: str,
-    batch_size,
-    learning_rate,
-    epochs,
-    verbosity,
-    export_dir: str = ".",
-    model_id: str = None,
-    use_cloud_tb: bool = False,
+@click.command()
+@click.option("--epochs", default=1, type=int)
+@click.option("--batch-size", default=32, type=int)
+@click.option("--image-size", default=96, type=int)
+@click.option("--max-images", default=None, type=int)
+@click.option("--seed", default=None, type=int)
+@click.option("--confidence-threshold", default=0.5, type=float)
+@click.option("--verbosity", default=1, type=int)
+@click.option(
+    "--fine-tune-from-checkpoint",
+    is_flag=True,
+    help="Use previous model's weight to initialize the model. "
+    "If not set ImageNet weights are used instead.",
+)
+def main(
+    epochs: int,
+    batch_size: int,
+    image_size: int,
+    max_images: int,
+    seed: int,
+    confidence_threshold: float,
+    verbosity: int,
+    fine_tune_from_checkpoint: bool,
 ):
-    tf.compat.v1.logging.set_verbosity(verbosity)
-    if model_id is None:
-        model_id = str(uuid1()).split("-")[0]
-
+    if seed is not None:
+        tf.keras.utils.set_random_seed(seed)
+    label_to_cls = {
+        "Hands": 0,
+    }
+    # TODO this should be in params.yaml
+    dataset_path = Path("datasets/watch-faces-local.json")
+    cls_to_label = {v: k for k, v in label_to_cls.items()}
+    num_classes = len(label_to_cls)
     image_size = (image_size, image_size)
-
-    X_train, y_train, _, float_hashes = load_binary_masks_from_coco_dataset(
-        os.path.join(data_dir, "segmentation/train/"),
-        image_size=(320, 320),
+    # TODO new data loader - augment before cropping
+    bbox_labels = ["WatchFace"]
+    checkpoint_path = Path("checkpoints/segmentation/checkpoint")
+    crop_size = image_size
+    dataset_train = list(
+        load_label_studio_polygon_detection_dataset(
+            dataset_path,
+            crop_size=crop_size,
+            bbox_labels=bbox_labels,
+            label_mapping=label_to_cls,
+            max_num_images=max_images,
+            split="train",
+        )
     )
+    X = []
+    y = []
+    for img, polygons in dataset_train:
+        X.append(img)
+        y.append(encode_polygon_to_mask(polygons, len(label_to_cls), crop_size))
 
-    print(X_train.shape, y_train.shape)
-    X_val, y_val, _, float_hashes_val = load_binary_masks_from_coco_dataset(
-        os.path.join(data_dir, "segmentation/validation/"),
-        image_size=(320, 320),
+    X = np.array(X)
+    y = np.array(y)
+    print(X.shape, y.shape)
+
+    dataset_val = list(
+        load_label_studio_polygon_detection_dataset(
+            dataset_path,
+            crop_size=crop_size,
+            bbox_labels=bbox_labels,
+            label_mapping=label_to_cls,
+            max_num_images=max_images,
+            split="val",
+        )
     )
+    X_val = []
+    y_val = []
+    for img, polygons in dataset_val:
+        X_val.append(img)
+        y_val.append(encode_polygon_to_mask(polygons, len(label_to_cls), crop_size))
 
-    n_train_examples = len(X_train)
+    X_val = np.array(X_val)
+    y_val = np.array(y_val)
+    print(X_val.shape, y_val.shape)
 
-    dataset_train = get_watch_hands_mask_dataset(
-        X_train,
-        y_train,
+    train_model = get_segmentation_model(
         image_size=image_size,
-        batch_size=batch_size,
-        augment=True,
+        n_outputs=num_classes,
+        backbone="efficientnetb0",
     )
-
-    print(dataset_train)
-    dataset_val = get_watch_hands_mask_dataset(
-        X_val,
-        y_val,
-        image_size=image_size,
-        batch_size=batch_size,
-        augment=False,
-    )
-    dataset_val = dataset_val.cache()
-
-    print(dataset_val)
-
-    backbone_name = "efficientnetb0"
-    model = get_segmentation_model(
-        image_size=image_size,
-        n_outputs=1,
-        output_activation="sigmoid",
-        backbone=backbone_name,
-    )
-    model.summary()
-
-    loss = sm.losses.JaccardLoss()
-
-    optimizer = tf.keras.optimizers.Adam(learning_rate)
-
-    model.compile(
+    train_model.summary()
+    optimizer = tf.keras.optimizers.Adam(1e-3)
+    loss = TverskyLoss
+    train_model.compile(
         loss=loss,
         optimizer=optimizer,
         metrics=[
-            sm.metrics.iou_score,
-            sm.metrics.f1_score,
-            sm.metrics.precision,
-            sm.metrics.recall,
+            IOUScore(),
         ],
     )
-    TYPE = "segmentation"
-    MODEL_NAME = f"{backbone_name}-{TYPE}-{image_size[0]}-{n_train_examples}"
-    start = datetime.now()
-    if use_cloud_tb:
-        logdir = os.path.join(os.environ["AIP_TENSORBOARD_LOG_DIR"], MODEL_NAME)
-
-    else:
-        logdir = os.path.join(export_dir, f"tensorboard_logs/{MODEL_NAME}/")
-
-    print(f"tensorboard logs will be saved in {logdir}")
-    train_summary_path = os.path.join(logdir, "train/")
-    file_writer_distance_metrics_train = tf.summary.create_file_writer(
-        train_summary_path
-    )
-    validation_summary_path = os.path.join(logdir, "validation/")
-    file_writer_distance_metrics_validation = tf.summary.create_file_writer(
-        validation_summary_path
-    )
-    if use_cloud_tb:
-        model_path = os.path.join(os.environ["AIP_MODEL_DIR"], MODEL_NAME)
-    else:
-        model_path = os.path.join(export_dir, f"models/{MODEL_NAME}/")
-    print(f"model will will be saved in {model_path}")
-    model.fit(
-        dataset_train,
-        epochs=epochs,
-        verbose=2,
-        validation_data=dataset_val,
-        callbacks=[
-            tf.keras.callbacks.TensorBoard(
-                log_dir=logdir,
-                update_freq="epoch",
-            ),
-            tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_loss",
-                factor=0.8,
-                patience=10,
-                min_lr=1e-6,
-                cooldown=3,
-                verbose=1,
-            ),
-            tf.keras.callbacks.LambdaCallback(
-                on_epoch_end=partial(
-                    visualize_high_loss_examples,
-                    dataset=dataset_train,
-                    loss=loss,
-                    file_writer=file_writer_distance_metrics_train,
-                    model=model,
-                    every_n_epoch=5,
-                )
-            ),
-            tf.keras.callbacks.LambdaCallback(
-                on_epoch_end=partial(
-                    visualize_high_loss_examples,
-                    dataset=dataset_val,
-                    loss=loss,
-                    file_writer=file_writer_distance_metrics_validation,
-                    model=model,
-                )
-            ),
+    if fine_tune_from_checkpoint and checkpoint_path.exists():
+        train_model.load_weights(checkpoint_path)
+    callbacks_list = [DvcLiveCallback(path="metrics/segmentation")]
+    if not fine_tune_from_checkpoint:
+        callbacks_list.append(
             tf.keras.callbacks.ModelCheckpoint(
-                filepath=model_path,
-                save_weights_only=False,
-                mode="max",
-                monitor="val_iou_score",
+                checkpoint_path,
+                monitor="val_loss",
+                verbose=1,
                 save_best_only=True,
+                save_weights_only=True,
+                mode="auto",
+                save_freq="epoch",
             ),
-        ],
+        )
+    # -- train model
+    train_model.fit(
+        X,
+        y,
+        epochs=epochs,
+        validation_data=(X_val, y_val),
+        callbacks=callbacks_list,
+        verbose=verbosity,
+        batch_size=batch_size,
     )
-    elapsed = (datetime.now() - start).seconds
-    print(
-        f"total training time: {elapsed / 60} minutes, average: {elapsed / 60 / epochs} minutes/epoch"
+
+    #  -- export inference-only model
+    image = tf.keras.Input(shape=[None, None, 3], name="image")
+    resized_image = tf.keras.layers.Resizing(
+        crop_size[0], crop_size[1], interpolation="bilinear", crop_to_aspect_ratio=False
+    )(image)
+    inference_model = get_segmentation_model(
+        image_size=image_size,
+        n_outputs=num_classes,
+        backbone="efficientnetb0",
     )
-    # model.save(model_path)
+
+    predictions = inference_model(resized_image)
+    inference_model = tf.keras.Model(inputs=image, outputs=predictions)
+    inference_model.set_weights(train_model.get_weights())
+    inference_model.save("models/segmentation/")
+
+    # run on a single example image for sanity check if exported detector is working
+    example_image_path = Path("example_data/test-image-2.jpg")
+    save_file = Path(f"example_predictions/segmentation/{example_image_path.name}")
+    save_file.parent.mkdir(exist_ok=True)
+    # TODO use predictor?
+    with Image.open(example_image_path) as img:
+
+        image_np = np.array(img)
+        input_image = tf.expand_dims(image_np, axis=0).numpy()
+
+        results = inference_model.predict(input_image, verbose=0)[0]
+        masks = []
+        for cls, name in cls_to_label.items():
+            mask = results[:, :, cls] > confidence_threshold
+            mask = cv2.resize(
+                mask.astype("uint8"),
+                image_np.shape[:2][::-1],
+                interpolation=cv2.INTER_NEAREST,
+            ).astype("bool")
+            masks.append(mask)
+
+        visualize_masks(image_np, masks, savefile=save_file)
 
 
 if __name__ == "__main__":
-    args = get_args()
-    train_and_export(**args)
+    main()

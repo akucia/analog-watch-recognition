@@ -184,7 +184,9 @@ def main(
             transcriptions = []
             for box in bboxes:
                 points = kp_predictor.predict_from_image_and_bbox(pil_img, box)
+                keypoints.extend(points)
                 pred_center = [p for p in points if p.name == "Center"]
+
                 if pred_center:
                     pred_center = pred_center[0]
                 else:
@@ -194,6 +196,8 @@ def main(
                 pred_top = [p for p in points if p.name == "Top"]
                 if pred_top:
                     pred_top = pred_top[0]
+                else:
+                    continue
                 (
                     minute_and_hour,
                     other,

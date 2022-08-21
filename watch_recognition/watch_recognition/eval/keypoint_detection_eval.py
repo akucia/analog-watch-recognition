@@ -28,6 +28,8 @@ def generate_kp_coco_annotations_from_model(
     object_counter = 1
     for image_id in tqdm(coco.imgs):
         with Image.open(coco.imgs[image_id]["coco_url"]) as img:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
             predictions = detector.predict(img)
 
             coco_predictions = []

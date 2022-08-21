@@ -1,9 +1,8 @@
 """
 Adapted from keras examples https://keras.io/examples/vision/retinanet/
 """
-import json
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Tuple
+from typing import Optional
 
 import click
 import matplotlib.pyplot as plt
@@ -13,7 +12,9 @@ from dvclive.keras import DvcLiveCallback
 from PIL import Image
 from tensorflow import keras
 
-from watch_recognition.data_preprocessing import load_image
+from watch_recognition.label_studio_adapters import (
+    load_label_studio_bbox_detection_dataset,
+)
 from watch_recognition.utilities import BBox, resize_and_pad_image
 
 
@@ -663,44 +664,6 @@ class RetinaNetLoss(tf.losses.Loss):
         box_loss = tf.math.divide_no_nan(tf.reduce_sum(box_loss, axis=-1), normalizer)
         loss = clf_loss + box_loss
         return loss
-
-
-def load_label_studio_bbox_detection_dataset(
-    source: Path,
-    label_mapping: Optional[Dict[str, int]],
-    image_size: Tuple[int, int] = (400, 400),
-    max_num_images: Optional[int] = None,
-    split: Optional[str] = "train",
-) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
-    with source.open("r") as f:
-        tasks = json.load(f)
-    if split is not None:
-        tasks = [task for task in tasks if task["image"].startswith(split)]
-
-    if max_num_images:
-        tasks = tasks[:max_num_images]
-
-    for task in tasks:
-        image_bboxes = []
-        class_labels = []
-        image_path = source.parent / task["image"]
-        img_np = load_image(
-            str(image_path), image_size=image_size, preserve_aspect_ratio=True
-        )
-        for obj in task["bbox"]:
-            # label studio keeps
-            bbox = BBox.from_ltwh(
-                obj["x"],
-                obj["y"],
-                obj["width"],
-                obj["height"],
-                obj["rectanglelabels"][0],
-            ).scale(1 / 100, 1 / 100)
-
-            image_bboxes.append([bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max])
-            class_labels.append(label_mapping[bbox.name])
-        image_bboxes = np.array(image_bboxes).reshape(-1, 4)
-        yield img_np, np.array(image_bboxes), np.array(class_labels)
 
 
 @click.command()

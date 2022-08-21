@@ -144,6 +144,34 @@ stages:
           cache: false
       - metrics/keypoint/coco_val.json:
           cache: false
+  train-segmentation:
+    cmd: >-
+      python watch_recognition/watch_recognition/train/segmentation_task.py
+      --epochs ${segmentation.epochs}
+      --batch-size ${segmentation.batch-size}
+      --confidence-threshold ${segmentation.confidence-threshold}
+      --seed ${seed}
+#      --fine-tune-from-checkpoint
+    params:
+      - segmentation
+      - seed
+    deps:
+      - datasets/train
+      - datasets/test
+      - datasets/val
+      - datasets/watch-faces-local.json
+      - watch_recognition/watch_recognition/train/segmentation_task.py
+    metrics:
+      - metrics/segmentation.json:
+          cache: false
+    plots:
+      - metrics/segmentation/scalars/:
+          cache: false
+    outs:
+      - example_predictions/segmentation/test-image-2.jpg:
+          persist: true
+      - models/segmentation/:
+          persist: true
   update-metrics:
       cmd: python scripts/update-metrics-table-and-graph.py
       deps:

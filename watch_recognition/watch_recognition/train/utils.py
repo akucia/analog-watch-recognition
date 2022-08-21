@@ -7,7 +7,7 @@ from more_itertools import flatten
 from tqdm import tqdm
 
 from watch_recognition.data_preprocessing import load_image
-from watch_recognition.utilities import BBox, Point, match_bboxes_to_points
+from watch_recognition.utilities import BBox, Point, match_objects_to_bboxes
 
 
 def unison_shuffled_copies(a, b, seed=42):
@@ -56,23 +56,26 @@ def label_studio_bbox_detection_dataset_to_coco(
         )
         bboxes = []
         keypoints = []
-        for i, obj in enumerate(task["bbox"]):
-            # label studio keeps
-            label_name = obj["rectanglelabels"][0]
-            if label_name not in categories:
-                categories[label_name] = {
-                    "supercategory": "watch",
-                    "id": len(categories),
-                    "name": label_name,
-                    "keypoints": [],
-                }
+        # TODO this is repeated in some other place too
+        if "bbox" in task:
+            for i, obj in enumerate(task["bbox"]):
+                # label studio keeps
+                label_name = obj["rectanglelabels"][0]
+                if label_name not in categories:
+                    categories[label_name] = {
+                        "supercategory": "watch",
+                        "id": len(categories),
+                        "name": label_name,
+                        "keypoints": [],
+                    }
             bbox = BBox.from_label_studio_object(obj).scale(img_width, img_height)
             bboxes.append(bbox)
-        for i, obj in enumerate(task["kp"]):
-            kp = Point.from_label_studio_object(obj).scale(img_width, img_height)
-            keypoints.append(kp)
+        if "kp" in task:
+            for i, obj in enumerate(task["kp"]):
+                kp = Point.from_label_studio_object(obj).scale(img_width, img_height)
+                keypoints.append(kp)
 
-        bboxes_to_kps = match_bboxes_to_points(bboxes, keypoints)
+        bboxes_to_kps = match_objects_to_bboxes(bboxes, keypoints)
         # It's a mess, but it works
         # Categories could be a separate class with appropriate API and
         # serialization

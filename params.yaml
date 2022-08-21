@@ -1,11 +1,16 @@
 seed: 42
 
 detector:
-  epochs: 10
+  epochs: 40
   batch-size: 4
   confidence-threshold: 0.5
 
 keypoint:
-  epochs: 10
+  epochs: 20
+  batch-size: 8
+  confidence-threshold: 0.5
+
+segmentation:
+  epochs: 1
   batch-size: 8
   confidence-threshold: 0.5
