@@ -137,8 +137,8 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: f19179f52fef13ed88190658253246cd.dir
-      size: 94695
+      md5: 17f58e627b6a0c566762e1de80520ca1.dir
+      size: 130621
       nfiles: 32
   train-keypoint:
     cmd: python watch_recognition/watch_recognition/train/heatmap_regression_task.py
@@ -242,7 +242,7 @@ stages:
       size: 229
   train-segmentation:
     cmd: python watch_recognition/watch_recognition/train/segmentation_task.py --epochs
-      1 --batch-size 8 --confidence-threshold 0.5 --seed 42
+      50 --batch-size 8 --confidence-threshold 0.5 --seed 42
     deps:
     - path: datasets/test
       md5: 6904a01888485f56672750554a7bb1e0.dir
@@ -260,27 +260,27 @@ stages:
       md5: a10817f0241af091cc81648de4cebe36
       size: 513560
     - path: watch_recognition/watch_recognition/train/segmentation_task.py
-      md5: 24f77fb832bf7bdfb0b5e8cce7729875
+      md5: 25c69a661789d887aea08f7926d0099a
       size: 6647
     params:
       params.yaml:
         seed: 42
         segmentation:
-          epochs: 1
+          epochs: 50
           batch-size: 8
           confidence-threshold: 0.5
     outs:
     - path: example_predictions/segmentation/test-image-2.jpg
-      md5: 31b32d6560776608525565a994c766d8
-      size: 50888
+      md5: ed1ababf89edb3d484d9cb30c7ae605a
+      size: 48201
     - path: metrics/segmentation.json
-      md5: fa599679943322c90d9e16dbdf1a34c4
-      size: 214
+      md5: 3459eaf6013e904d5bc5a4c9d473f5f1
+      size: 216
     - path: metrics/segmentation/scalars/
-      md5: c1ac83b448bf30641531f380a1965190.dir
-      size: 262
+      md5: 0c9e4d4c17ef5d27092a579944b45c55.dir
+      size: 7540
       nfiles: 4
     - path: models/segmentation/
-      md5: eb4ab3f2c94b6419682d46e8effbae4f.dir
-      size: 514977073
+      md5: 3f58a7a24f8fbc604b4895cc25808ed7.dir
+      size: 514984390
       nfiles: 20
