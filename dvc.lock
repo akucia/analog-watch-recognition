@@ -4,8 +4,8 @@ stages:
     cmd: python scripts/download-images.py datasets/watch-faces.json
     deps:
     - path: datasets/watch-faces.json
-      md5: e00b9915f01e7e120532a6d54a61c252
-      size: 585871
+      md5: 3a4bceadbf8919f79d8d54cf9e4cf798
+      size: 644258
     - path: scripts/download-images.py
       md5: 163a2ddbebf57d03fc4ac6640fff005b
       size: 1804
@@ -15,16 +15,16 @@ stages:
       size: 16911707
       nfiles: 46
     - path: datasets/train
-      md5: 29abfb890b9f24cfd5c88b984c94b542.dir
-      size: 77425813
-      nfiles: 127
+      md5: 17f79e1cbb37ff869a2b6109fd5ecff8.dir
+      size: 79597491
+      nfiles: 141
     - path: datasets/val
-      md5: e21bafb57ef37eafe2c29b95272491bb.dir
-      size: 4076979
-      nfiles: 6
+      md5: 99f455ab8c8d2db34f9b5c994e17cb00.dir
+      size: 6906661
+      nfiles: 9
     - path: datasets/watch-faces-local.json
-      md5: db7c3dda8302f2f04fc4d627941d0551
-      size: 581754
+      md5: a2ef536988b8940b0e408be98229d777
+      size: 639750
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
       50  --batch-size 16  --confidence-threshold 0.5  --seed 42 --fine-tune-from-checkpoint
