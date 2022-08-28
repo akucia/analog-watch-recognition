@@ -790,7 +790,10 @@ def main(
     inference_retina = RetinaNet(num_classes, confidence_threshold, resnet50_backbone)
     # building graph on an input without targets will generate
     # a model without loss and metrics steps
-    predictions = inference_retina({"images": image})
+    resized_image = tf.keras.layers.Resizing(
+        384, 384, interpolation="bilinear", crop_to_aspect_ratio=True
+    )(image)
+    predictions = inference_retina({"images": resized_image})
     inference_model = keras.Model(inputs=image, outputs=predictions)
     inference_model.set_weights(train_model.get_weights())
     inference_model.save("models/detector/")

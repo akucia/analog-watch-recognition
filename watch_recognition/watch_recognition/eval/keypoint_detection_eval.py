@@ -12,14 +12,14 @@ from tqdm import tqdm
 from watch_recognition.label_studio_adapters import (
     load_label_studio_kp_detection_dataset,
 )
-from watch_recognition.predictors import KPHeatmapPredictorV2, RetinanetDetector
+from watch_recognition.predictors import KPHeatmapPredictorV2Local, RetinanetDetector
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.visualization import visualize_keypoints
 
 
 def generate_kp_coco_annotations_from_model(
     detector: RetinanetDetector,
-    kp_model: KPHeatmapPredictorV2,
+    kp_model: KPHeatmapPredictorV2Local,
     coco_ds_file,
 ):
     coco = COCO(coco_ds_file)
@@ -69,7 +69,7 @@ def main(kp_confidence_threshold):
     }
     dataset_path = Path("datasets/watch-faces-local.json")
     cls_to_label = {v: k for k, v in label_to_cls.items()}
-    kp_detector = KPHeatmapPredictorV2(
+    kp_detector = KPHeatmapPredictorV2Local(
         Path("models/keypoint/"),
         class_to_label_name=cls_to_label,
         confidence_threshold=kp_confidence_threshold,

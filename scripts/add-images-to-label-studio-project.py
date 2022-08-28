@@ -19,6 +19,7 @@ from watch_recognition.models import points_to_time
 from watch_recognition.predictors import (
     HandPredictor,
     KPHeatmapPredictorV2,
+    KPHeatmapPredictorV2GRPC,
     RetinanetDetector,
 )
 
@@ -129,8 +130,9 @@ def main(
             url="https://storage.googleapis.com/akuc-ml-public/models/effnet-b3-FPN-160-tversky-hands.tar.gz"
         )
     )
-    kp_predictor = KPHeatmapPredictorV2(
-        "models/keypoint",
+    kp_predictor = KPHeatmapPredictorV2GRPC(
+        host="localhost:8500",
+        model_name="keypoint",
         class_to_label_name={
             0: "Top",
             1: "Center",

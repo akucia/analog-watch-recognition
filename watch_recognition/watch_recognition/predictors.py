@@ -6,11 +6,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
+import grpc
 import numpy as np
 import tensorflow as tf
 from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
+from tensorflow_serving.apis import predict_pb2, prediction_service_pb2_grpc
+from tensorflow_serving.apis.predict_pb2 import PredictResponse
 
 from watch_recognition.models import points_to_time
 from watch_recognition.targets_encoding import (
@@ -115,15 +118,14 @@ class KPHeatmapPredictor(KPPredictor):
         return points
 
 
-class KPHeatmapPredictorV2:
-    def __init__(
-        self, model_path, class_to_label_name, confidence_threshold: float = 0.5
-    ):
-        self.model: tf.keras.models.Model = tf.keras.models.load_model(
-            model_path, compile=False
-        )
+class KPHeatmapPredictorV2(ABC):
+    def __init__(self, class_to_label_name, confidence_threshold: float = 0.5):
         self.confidence_threshold = confidence_threshold
         self.class_to_label_name = class_to_label_name
+
+    @abc.abstractmethod
+    def _predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+        pass
 
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[Point]:
         """Runs predictions on a crop of a watch face.
@@ -132,7 +134,7 @@ class KPHeatmapPredictorV2:
 
         image_np = np.array(image)
         batch_image_np = np.expand_dims(image_np, 0)
-        predicted = self.model.predict(batch_image_np, verbose=0)[0]
+        predicted = self._predict(batch_image_np)
         points = self._decode_keypoints(
             predicted,
             crop_image_width=image_np.shape[1],
@@ -175,6 +177,58 @@ class KPHeatmapPredictorV2:
                 )
                 points.append(maybe_point)
         return points
+
+
+class KPHeatmapPredictorV2Local(KPHeatmapPredictorV2):
+    def __init__(
+        self, model_path, class_to_label_name, confidence_threshold: float = 0.5
+    ):
+        self.model: tf.keras.models.Model = tf.keras.models.load_model(
+            model_path, compile=False
+        )
+        super().__init__(class_to_label_name, confidence_threshold)
+
+    def _predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+        predicted = self.model.predict(batch_image_np, verbose=0)[0]
+        return predicted
+
+
+class KPHeatmapPredictorV2GRPC(KPHeatmapPredictorV2):
+    def __init__(
+        self,
+        host: str,
+        model_name: str,
+        class_to_label_name,
+        confidence_threshold: float = 0.5,
+        timeout: float = 10.0,
+    ):
+        self.host: host
+        self.model_name = model_name
+        self.channel = grpc.insecure_channel("localhost:8500")
+        self.stub = prediction_service_pb2_grpc.PredictionServiceStub(self.channel)
+        self.timeout = timeout
+        super().__init__(class_to_label_name, confidence_threshold)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        self.channel.close()
+
+    def _predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+        request = predict_pb2.PredictRequest()
+        request.model_spec.name = self.model_name
+        request.model_spec.signature_name = "serving_default"
+        request.inputs["image"].CopyFrom(tf.make_tensor_proto(batch_image_np))
+        result = self.stub.Predict(request, self.timeout)
+        return self._decode_proto_results(result)
+
+    def _decode_proto_results(self, result: PredictResponse) -> np.ndarray:
+        # TODO rename the model outputs name later
+        output = result.outputs["model_3"]
+        value = output.float_val
+        shape = [dim.size for dim in output.tensor_shape.dim]
+        return np.array(value).reshape(shape)
 
 
 class KPRegressionPredictor(KPPredictor):
@@ -249,6 +303,14 @@ class HandPredictor:
             other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
             polygon = polygon.translate(bbox.left, bbox.top)
             return valid_lines, other_lines, polygon
+
+
+class HandPredictorLocal(HandPredictor):
+    pass
+
+
+class HandPredictorGRPC(HandPredictor):
+    pass
 
 
 class TFLiteDetector:

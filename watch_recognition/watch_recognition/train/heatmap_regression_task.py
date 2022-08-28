@@ -9,6 +9,7 @@ import tensorflow as tf
 from dvclive.keras import DvcLiveCallback
 from PIL import Image
 from segmentation_models.metrics import IOUScore
+from tensorflow_serving.apis import model_pb2, predict_pb2, prediction_log_pb2
 
 from watch_recognition.label_studio_adapters import (
     load_label_studio_kp_detection_dataset,
@@ -173,9 +174,11 @@ def main(
         backbone="efficientnetb0",
     )
     predictions = inference_model(resized_image)
+    # TODO name outputs
     inference_model = tf.keras.Model(inputs=image, outputs=predictions)
     inference_model.set_weights(train_model.get_weights())
-    inference_model.save("models/keypoint/")
+    model_save_path = Path("models/keypoint/")
+    inference_model.save(model_save_path)
 
     # run on a single example image for sanity check if exported detector is working
     example_image_path = Path("example_data/test-image-2.jpg")
@@ -185,22 +188,37 @@ def main(
     with Image.open(example_image_path) as img:
 
         input_image = np.array(img)
-        input_image = tf.expand_dims(input_image, axis=0).numpy()
+        input_image = np.expand_dims(input_image, axis=0)
 
-        results = inference_model.predict(input_image)[0]
-        points = []
-        for cls, name in cls_to_label.items():
-            point = decode_single_point_from_heatmap(
-                results[:, :, cls],
-                threshold=confidence_threshold,
+    results = inference_model.predict(input_image)[0]
+    points = []
+    for cls, name in cls_to_label.items():
+        point = decode_single_point_from_heatmap(
+            results[:, :, cls],
+            threshold=confidence_threshold,
+        )
+        if point is not None:
+            point = point.rename(name)
+            point = point.scale(
+                img.width / results.shape[1], img.height / results.shape[0]
             )
-            if point is not None:
-                point = point.rename(name)
-                point = point.scale(
-                    img.width / results.shape[1], img.height / results.shape[0]
-                )
-                points.append(point)
-        visualize_keypoints(img, points, savefile=save_file)
+            points.append(point)
+    visualize_keypoints(img, points, savefile=save_file)
+
+    warmup_tf_record_file = (
+        model_save_path / "assets.extra" / "tf_serving_warmup_requests"
+    )
+    warmup_tf_record_file.parent.mkdir(exist_ok=True, parents=True)
+    with tf.io.TFRecordWriter(str(warmup_tf_record_file)) as writer:
+        tensor_proto = tf.make_tensor_proto(input_image)
+        request = predict_pb2.PredictRequest(
+            model_spec=model_pb2.ModelSpec(signature_name="serving_default"),
+            inputs={"image": tensor_proto},
+        )
+        log = prediction_log_pb2.PredictionLog(
+            predict_log=prediction_log_pb2.PredictLog(request=request)
+        )
+        writer.write(log.SerializeToString())
 
 
 if __name__ == "__main__":

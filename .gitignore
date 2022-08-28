@@ -317,4 +317,5 @@ runs.json
 !/scripts/
 !/models/detector/
 !/models/keypoint/
+!/models/segmentation/
 /example_predictions
