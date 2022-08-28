@@ -187,7 +187,7 @@ def main(
     # TODO use predictor?
     with Image.open(example_image_path) as img:
 
-        input_image = np.array(img)
+        input_image = np.array(img).astype(np.float32)
         input_image = np.expand_dims(input_image, axis=0)
 
     results = inference_model.predict(input_image)[0]

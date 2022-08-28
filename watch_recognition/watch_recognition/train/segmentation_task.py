@@ -170,6 +170,7 @@ def main(
 
     #  -- export inference-only model
     image = tf.keras.Input(shape=[None, None, 3], name="image")
+    # TODO layer with uint8 -> float conversion
     resized_image = tf.keras.layers.Resizing(
         crop_size[0], crop_size[1], interpolation="bilinear", crop_to_aspect_ratio=False
     )(image)
@@ -192,9 +193,9 @@ def main(
     save_file.parent.mkdir(exist_ok=True)
 
     with Image.open(example_image_path) as img:
-        image_np = np.array(img)
+        image_np = np.array(img).astype(np.float32)
 
-    input_image = tf.expand_dims(image_np, axis=0).numpy()
+    input_image = np.expand_dims(image_np, axis=0)
 
     results = inference_model.predict(input_image, verbose=0)[0]
     masks = []

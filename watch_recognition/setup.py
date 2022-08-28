@@ -27,8 +27,8 @@ setuptools.setup(
         "requests",
         "segmentation_models",
         "distinctipy==1.1.5",
-        "google-cloud-storage",
-        "google-api-python-client",
-        "more-itertools~=8.14.0,
+        "google-cloud-storage>=2.5.0",
+        "google-api-python-client>=2.58.0",
+        "more-itertools~=8.14.0",
     ],
 )

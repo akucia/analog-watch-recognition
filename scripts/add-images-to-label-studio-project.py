@@ -17,13 +17,14 @@ from tqdm import tqdm
 
 from watch_recognition.models import points_to_time
 from watch_recognition.predictors import (
-    HandPredictor,
-    KPHeatmapPredictorV2,
+    HandPredictorGRPC,
     KPHeatmapPredictorV2GRPC,
-    RetinanetDetector,
+    RetinaNetDetectorGRPC,
 )
 
 logger = logging.getLogger(__name__)
+logger.addHandler(logging.StreamHandler())
+storage_client = storage.Client()
 
 
 def upload_blob(
@@ -31,7 +32,6 @@ def upload_blob(
 ) -> str:
     """Uploads a file to the bucket."""
 
-    storage_client = storage.Client()
     bucket: Bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(destination_blob_name)
 
@@ -82,7 +82,7 @@ def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
     default="watch-recognition",
     help="Specify the GStorage bucket tu upload images",
 )
-@click.option("--verbose", default=False)
+@click.option("--verbose", is_flag=True)
 @click.option("--label-studio-project")
 @click.option("--label-studio-host")
 @click.option("--label-studio-api-token")
@@ -121,14 +121,13 @@ def main(
     #     title=bucket_name,
     # )
     cls_to_label = {0: "WatchFace"}
-    detector = RetinanetDetector(
-        Path("models/detector/"), class_to_label_name=cls_to_label
+    detector = RetinaNetDetectorGRPC(
+        "localhost:8500", model_name="detector", class_to_label_name=cls_to_label
     )
 
-    hand_predictor = HandPredictor(
-        download_and_uzip_model(
-            url="https://storage.googleapis.com/akuc-ml-public/models/effnet-b3-FPN-160-tversky-hands.tar.gz"
-        )
+    hand_predictor = HandPredictorGRPC(
+        host="localhost:8500",
+        model_name="segmentation",
     )
     kp_predictor = KPHeatmapPredictorV2GRPC(
         host="localhost:8500",
@@ -172,7 +171,7 @@ def main(
             continue
         upload_blob(
             bucket_name=bucket_name,
-            source_file_name=img_path,
+            source_file_name=str(img_path),
             destination_blob_name=blob_path,
         )
 
@@ -184,7 +183,7 @@ def main(
             polygons = []
             keypoints = []
             transcriptions = []
-            for box in bboxes:
+            for box in tqdm(bboxes, leave=False):
                 points = kp_predictor.predict_from_image_and_bbox(pil_img, box)
                 keypoints.extend(points)
                 pred_center = [p for p in points if p.name == "Center"]

@@ -695,6 +695,7 @@ def main(
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
     checkpoint_path = Path("checkpoints/detector/checkpoint")
+    model_path = Path("models/detector/")
 
     # -- setup train model
     resnet50_backbone = get_backbone()
@@ -796,7 +797,8 @@ def main(
     predictions = inference_retina({"images": resized_image})
     inference_model = keras.Model(inputs=image, outputs=predictions)
     inference_model.set_weights(train_model.get_weights())
-    inference_model.save("models/detector/")
+
+    inference_model.save(model_path)
 
     # run on a single example image for sanity check if exported detector is working
     example_image_path = Path("example_data/test-image.jpg")
@@ -830,6 +832,19 @@ def main(
         nmsed_scores,
         savefile=save_file,
     )
+
+    warmup_tf_record_file = model_path / "assets.extra" / "tf_serving_warmup_requests"
+    warmup_tf_record_file.parent.mkdir(exist_ok=True, parents=True)
+    with tf.io.TFRecordWriter(str(warmup_tf_record_file)) as writer:
+        tensor_proto = tf.make_tensor_proto(img_np)
+        request = predict_pb2.PredictRequest(
+            model_spec=model_pb2.ModelSpec(signature_name="serving_default"),
+            inputs={"image": tensor_proto},
+        )
+        log = prediction_log_pb2.PredictionLog(
+            predict_log=prediction_log_pb2.PredictLog(request=request)
+        )
+        writer.write(log.SerializeToString())
 
 
 if __name__ == "__main__":

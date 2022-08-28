@@ -5,7 +5,6 @@ from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
-import cv2
 import grpc
 import numpy as np
 import tensorflow as tf
@@ -86,45 +85,13 @@ class KPPredictor(ABC):
             return points
 
 
-class KPHeatmapPredictor(KPPredictor):
-    def __init__(
-        self, model_path, class_to_label_name, confidence_threshold: float = 0.5
-    ):
-        self.model = tf.keras.models.load_model(model_path, compile=False)
-        self.input_size = (96, 96)
-        self.output_size = (96, 96)
-        self.cache = {}
-        self.confidence_threshold = confidence_threshold
-        self.class_to_label_name = class_to_label_name
-
-    def _decode_keypoints(self, image: Image, predicted: np.ndarray) -> List[Point]:
-        image = np.array(image)
-        img_width, img_height = image.shape[1], image.shape[0]
-        input_image = cv2.resize(image, self.input_size, interpolation=cv2.INTER_CUBIC)
-        input_image = np.expand_dims(input_image, axis=0)
-        results = self.model.predict(input_image, verbose=0)[0]
-        points = []
-        for cls, name in self.class_to_label_name.items():
-            point = decode_single_point_from_heatmap(
-                results[:, :, cls],
-                threshold=self,
-            )
-            if point is not None:
-                point = point.rename(name)
-                point = point.scale(
-                    img_width / self.input_size[1], img_height / self.input_size[0]
-                )
-                points.append(point)
-        return points
-
-
 class KPHeatmapPredictorV2(ABC):
     def __init__(self, class_to_label_name, confidence_threshold: float = 0.5):
         self.confidence_threshold = confidence_threshold
         self.class_to_label_name = class_to_label_name
 
     @abc.abstractmethod
-    def _predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+    def _batch_predict(self, batch_image_np: np.ndarray) -> np.ndarray:
         pass
 
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[Point]:
@@ -133,8 +100,8 @@ class KPHeatmapPredictorV2(ABC):
         """
 
         image_np = np.array(image)
-        batch_image_np = np.expand_dims(image_np, 0)
-        predicted = self._predict(batch_image_np)
+        batch_image_np = np.expand_dims(image_np, 0).astype("float32")
+        predicted = self._batch_predict(batch_image_np)[0]
         points = self._decode_keypoints(
             predicted,
             crop_image_width=image_np.shape[1],
@@ -188,8 +155,8 @@ class KPHeatmapPredictorV2Local(KPHeatmapPredictorV2):
         )
         super().__init__(class_to_label_name, confidence_threshold)
 
-    def _predict(self, batch_image_np: np.ndarray) -> np.ndarray:
-        predicted = self.model.predict(batch_image_np, verbose=0)[0]
+    def _batch_predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+        predicted = self.model.predict(batch_image_np, verbose=0)
         return predicted
 
 
@@ -202,9 +169,9 @@ class KPHeatmapPredictorV2GRPC(KPHeatmapPredictorV2):
         confidence_threshold: float = 0.5,
         timeout: float = 10.0,
     ):
-        self.host: host
+        self.host = host
         self.model_name = model_name
-        self.channel = grpc.insecure_channel("localhost:8500")
+        self.channel = grpc.insecure_channel(self.host)
         self.stub = prediction_service_pb2_grpc.PredictionServiceStub(self.channel)
         self.timeout = timeout
         super().__init__(class_to_label_name, confidence_threshold)
@@ -215,7 +182,7 @@ class KPHeatmapPredictorV2GRPC(KPHeatmapPredictorV2):
     def __exit__(self):
         self.channel.close()
 
-    def _predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+    def _batch_predict(self, batch_image_np: np.ndarray) -> np.ndarray:
         request = predict_pb2.PredictRequest()
         request.model_spec.name = self.model_name
         request.model_spec.signature_name = "serving_default"
@@ -242,44 +209,40 @@ class KPRegressionPredictor(KPPredictor):
         return center, top
 
 
-class HandPredictor:
-    def __init__(self, model_path):
-        self.model = tf.keras.models.load_model(model_path, compile=False)
-        self.input_size = tuple(self.model.inputs[0].shape[1:3])
-        self.output_size = tuple(self.model.outputs[0].shape[1:3])
-        self.cache = {}
+class HandPredictor(ABC):
+    def __init__(self, confidence_threshold: float):
+        self.confidence_threshold = confidence_threshold
+
+    @abc.abstractmethod
+    def _batch_predict(self, batch_image_numpy: np.ndarray) -> np.ndarray:
+        pass
 
     def predict(
         self,
         image: ImageType,
         center_point: Point,
-        threshold: float = 0.999,
         debug: bool = False,
     ) -> Tuple[Tuple[Line, Line], List[Line], Polygon]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
-        # TODO switch to ImageOps.pad
-        # ImageOps.pad(image, size=self.input_size, method=BICUBIC)
-        with image.resize(self.input_size, BICUBIC) as resized_image:
-            image_np = np.expand_dims(resized_image, 0)
-            predicted = self.model.predict(image_np)[0]
+        image_np = np.expand_dims(np.array(image), 0).astype("float32")
+        predicted = self._batch_predict(image_np)[0]
 
-            predicted = predicted > threshold
-            predicted = (predicted * 255).astype("uint8").squeeze()
-            polygon = Polygon.from_binary_mask(predicted)
+        predicted = predicted > self.confidence_threshold
+        polygon = Polygon.from_binary_mask(predicted.squeeze())
 
-            scale_x = image.width / self.output_size[0]
-            scale_y = image.height / self.output_size[1]
+        scale_x = image.width / predicted.shape[0]
+        scale_y = image.height / predicted.shape[1]
 
-            center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
+        center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
 
-            all_hands_lines = fit_lines_to_hands_mask(
-                predicted, center=center_scaled_to_segmask, debug=debug
-            )
-            all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
-            polygon = polygon.scale(scale_x, scale_y)
-            return (*line_selector(all_hands_lines, center=center_point), polygon)
+        all_hands_lines = fit_lines_to_hands_mask(
+            predicted, center=center_scaled_to_segmask, debug=debug
+        )
+        all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
+        polygon = polygon.scale(scale_x, scale_y)
+        return (*line_selector(all_hands_lines, center=center_point), polygon)
 
     def predict_from_image_and_bbox(
         self,
@@ -296,7 +259,7 @@ class HandPredictor:
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
             center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
             valid_lines, other_lines, polygon = self.predict(
-                crop, center_point_inside_bbox, threshold=threshold, debug=debug
+                crop, center_point_inside_bbox, debug=debug
             )
 
             valid_lines = [line.translate(bbox.left, bbox.top) for line in valid_lines]
@@ -306,11 +269,47 @@ class HandPredictor:
 
 
 class HandPredictorLocal(HandPredictor):
-    pass
+    def __init__(self, model_path, confidence_threshold: float = 0.5):
+        self.model = tf.keras.models.load_model(model_path, compile=False)
+        self.input_size = tuple(self.model.inputs[0].shape[1:3])
+        self.output_size = tuple(self.model.outputs[0].shape[1:3])
+        super().__init__(confidence_threshold=confidence_threshold)
+
+    def _batch_predict(self, batch_image_numpy: np.ndarray) -> np.ndarray:
+        predicted = self.model.predict(batch_image_numpy)
+        return predicted
 
 
 class HandPredictorGRPC(HandPredictor):
-    pass
+    def __init__(
+        self,
+        host: str,
+        model_name: str,
+        timeout: float = 10.0,
+        confidence_threshold: float = 0.5,
+    ):
+        self.host = host
+        self.model_name = model_name
+        self.channel = grpc.insecure_channel(self.host)
+        self.stub = prediction_service_pb2_grpc.PredictionServiceStub(self.channel)
+        self.timeout = timeout
+        super().__init__(confidence_threshold=confidence_threshold)
+
+    # TODO: this could be inherited from another class using Mixin pattern
+    def _batch_predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+        request = predict_pb2.PredictRequest()
+        request.model_spec.name = self.model_name
+        request.model_spec.signature_name = "serving_default"
+        request.inputs["image"].CopyFrom(tf.make_tensor_proto(batch_image_np))
+        result = self.stub.Predict(request, self.timeout)
+        return self._decode_proto_results(result)
+
+    def _decode_proto_results(self, result: PredictResponse) -> np.ndarray:
+        # TODO rename the model outputs name later to make it universal
+        output = result.outputs["model_3"]
+        value = output.float_val
+        shape = [dim.size for dim in output.tensor_shape.dim]
+        return np.array(value).reshape(shape)
 
 
 class TFLiteDetector:
@@ -413,26 +412,30 @@ class TFLiteDetector:
         return bboxes
 
 
-class RetinanetDetector:
+class RetinanetDetector(ABC):
     def __init__(
         self,
-        model_path: Path,
         class_to_label_name: Dict[int, str],
-        input_size: Tuple[int, int] = (334, 334),
     ):
-        self.model = tf.keras.models.load_model(model_path)
-        self.input_size = input_size
         self.class_to_label_name = class_to_label_name
+
+    @abc.abstractmethod
+    def _batch_predict(
+        self, batch_images: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        pass
 
     def predict(self, image: ImageType) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
         # TODO integrate the image preprocessing with the exported model
         input_image, ratio = retinanet_prepare_image(np.array(image))
         ratio = ratio.numpy()
-        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = self.model.predict(
-            input_image,
-            verbose=0,
-        )
+        (
+            nmsed_boxes,
+            nmsed_classes,
+            nmsed_scores,
+            valid_detections,
+        ) = self._batch_predict(input_image.numpy())
         nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
             nmsed_boxes[0],
             nmsed_scores[0],
@@ -453,6 +456,65 @@ class RetinanetDetector:
             )
             bboxes.append(bbox)
         return bboxes
+
+
+class RetinanetDetectorLocal(RetinanetDetector):
+    def __init__(
+        self,
+        model_path: Path,
+        class_to_label_name: Dict[int, str],
+    ):
+        self.model = tf.keras.models.load_model(model_path)
+        super().__init__(class_to_label_name=class_to_label_name)
+
+    def _batch_predict(self, input_image):
+        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = self.model.predict(
+            input_image,
+            verbose=0,
+        )
+        return nmsed_boxes, nmsed_classes, nmsed_scores, valid_detections
+
+
+class RetinaNetDetectorGRPC(RetinanetDetector):
+    def __init__(
+        self,
+        host: str,
+        model_name: str,
+        class_to_label_name: Dict[int, str],
+        timeout: float = 10.0,
+    ):
+        self.host = host
+        self.model_name = model_name
+        self.channel = grpc.insecure_channel(self.host)
+        self.stub = prediction_service_pb2_grpc.PredictionServiceStub(self.channel)
+        self.timeout = timeout
+        super().__init__(class_to_label_name)
+
+    def _batch_predict(
+        self, input_images: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        request = predict_pb2.PredictRequest()
+        request.model_spec.name = self.model_name
+        request.model_spec.signature_name = "serving_default"
+        request.inputs["image"].CopyFrom(tf.make_tensor_proto(input_images))
+        result = self.stub.Predict(request, self.timeout)
+        parsed_results = {}
+        for key in {"RetinaNet", "RetinaNet_1", "RetinaNet_2", "RetinaNet_3"}:
+            output = result.outputs[key]
+            if output.float_val:
+                value = output.float_val
+            elif output.int_val:
+                value = output.int_val
+            else:
+                raise ValueError(f"unrecognized dtype for {output}")
+            shape = [dim.size for dim in output.tensor_shape.dim]
+            parsed_results[key] = np.array(value).reshape(shape)
+
+        nmsed_boxes = parsed_results["RetinaNet"]
+        nmsed_classes = parsed_results["RetinaNet_2"]
+        nmsed_scores = parsed_results["RetinaNet_1"]
+        valid_detections = parsed_results["RetinaNet_3"]
+        return nmsed_boxes, nmsed_classes, nmsed_scores, valid_detections
 
 
 def _hash_image(image: ImageType) -> str:
