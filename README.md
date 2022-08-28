@@ -1,41 +1,42 @@
 # Metrics
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|----------------|---------------------|----------------|-----------------|------------------|-------------------|--------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/detector.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | -                | 0.77352     | 0      | -                 | 1.05424      |
-| metrics/detector/coco_train.json | 0.39836        | 0.23334             | 0.23725        | -1.0           | -              | -                   | -              | 0.335           | 0.37             | 0.37              | 127          | -                | -           | -      | -                 | -            |
-| metrics/detector/coco_val.json   | 1.0            | 0.66106             | 1.0            | -1.0           | -              | -                   | -              | 0.68333         | 0.68333          | 0.68333           | 6            | -                | -           | -      | -                 | -            |
-| metrics/keypoint.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | 0.61688          | 0.38312     | 0      | 0.52108           | 0.47349      |
-| metrics/keypoint/coco_train.json | 0.30234        | 0.16147             | 0.10288        | -              | 0.48333        | 0.29833             | 0.21667        | -               | -                | -                 | 127          | -                | -           | -      | -                 | -            |
-| metrics/keypoint/coco_val.json   | 0.74917        | 0.37343             | 0.25248        | -              | 0.83333        | 0.56667             | 0.5            | -               | -                | -                 | 6            | -                | -           | -      | -                 | -            |
-| metrics/segmentation.json        | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | 0.02852          | 0.94453     | 0      | 0.11828           | 0.8145       |
+| metrics/detector.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | -                | 0.2488      | 49     | -                 | 0.0087       |
+| metrics/detector/coco_train.json | 0.4236         | 0.3206              | 0.39112        | -1.0           | -              | -                   | -              | 0.43167         | 0.4625           | 0.4625            | 127          | -                | -           | -      | -                 | -            |
+| metrics/detector/coco_val.json   | 1.0            | 0.77475             | 1.0            | -1.0           | -              | -                   | -              | 0.78333         | 0.78333          | 0.78333           | 6            | -                | -           | -      | -                 | -            |
+| metrics/keypoint.json            | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | 0.58531          | 0.41469     | 24     | 0.76826           | 0.23865      |
+| metrics/keypoint/coco_train.json | 0.31264        | 0.22896             | 0.18343        | -              | 0.50833        | 0.40583             | 0.35           | -               | -                | -                 | 127          | -                | -           | -      | -                 | -            |
+| metrics/keypoint/coco_val.json   | 0.77723        | 0.36812             | 0.13465        | -              | 0.83333        | 0.48333             | 0.33333        | -               | -                | -                 | 6            | -                | -           | -      | -                 | -            |
+| metrics/segmentation.json        | -              | -                   | -              | -              | -              | -                   | -              | -               | -                | -                 | -            | 0.36534          | 0.46483     | 24     | 0.78224           | 0.1082       |
 
 ```mermaid
 flowchart TD
-	node1["checkpoints/detector.dvc"]
-	node2["checkpoints/keypoint.dvc"]
-	node3["datasets/watch-faces.json.dvc"]
-	node4["download-images"]
-	node5["eval-detector"]
-	node6["eval-keypoint"]
-	node7["train-detector"]
-	node8["train-keypoint"]
-	node9["train-segmentation"]
-	node10["update-metrics"]
-	node1-->node7
-	node2-->node8
-	node3-->node4
-	node4-->node7
-	node4-->node8
-	node4-->node9
+	node1[checkpoints/detector.dvc]
+	node2[checkpoints/keypoint.dvc]
+	node3[checkpoints/segmentation.dvc]
+	node4[datasets/watch-faces.json.dvc]
+	node5[download-images]
+	node6[eval-detector]
+	node7[eval-keypoint]
+	node8[train-detector]
+	node9[train-keypoint]
+	node10[train-segmentation]
+	node11[update-metrics]
+	node1-->node8
+	node2-->node9
+	node3-->node10
+	node4-->node5
+	node5-->node8
+	node5-->node9
 	node5-->node10
-	node6-->node10
-	node7-->node5
-	node7-->node6
-	node7-->node10
+	node6-->node11
+	node7-->node11
 	node8-->node6
-	node8-->node10
-	node9-->node10
-	node11["checkpoints/segmentation.dvc"]
+	node8-->node7
+	node8-->node11
+	node9-->node7
+	node9-->node11
+	node10-->node11
 ```
 # Demo - version 2
 

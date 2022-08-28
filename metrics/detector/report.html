@@ -6,173 +6,326 @@
     
 
     <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
     
-    <style>
-        table {
-            border-spacing: 15px;
-        }
-    </style>
 </head>
 <body>
-    
-        <div id="detector_json" style="text-align: center; padding: 10x">
-            <p>detector_json</p>
-            <div style="display: flex;justify-content: center;">
-                <table>
+    <table>
 <thead>
-<tr><th style="text-align: right;">  step</th><th>train                       </th><th>eval                        </th></tr>
+<tr><th>detector.json                                                                                         </th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: right;">     0</td><td>{&#x27;loss&#x27;: 1.0542386770248413}</td><td>{&#x27;loss&#x27;: 0.7735229134559631}</td></tr>
+<tr><td>{&#x27;data&#x27;: {&#x27;step&#x27;: 49, &#x27;train&#x27;: {&#x27;loss&#x27;: 0.008699892088770866}, &#x27;eval&#x27;: {&#x27;loss&#x27;: 0.24879808723926544}}}</td></tr>
 </tbody>
 </table>
-            </div>
-        </div>
+<br>
 
-    <div id = "static_train_loss">
+    <div id = "plot_eval_loss">
         <script type = "text/javascript">
             var spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
     "data": {
         "values": [
     {
+        "eval/loss": "0.3349434435367584",
         "rev": "workspace",
         "step": "0",
-        "timestamp": "1661679657893",
-        "train/loss": "1.0542386770248413"
-    }
-]
+        "timestamp": "1661684722783"
     },
-    "title": "",
-    "width": 300,
-    "height": 300,
-    "layer": [
-        {
-            "encoding": {
-                "x": {
-                    "field": "step",
-                    "type": "quantitative",
-                    "title": "step"
-                },
-                "y": {
-                    "field": "train/loss",
-                    "type": "quantitative",
-                    "title": "train/loss",
-                    "scale": {
-                        "zero": false
-                    }
-                },
-                "color": {
-                    "field": "rev",
-                    "type": "nominal"
-                }
-            },
-            "layer": [
-                {
-                    "mark": "line"
-                },
-                {
-                    "selection": {
-                        "label": {
-                            "type": "single",
-                            "nearest": true,
-                            "on": "mouseover",
-                            "encodings": [
-                                "x"
-                            ],
-                            "empty": "none",
-                            "clear": "mouseout"
-                        }
-                    },
-                    "mark": "point",
-                    "encoding": {
-                        "opacity": {
-                            "condition": {
-                                "selection": "label",
-                                "value": 1
-                            },
-                            "value": 0
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "transform": [
-                {
-                    "filter": {
-                        "selection": "label"
-                    }
-                }
-            ],
-            "layer": [
-                {
-                    "mark": {
-                        "type": "rule",
-                        "color": "gray"
-                    },
-                    "encoding": {
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        }
-                    }
-                },
-                {
-                    "encoding": {
-                        "text": {
-                            "type": "quantitative",
-                            "field": "train/loss"
-                        },
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        },
-                        "y": {
-                            "field": "train/loss",
-                            "type": "quantitative"
-                        }
-                    },
-                    "layer": [
-                        {
-                            "mark": {
-                                "type": "text",
-                                "align": "left",
-                                "dx": 5,
-                                "dy": -5
-                            },
-                            "encoding": {
-                                "color": {
-                                    "type": "nominal",
-                                    "field": "rev"
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-}
-;
-            vegaEmbed('#static_train_loss', spec);
-        </script>
-    </div>
-    
-
-    <div id = "static_eval_loss">
-        <script type = "text/javascript">
-            var spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-    "data": {
-        "values": [
     {
-        "eval/loss": "0.7735229134559631",
+        "eval/loss": "0.35875532031059265",
         "rev": "workspace",
-        "step": "0",
-        "timestamp": "1661679657893"
+        "step": "1",
+        "timestamp": "1661684743694"
+    },
+    {
+        "eval/loss": "0.2794046103954315",
+        "rev": "workspace",
+        "step": "2",
+        "timestamp": "1661684765157"
+    },
+    {
+        "eval/loss": "0.32687148451805115",
+        "rev": "workspace",
+        "step": "3",
+        "timestamp": "1661684786411"
+    },
+    {
+        "eval/loss": "0.323261022567749",
+        "rev": "workspace",
+        "step": "4",
+        "timestamp": "1661684808252"
+    },
+    {
+        "eval/loss": "0.35264113545417786",
+        "rev": "workspace",
+        "step": "5",
+        "timestamp": "1661684829926"
+    },
+    {
+        "eval/loss": "0.3312123417854309",
+        "rev": "workspace",
+        "step": "6",
+        "timestamp": "1661684851479"
+    },
+    {
+        "eval/loss": "0.3361380994319916",
+        "rev": "workspace",
+        "step": "7",
+        "timestamp": "1661684872851"
+    },
+    {
+        "eval/loss": "0.3148097097873688",
+        "rev": "workspace",
+        "step": "8",
+        "timestamp": "1661684893831"
+    },
+    {
+        "eval/loss": "0.2634902596473694",
+        "rev": "workspace",
+        "step": "9",
+        "timestamp": "1661684914870"
+    },
+    {
+        "eval/loss": "0.26110658049583435",
+        "rev": "workspace",
+        "step": "10",
+        "timestamp": "1661684935921"
+    },
+    {
+        "eval/loss": "0.25926387310028076",
+        "rev": "workspace",
+        "step": "11",
+        "timestamp": "1661684957083"
+    },
+    {
+        "eval/loss": "0.25559261441230774",
+        "rev": "workspace",
+        "step": "12",
+        "timestamp": "1661684978413"
+    },
+    {
+        "eval/loss": "0.2654901444911957",
+        "rev": "workspace",
+        "step": "13",
+        "timestamp": "1661684999766"
+    },
+    {
+        "eval/loss": "0.26016008853912354",
+        "rev": "workspace",
+        "step": "14",
+        "timestamp": "1661685021538"
+    },
+    {
+        "eval/loss": "0.28459954261779785",
+        "rev": "workspace",
+        "step": "15",
+        "timestamp": "1661685042289"
+    },
+    {
+        "eval/loss": "0.2741520404815674",
+        "rev": "workspace",
+        "step": "16",
+        "timestamp": "1661685063196"
+    },
+    {
+        "eval/loss": "0.27747511863708496",
+        "rev": "workspace",
+        "step": "17",
+        "timestamp": "1661685084830"
+    },
+    {
+        "eval/loss": "0.28768453001976013",
+        "rev": "workspace",
+        "step": "18",
+        "timestamp": "1661685106436"
+    },
+    {
+        "eval/loss": "0.2957053482532501",
+        "rev": "workspace",
+        "step": "19",
+        "timestamp": "1661685127881"
+    },
+    {
+        "eval/loss": "0.28215423226356506",
+        "rev": "workspace",
+        "step": "20",
+        "timestamp": "1661685149175"
+    },
+    {
+        "eval/loss": "0.25612375140190125",
+        "rev": "workspace",
+        "step": "21",
+        "timestamp": "1661685170829"
+    },
+    {
+        "eval/loss": "0.25693103671073914",
+        "rev": "workspace",
+        "step": "22",
+        "timestamp": "1661685192695"
+    },
+    {
+        "eval/loss": "0.256910115480423",
+        "rev": "workspace",
+        "step": "23",
+        "timestamp": "1661685213645"
+    },
+    {
+        "eval/loss": "0.2571364939212799",
+        "rev": "workspace",
+        "step": "24",
+        "timestamp": "1661685235395"
+    },
+    {
+        "eval/loss": "0.24994724988937378",
+        "rev": "workspace",
+        "step": "25",
+        "timestamp": "1661685256265"
+    },
+    {
+        "eval/loss": "0.26448193192481995",
+        "rev": "workspace",
+        "step": "26",
+        "timestamp": "1661685277909"
+    },
+    {
+        "eval/loss": "0.2690160274505615",
+        "rev": "workspace",
+        "step": "27",
+        "timestamp": "1661685298755"
+    },
+    {
+        "eval/loss": "0.2666514217853546",
+        "rev": "workspace",
+        "step": "28",
+        "timestamp": "1661685320663"
+    },
+    {
+        "eval/loss": "0.2772323787212372",
+        "rev": "workspace",
+        "step": "29",
+        "timestamp": "1661685341113"
+    },
+    {
+        "eval/loss": "0.25324246287345886",
+        "rev": "workspace",
+        "step": "30",
+        "timestamp": "1661685362233"
+    },
+    {
+        "eval/loss": "0.2455848902463913",
+        "rev": "workspace",
+        "step": "31",
+        "timestamp": "1661685383465"
+    },
+    {
+        "eval/loss": "0.2581805884838104",
+        "rev": "workspace",
+        "step": "32",
+        "timestamp": "1661685404626"
+    },
+    {
+        "eval/loss": "0.2651747763156891",
+        "rev": "workspace",
+        "step": "33",
+        "timestamp": "1661685426143"
+    },
+    {
+        "eval/loss": "0.25797727704048157",
+        "rev": "workspace",
+        "step": "34",
+        "timestamp": "1661685446817"
+    },
+    {
+        "eval/loss": "0.25992855429649353",
+        "rev": "workspace",
+        "step": "35",
+        "timestamp": "1661685468238"
+    },
+    {
+        "eval/loss": "0.2563532590866089",
+        "rev": "workspace",
+        "step": "36",
+        "timestamp": "1661685489840"
+    },
+    {
+        "eval/loss": "0.2682848274707794",
+        "rev": "workspace",
+        "step": "37",
+        "timestamp": "1661685510334"
+    },
+    {
+        "eval/loss": "0.24487002193927765",
+        "rev": "workspace",
+        "step": "38",
+        "timestamp": "1661685531940"
+    },
+    {
+        "eval/loss": "0.24161086976528168",
+        "rev": "workspace",
+        "step": "39",
+        "timestamp": "1661685552885"
+    },
+    {
+        "eval/loss": "0.24971099197864532",
+        "rev": "workspace",
+        "step": "40",
+        "timestamp": "1661685574151"
+    },
+    {
+        "eval/loss": "0.24647082388401031",
+        "rev": "workspace",
+        "step": "41",
+        "timestamp": "1661685595397"
+    },
+    {
+        "eval/loss": "0.25385865569114685",
+        "rev": "workspace",
+        "step": "42",
+        "timestamp": "1661685616649"
+    },
+    {
+        "eval/loss": "0.26142287254333496",
+        "rev": "workspace",
+        "step": "43",
+        "timestamp": "1661685638481"
+    },
+    {
+        "eval/loss": "0.272070974111557",
+        "rev": "workspace",
+        "step": "44",
+        "timestamp": "1661685660177"
+    },
+    {
+        "eval/loss": "0.26161858439445496",
+        "rev": "workspace",
+        "step": "45",
+        "timestamp": "1661685681270"
+    },
+    {
+        "eval/loss": "0.2635469138622284",
+        "rev": "workspace",
+        "step": "46",
+        "timestamp": "1661685703206"
+    },
+    {
+        "eval/loss": "0.25453612208366394",
+        "rev": "workspace",
+        "step": "47",
+        "timestamp": "1661685724350"
+    },
+    {
+        "eval/loss": "0.26179227232933044",
+        "rev": "workspace",
+        "step": "48",
+        "timestamp": "1661685745449"
+    },
+    {
+        "eval/loss": "0.24879808723926544",
+        "rev": "workspace",
+        "step": "49",
+        "timestamp": "1661685767204"
     }
 ]
     },
@@ -288,23 +441,434 @@
     ]
 }
 ;
-            vegaEmbed('#static_eval_loss', spec);
+            vegaEmbed('#plot_eval_loss', spec);
         </script>
     </div>
     
 
-        <div id="detector_json" style="text-align: center; padding: 10x">
-            <p>detector_json</p>
-            <div style="display: flex;justify-content: center;">
-                <table>
-<thead>
-<tr><th style="text-align: right;">  step</th><th>train                       </th><th>eval                        </th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: right;">     0</td><td>{&#x27;loss&#x27;: 1.0542386770248413}</td><td>{&#x27;loss&#x27;: 0.7735229134559631}</td></tr>
-</tbody>
-</table>
-            </div>
-        </div>
+    <div id = "plot_train_loss">
+        <script type = "text/javascript">
+            var spec = {
+    "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+    "data": {
+        "values": [
+    {
+        "rev": "workspace",
+        "step": "0",
+        "timestamp": "1661684722783",
+        "train/loss": "0.6922574043273926"
+    },
+    {
+        "rev": "workspace",
+        "step": "1",
+        "timestamp": "1661684743692",
+        "train/loss": "0.398290753364563"
+    },
+    {
+        "rev": "workspace",
+        "step": "2",
+        "timestamp": "1661684765154",
+        "train/loss": "0.2766540050506592"
+    },
+    {
+        "rev": "workspace",
+        "step": "3",
+        "timestamp": "1661684786408",
+        "train/loss": "0.1783902943134308"
+    },
+    {
+        "rev": "workspace",
+        "step": "4",
+        "timestamp": "1661684808250",
+        "train/loss": "0.12867334485054016"
+    },
+    {
+        "rev": "workspace",
+        "step": "5",
+        "timestamp": "1661684829924",
+        "train/loss": "0.10329602658748627"
+    },
+    {
+        "rev": "workspace",
+        "step": "6",
+        "timestamp": "1661684851477",
+        "train/loss": "0.0841226875782013"
+    },
+    {
+        "rev": "workspace",
+        "step": "7",
+        "timestamp": "1661684872848",
+        "train/loss": "0.07225517183542252"
+    },
+    {
+        "rev": "workspace",
+        "step": "8",
+        "timestamp": "1661684893829",
+        "train/loss": "0.06226884946227074"
+    },
+    {
+        "rev": "workspace",
+        "step": "9",
+        "timestamp": "1661684914867",
+        "train/loss": "0.05725271999835968"
+    },
+    {
+        "rev": "workspace",
+        "step": "10",
+        "timestamp": "1661684935918",
+        "train/loss": "0.05043492466211319"
+    },
+    {
+        "rev": "workspace",
+        "step": "11",
+        "timestamp": "1661684957081",
+        "train/loss": "0.03760522976517677"
+    },
+    {
+        "rev": "workspace",
+        "step": "12",
+        "timestamp": "1661684978410",
+        "train/loss": "0.03404446691274643"
+    },
+    {
+        "rev": "workspace",
+        "step": "13",
+        "timestamp": "1661684999764",
+        "train/loss": "0.0317215770483017"
+    },
+    {
+        "rev": "workspace",
+        "step": "14",
+        "timestamp": "1661685021535",
+        "train/loss": "0.033566173166036606"
+    },
+    {
+        "rev": "workspace",
+        "step": "15",
+        "timestamp": "1661685042286",
+        "train/loss": "0.02738559991121292"
+    },
+    {
+        "rev": "workspace",
+        "step": "16",
+        "timestamp": "1661685063193",
+        "train/loss": "0.023824209347367287"
+    },
+    {
+        "rev": "workspace",
+        "step": "17",
+        "timestamp": "1661685084827",
+        "train/loss": "0.02373942919075489"
+    },
+    {
+        "rev": "workspace",
+        "step": "18",
+        "timestamp": "1661685106434",
+        "train/loss": "0.02278415486216545"
+    },
+    {
+        "rev": "workspace",
+        "step": "19",
+        "timestamp": "1661685127878",
+        "train/loss": "0.027362681925296783"
+    },
+    {
+        "rev": "workspace",
+        "step": "20",
+        "timestamp": "1661685149173",
+        "train/loss": "0.02904215082526207"
+    },
+    {
+        "rev": "workspace",
+        "step": "21",
+        "timestamp": "1661685170827",
+        "train/loss": "0.024379704147577286"
+    },
+    {
+        "rev": "workspace",
+        "step": "22",
+        "timestamp": "1661685192693",
+        "train/loss": "0.02054142951965332"
+    },
+    {
+        "rev": "workspace",
+        "step": "23",
+        "timestamp": "1661685213642",
+        "train/loss": "0.018748469650745392"
+    },
+    {
+        "rev": "workspace",
+        "step": "24",
+        "timestamp": "1661685235392",
+        "train/loss": "0.01743728294968605"
+    },
+    {
+        "rev": "workspace",
+        "step": "25",
+        "timestamp": "1661685256261",
+        "train/loss": "0.01628846675157547"
+    },
+    {
+        "rev": "workspace",
+        "step": "26",
+        "timestamp": "1661685277907",
+        "train/loss": "0.017233557999134064"
+    },
+    {
+        "rev": "workspace",
+        "step": "27",
+        "timestamp": "1661685298752",
+        "train/loss": "0.014701874926686287"
+    },
+    {
+        "rev": "workspace",
+        "step": "28",
+        "timestamp": "1661685320661",
+        "train/loss": "0.013314351439476013"
+    },
+    {
+        "rev": "workspace",
+        "step": "29",
+        "timestamp": "1661685341110",
+        "train/loss": "0.01239545177668333"
+    },
+    {
+        "rev": "workspace",
+        "step": "30",
+        "timestamp": "1661685362231",
+        "train/loss": "0.013326826505362988"
+    },
+    {
+        "rev": "workspace",
+        "step": "31",
+        "timestamp": "1661685383463",
+        "train/loss": "0.010515103116631508"
+    },
+    {
+        "rev": "workspace",
+        "step": "32",
+        "timestamp": "1661685404624",
+        "train/loss": "0.010363825596868992"
+    },
+    {
+        "rev": "workspace",
+        "step": "33",
+        "timestamp": "1661685426140",
+        "train/loss": "0.010307143442332745"
+    },
+    {
+        "rev": "workspace",
+        "step": "34",
+        "timestamp": "1661685446814",
+        "train/loss": "0.009686684235930443"
+    },
+    {
+        "rev": "workspace",
+        "step": "35",
+        "timestamp": "1661685468235",
+        "train/loss": "0.01006553415209055"
+    },
+    {
+        "rev": "workspace",
+        "step": "36",
+        "timestamp": "1661685489837",
+        "train/loss": "0.009692777879536152"
+    },
+    {
+        "rev": "workspace",
+        "step": "37",
+        "timestamp": "1661685510332",
+        "train/loss": "0.011227802373468876"
+    },
+    {
+        "rev": "workspace",
+        "step": "38",
+        "timestamp": "1661685531937",
+        "train/loss": "0.0130092678591609"
+    },
+    {
+        "rev": "workspace",
+        "step": "39",
+        "timestamp": "1661685552881",
+        "train/loss": "0.01093273889273405"
+    },
+    {
+        "rev": "workspace",
+        "step": "40",
+        "timestamp": "1661685574149",
+        "train/loss": "0.011421594768762589"
+    },
+    {
+        "rev": "workspace",
+        "step": "41",
+        "timestamp": "1661685595394",
+        "train/loss": "0.010461396537721157"
+    },
+    {
+        "rev": "workspace",
+        "step": "42",
+        "timestamp": "1661685616647",
+        "train/loss": "0.010438527911901474"
+    },
+    {
+        "rev": "workspace",
+        "step": "43",
+        "timestamp": "1661685638479",
+        "train/loss": "0.009351575747132301"
+    },
+    {
+        "rev": "workspace",
+        "step": "44",
+        "timestamp": "1661685660175",
+        "train/loss": "0.009204362519085407"
+    },
+    {
+        "rev": "workspace",
+        "step": "45",
+        "timestamp": "1661685681269",
+        "train/loss": "0.00843077152967453"
+    },
+    {
+        "rev": "workspace",
+        "step": "46",
+        "timestamp": "1661685703202",
+        "train/loss": "0.008155184797942638"
+    },
+    {
+        "rev": "workspace",
+        "step": "47",
+        "timestamp": "1661685724347",
+        "train/loss": "0.009766713716089725"
+    },
+    {
+        "rev": "workspace",
+        "step": "48",
+        "timestamp": "1661685745446",
+        "train/loss": "0.009217320941388607"
+    },
+    {
+        "rev": "workspace",
+        "step": "49",
+        "timestamp": "1661685767200",
+        "train/loss": "0.008699892088770866"
+    }
+]
+    },
+    "title": "",
+    "width": 300,
+    "height": 300,
+    "layer": [
+        {
+            "encoding": {
+                "x": {
+                    "field": "step",
+                    "type": "quantitative",
+                    "title": "step"
+                },
+                "y": {
+                    "field": "train/loss",
+                    "type": "quantitative",
+                    "title": "train/loss",
+                    "scale": {
+                        "zero": false
+                    }
+                },
+                "color": {
+                    "field": "rev",
+                    "type": "nominal"
+                }
+            },
+            "layer": [
+                {
+                    "mark": "line"
+                },
+                {
+                    "selection": {
+                        "label": {
+                            "type": "single",
+                            "nearest": true,
+                            "on": "mouseover",
+                            "encodings": [
+                                "x"
+                            ],
+                            "empty": "none",
+                            "clear": "mouseout"
+                        }
+                    },
+                    "mark": "point",
+                    "encoding": {
+                        "opacity": {
+                            "condition": {
+                                "selection": "label",
+                                "value": 1
+                            },
+                            "value": 0
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "transform": [
+                {
+                    "filter": {
+                        "selection": "label"
+                    }
+                }
+            ],
+            "layer": [
+                {
+                    "mark": {
+                        "type": "rule",
+                        "color": "gray"
+                    },
+                    "encoding": {
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        }
+                    }
+                },
+                {
+                    "encoding": {
+                        "text": {
+                            "type": "quantitative",
+                            "field": "train/loss"
+                        },
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        },
+                        "y": {
+                            "field": "train/loss",
+                            "type": "quantitative"
+                        }
+                    },
+                    "layer": [
+                        {
+                            "mark": {
+                                "type": "text",
+                                "align": "left",
+                                "dx": 5,
+                                "dy": -5
+                            },
+                            "encoding": {
+                                "color": {
+                                    "type": "nominal",
+                                    "field": "rev"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+;
+            vegaEmbed('#plot_train_loss', spec);
+        </script>
+    </div>
+    
 </body>
 </html>

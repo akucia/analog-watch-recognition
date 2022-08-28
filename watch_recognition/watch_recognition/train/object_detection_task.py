@@ -756,7 +756,7 @@ def main(
     train_dataset = raw_train_dataset.map(preprocess_data, num_parallel_calls=autotune)
     train_dataset = train_dataset.shuffle(8 * batch_size)
     train_dataset = train_dataset.padded_batch(
-        batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=True
+        batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=False
     )
     train_dataset = train_dataset.map(
         label_encoder.encode_batch, num_parallel_calls=autotune
@@ -765,7 +765,7 @@ def main(
 
     val_dataset = raw_val_dataset.map(preprocess_data, num_parallel_calls=autotune)
     val_dataset = val_dataset.padded_batch(
-        batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=True
+        batch_size=batch_size, padding_values=(0.0, 1e-8, -1), drop_remainder=False
     )
     val_dataset = val_dataset.map(
         label_encoder.encode_batch, num_parallel_calls=autotune

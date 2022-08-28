@@ -22,8 +22,7 @@ stages:
       --seed ${seed}
       --fine-tune-from-checkpoint
     params:
-      - detector.epochs
-      - detector.batch-size
+      - detector
       - seed
     deps:
       - datasets/train
@@ -151,7 +150,7 @@ stages:
       --batch-size ${segmentation.batch-size}
       --confidence-threshold ${segmentation.confidence-threshold}
       --seed ${seed}
-#      --fine-tune-from-checkpoint
+      --fine-tune-from-checkpoint
     params:
       - segmentation
       - seed
@@ -161,6 +160,7 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/segmentation_task.py
+      - checkpoints/segmentation/
     metrics:
       - metrics/segmentation.json:
           cache: false

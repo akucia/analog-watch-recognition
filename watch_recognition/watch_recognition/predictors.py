@@ -279,7 +279,7 @@ class HandPredictor:
             )
             all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
             polygon = polygon.scale(scale_x, scale_y)
-            return *line_selector(all_hands_lines, center=center_point), polygon
+            return (*line_selector(all_hands_lines, center=center_point), polygon)
 
     def predict_from_image_and_bbox(
         self,

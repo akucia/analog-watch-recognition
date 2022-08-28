@@ -6,435 +6,176 @@
     
 
     <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.1.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.18.2"></script>
     
-    <style>
-        table {
-            border-spacing: 15px;
-        }
-    </style>
 </head>
 <body>
-    
-        <div id="segmentation_json" style="text-align: center; padding: 10x">
-            <p>segmentation_json</p>
-            <div style="display: flex;justify-content: center;">
-                <table>
+    <table>
 <thead>
-<tr><th style="text-align: right;">  step</th><th>train                                                        </th><th>eval                                                          </th></tr>
+<tr><th>segmentation.json                                                                                                                                                      </th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: right;">     0</td><td>{&#x27;loss&#x27;: 0.8144996762275696, &#x27;iou_score&#x27;: 0.1182752251625061}</td><td>{&#x27;loss&#x27;: 0.9445332884788513, &#x27;iou_score&#x27;: 0.02852444536983967}</td></tr>
+<tr><td>{&#x27;data&#x27;: {&#x27;step&#x27;: 24, &#x27;train&#x27;: {&#x27;loss&#x27;: 0.10820483416318893, &#x27;iou_score&#x27;: 0.7822369337081909}, &#x27;eval&#x27;: {&#x27;loss&#x27;: 0.46483492851257324, &#x27;iou_score&#x27;: 0.3653416037559509}}}</td></tr>
 </tbody>
 </table>
-            </div>
-        </div>
+<br>
 
-    <div id = "static_train_loss">
+    <div id = "plot_eval_iou_score">
         <script type = "text/javascript">
             var spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+    "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
     "data": {
         "values": [
     {
+        "eval/iou_score": "0.5184450745582581",
         "rev": "workspace",
         "step": "0",
-        "timestamp": "1661680089147",
-        "train/loss": "0.8144996762275696"
-    }
-]
+        "timestamp": "1661686873453"
     },
-    "title": "",
-    "width": 300,
-    "height": 300,
-    "layer": [
-        {
-            "encoding": {
-                "x": {
-                    "field": "step",
-                    "type": "quantitative",
-                    "title": "step"
-                },
-                "y": {
-                    "field": "train/loss",
-                    "type": "quantitative",
-                    "title": "train/loss",
-                    "scale": {
-                        "zero": false
-                    }
-                },
-                "color": {
-                    "field": "rev",
-                    "type": "nominal"
-                }
-            },
-            "layer": [
-                {
-                    "mark": "line"
-                },
-                {
-                    "selection": {
-                        "label": {
-                            "type": "single",
-                            "nearest": true,
-                            "on": "mouseover",
-                            "encodings": [
-                                "x"
-                            ],
-                            "empty": "none",
-                            "clear": "mouseout"
-                        }
-                    },
-                    "mark": "point",
-                    "encoding": {
-                        "opacity": {
-                            "condition": {
-                                "selection": "label",
-                                "value": 1
-                            },
-                            "value": 0
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "transform": [
-                {
-                    "filter": {
-                        "selection": "label"
-                    }
-                }
-            ],
-            "layer": [
-                {
-                    "mark": {
-                        "type": "rule",
-                        "color": "gray"
-                    },
-                    "encoding": {
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        }
-                    }
-                },
-                {
-                    "encoding": {
-                        "text": {
-                            "type": "quantitative",
-                            "field": "train/loss"
-                        },
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        },
-                        "y": {
-                            "field": "train/loss",
-                            "type": "quantitative"
-                        }
-                    },
-                    "layer": [
-                        {
-                            "mark": {
-                                "type": "text",
-                                "align": "left",
-                                "dx": 5,
-                                "dy": -5
-                            },
-                            "encoding": {
-                                "color": {
-                                    "type": "nominal",
-                                    "field": "rev"
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-}
-;
-            vegaEmbed('#static_train_loss', spec);
-        </script>
-    </div>
-    
-
-    <div id = "static_train_iou_score">
-        <script type = "text/javascript">
-            var spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-    "data": {
-        "values": [
     {
+        "eval/iou_score": "0.4799351692199707",
         "rev": "workspace",
-        "step": "0",
-        "timestamp": "1661680089147",
-        "train/iou_score": "0.1182752251625061"
-    }
-]
+        "step": "1",
+        "timestamp": "1661686875164"
     },
-    "title": "",
-    "width": 300,
-    "height": 300,
-    "layer": [
-        {
-            "encoding": {
-                "x": {
-                    "field": "step",
-                    "type": "quantitative",
-                    "title": "step"
-                },
-                "y": {
-                    "field": "train/iou_score",
-                    "type": "quantitative",
-                    "title": "train/iou_score",
-                    "scale": {
-                        "zero": false
-                    }
-                },
-                "color": {
-                    "field": "rev",
-                    "type": "nominal"
-                }
-            },
-            "layer": [
-                {
-                    "mark": "line"
-                },
-                {
-                    "selection": {
-                        "label": {
-                            "type": "single",
-                            "nearest": true,
-                            "on": "mouseover",
-                            "encodings": [
-                                "x"
-                            ],
-                            "empty": "none",
-                            "clear": "mouseout"
-                        }
-                    },
-                    "mark": "point",
-                    "encoding": {
-                        "opacity": {
-                            "condition": {
-                                "selection": "label",
-                                "value": 1
-                            },
-                            "value": 0
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "transform": [
-                {
-                    "filter": {
-                        "selection": "label"
-                    }
-                }
-            ],
-            "layer": [
-                {
-                    "mark": {
-                        "type": "rule",
-                        "color": "gray"
-                    },
-                    "encoding": {
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        }
-                    }
-                },
-                {
-                    "encoding": {
-                        "text": {
-                            "type": "quantitative",
-                            "field": "train/iou_score"
-                        },
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        },
-                        "y": {
-                            "field": "train/iou_score",
-                            "type": "quantitative"
-                        }
-                    },
-                    "layer": [
-                        {
-                            "mark": {
-                                "type": "text",
-                                "align": "left",
-                                "dx": 5,
-                                "dy": -5
-                            },
-                            "encoding": {
-                                "color": {
-                                    "type": "nominal",
-                                    "field": "rev"
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-}
-;
-            vegaEmbed('#static_train_iou_score', spec);
-        </script>
-    </div>
-    
-
-    <div id = "static_eval_loss">
-        <script type = "text/javascript">
-            var spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-    "data": {
-        "values": [
     {
-        "eval/loss": "0.9445332884788513",
+        "eval/iou_score": "0.45201247930526733",
         "rev": "workspace",
-        "step": "0",
-        "timestamp": "1661680089148"
-    }
-]
+        "step": "2",
+        "timestamp": "1661686876833"
     },
-    "title": "",
-    "width": 300,
-    "height": 300,
-    "layer": [
-        {
-            "encoding": {
-                "x": {
-                    "field": "step",
-                    "type": "quantitative",
-                    "title": "step"
-                },
-                "y": {
-                    "field": "eval/loss",
-                    "type": "quantitative",
-                    "title": "eval/loss",
-                    "scale": {
-                        "zero": false
-                    }
-                },
-                "color": {
-                    "field": "rev",
-                    "type": "nominal"
-                }
-            },
-            "layer": [
-                {
-                    "mark": "line"
-                },
-                {
-                    "selection": {
-                        "label": {
-                            "type": "single",
-                            "nearest": true,
-                            "on": "mouseover",
-                            "encodings": [
-                                "x"
-                            ],
-                            "empty": "none",
-                            "clear": "mouseout"
-                        }
-                    },
-                    "mark": "point",
-                    "encoding": {
-                        "opacity": {
-                            "condition": {
-                                "selection": "label",
-                                "value": 1
-                            },
-                            "value": 0
-                        }
-                    }
-                }
-            ]
-        },
-        {
-            "transform": [
-                {
-                    "filter": {
-                        "selection": "label"
-                    }
-                }
-            ],
-            "layer": [
-                {
-                    "mark": {
-                        "type": "rule",
-                        "color": "gray"
-                    },
-                    "encoding": {
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        }
-                    }
-                },
-                {
-                    "encoding": {
-                        "text": {
-                            "type": "quantitative",
-                            "field": "eval/loss"
-                        },
-                        "x": {
-                            "field": "step",
-                            "type": "quantitative"
-                        },
-                        "y": {
-                            "field": "eval/loss",
-                            "type": "quantitative"
-                        }
-                    },
-                    "layer": [
-                        {
-                            "mark": {
-                                "type": "text",
-                                "align": "left",
-                                "dx": 5,
-                                "dy": -5
-                            },
-                            "encoding": {
-                                "color": {
-                                    "type": "nominal",
-                                    "field": "rev"
-                                }
-                            }
-                        }
-                    ]
-                }
-            ]
-        }
-    ]
-}
-;
-            vegaEmbed('#static_eval_loss', spec);
-        </script>
-    </div>
-    
-
-    <div id = "static_eval_iou_score">
-        <script type = "text/javascript">
-            var spec = {
-    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-    "data": {
-        "values": [
     {
-        "eval/iou_score": "0.02852444536983967",
+        "eval/iou_score": "0.46630850434303284",
         "rev": "workspace",
-        "step": "0",
-        "timestamp": "1661680089148"
+        "step": "3",
+        "timestamp": "1661686878545"
+    },
+    {
+        "eval/iou_score": "0.4727005064487457",
+        "rev": "workspace",
+        "step": "4",
+        "timestamp": "1661686880240"
+    },
+    {
+        "eval/iou_score": "0.4896884858608246",
+        "rev": "workspace",
+        "step": "5",
+        "timestamp": "1661686881939"
+    },
+    {
+        "eval/iou_score": "0.4562704265117645",
+        "rev": "workspace",
+        "step": "6",
+        "timestamp": "1661686883680"
+    },
+    {
+        "eval/iou_score": "0.46313461661338806",
+        "rev": "workspace",
+        "step": "7",
+        "timestamp": "1661686885377"
+    },
+    {
+        "eval/iou_score": "0.4432641863822937",
+        "rev": "workspace",
+        "step": "8",
+        "timestamp": "1661686887114"
+    },
+    {
+        "eval/iou_score": "0.45985934138298035",
+        "rev": "workspace",
+        "step": "9",
+        "timestamp": "1661686888817"
+    },
+    {
+        "eval/iou_score": "0.4399676024913788",
+        "rev": "workspace",
+        "step": "10",
+        "timestamp": "1661686890508"
+    },
+    {
+        "eval/iou_score": "0.4645470678806305",
+        "rev": "workspace",
+        "step": "11",
+        "timestamp": "1661686892201"
+    },
+    {
+        "eval/iou_score": "0.4698595106601715",
+        "rev": "workspace",
+        "step": "12",
+        "timestamp": "1661686893888"
+    },
+    {
+        "eval/iou_score": "0.4920811653137207",
+        "rev": "workspace",
+        "step": "13",
+        "timestamp": "1661686895594"
+    },
+    {
+        "eval/iou_score": "0.45417410135269165",
+        "rev": "workspace",
+        "step": "14",
+        "timestamp": "1661686897269"
+    },
+    {
+        "eval/iou_score": "0.4785718619823456",
+        "rev": "workspace",
+        "step": "15",
+        "timestamp": "1661686898980"
+    },
+    {
+        "eval/iou_score": "0.4498470723628998",
+        "rev": "workspace",
+        "step": "16",
+        "timestamp": "1661686900665"
+    },
+    {
+        "eval/iou_score": "0.4785076677799225",
+        "rev": "workspace",
+        "step": "17",
+        "timestamp": "1661686902347"
+    },
+    {
+        "eval/iou_score": "0.43972620368003845",
+        "rev": "workspace",
+        "step": "18",
+        "timestamp": "1661686904069"
+    },
+    {
+        "eval/iou_score": "0.47998377680778503",
+        "rev": "workspace",
+        "step": "19",
+        "timestamp": "1661686905744"
+    },
+    {
+        "eval/iou_score": "0.46223968267440796",
+        "rev": "workspace",
+        "step": "20",
+        "timestamp": "1661686907429"
+    },
+    {
+        "eval/iou_score": "0.49839088320732117",
+        "rev": "workspace",
+        "step": "21",
+        "timestamp": "1661686909132"
+    },
+    {
+        "eval/iou_score": "0.4176695942878723",
+        "rev": "workspace",
+        "step": "22",
+        "timestamp": "1661686910805"
+    },
+    {
+        "eval/iou_score": "0.3914325535297394",
+        "rev": "workspace",
+        "step": "23",
+        "timestamp": "1661686912496"
+    },
+    {
+        "eval/iou_score": "0.3653416037559509",
+        "rev": "workspace",
+        "step": "24",
+        "timestamp": "1661686914181"
     }
 ]
     },
@@ -550,23 +291,834 @@
     ]
 }
 ;
-            vegaEmbed('#static_eval_iou_score', spec);
+            vegaEmbed('#plot_eval_iou_score', spec);
         </script>
     </div>
     
 
-        <div id="segmentation_json" style="text-align: center; padding: 10x">
-            <p>segmentation_json</p>
-            <div style="display: flex;justify-content: center;">
-                <table>
-<thead>
-<tr><th style="text-align: right;">  step</th><th>train                                                        </th><th>eval                                                          </th></tr>
-</thead>
-<tbody>
-<tr><td style="text-align: right;">     0</td><td>{&#x27;loss&#x27;: 0.8144996762275696, &#x27;iou_score&#x27;: 0.1182752251625061}</td><td>{&#x27;loss&#x27;: 0.9445332884788513, &#x27;iou_score&#x27;: 0.02852444536983967}</td></tr>
-</tbody>
-</table>
-            </div>
-        </div>
+    <div id = "plot_eval_loss">
+        <script type = "text/javascript">
+            var spec = {
+    "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+    "data": {
+        "values": [
+    {
+        "eval/loss": "0.31713688373565674",
+        "rev": "workspace",
+        "step": "0",
+        "timestamp": "1661686873453"
+    },
+    {
+        "eval/loss": "0.35141053795814514",
+        "rev": "workspace",
+        "step": "1",
+        "timestamp": "1661686875162"
+    },
+    {
+        "eval/loss": "0.37739861011505127",
+        "rev": "workspace",
+        "step": "2",
+        "timestamp": "1661686876825"
+    },
+    {
+        "eval/loss": "0.3639694154262543",
+        "rev": "workspace",
+        "step": "3",
+        "timestamp": "1661686878537"
+    },
+    {
+        "eval/loss": "0.3580493927001953",
+        "rev": "workspace",
+        "step": "4",
+        "timestamp": "1661686880238"
+    },
+    {
+        "eval/loss": "0.34256258606910706",
+        "rev": "workspace",
+        "step": "5",
+        "timestamp": "1661686881930"
+    },
+    {
+        "eval/loss": "0.37337127327919006",
+        "rev": "workspace",
+        "step": "6",
+        "timestamp": "1661686883672"
+    },
+    {
+        "eval/loss": "0.36692821979522705",
+        "rev": "workspace",
+        "step": "7",
+        "timestamp": "1661686885370"
+    },
+    {
+        "eval/loss": "0.3857475817203522",
+        "rev": "workspace",
+        "step": "8",
+        "timestamp": "1661686887099"
+    },
+    {
+        "eval/loss": "0.36999502778053284",
+        "rev": "workspace",
+        "step": "9",
+        "timestamp": "1661686888809"
+    },
+    {
+        "eval/loss": "0.3889201879501343",
+        "rev": "workspace",
+        "step": "10",
+        "timestamp": "1661686890492"
+    },
+    {
+        "eval/loss": "0.3656100034713745",
+        "rev": "workspace",
+        "step": "11",
+        "timestamp": "1661686892193"
+    },
+    {
+        "eval/loss": "0.36067429184913635",
+        "rev": "workspace",
+        "step": "12",
+        "timestamp": "1661686893879"
+    },
+    {
+        "eval/loss": "0.34040963649749756",
+        "rev": "workspace",
+        "step": "13",
+        "timestamp": "1661686895586"
+    },
+    {
+        "eval/loss": "0.3753511905670166",
+        "rev": "workspace",
+        "step": "14",
+        "timestamp": "1661686897266"
+    },
+    {
+        "eval/loss": "0.3526565134525299",
+        "rev": "workspace",
+        "step": "15",
+        "timestamp": "1661686898972"
+    },
+    {
+        "eval/loss": "0.3794558048248291",
+        "rev": "workspace",
+        "step": "16",
+        "timestamp": "1661686900656"
+    },
+    {
+        "eval/loss": "0.3527153432369232",
+        "rev": "workspace",
+        "step": "17",
+        "timestamp": "1661686902339"
+    },
+    {
+        "eval/loss": "0.38915300369262695",
+        "rev": "workspace",
+        "step": "18",
+        "timestamp": "1661686904053"
+    },
+    {
+        "eval/loss": "0.35136616230010986",
+        "rev": "workspace",
+        "step": "19",
+        "timestamp": "1661686905742"
+    },
+    {
+        "eval/loss": "0.36776480078697205",
+        "rev": "workspace",
+        "step": "20",
+        "timestamp": "1661686907426"
+    },
+    {
+        "eval/loss": "0.3347652852535248",
+        "rev": "workspace",
+        "step": "21",
+        "timestamp": "1661686909124"
+    },
+    {
+        "eval/loss": "0.4107658863067627",
+        "rev": "workspace",
+        "step": "22",
+        "timestamp": "1661686910803"
+    },
+    {
+        "eval/loss": "0.4373675584793091",
+        "rev": "workspace",
+        "step": "23",
+        "timestamp": "1661686912493"
+    },
+    {
+        "eval/loss": "0.46483492851257324",
+        "rev": "workspace",
+        "step": "24",
+        "timestamp": "1661686914173"
+    }
+]
+    },
+    "title": "",
+    "width": 300,
+    "height": 300,
+    "layer": [
+        {
+            "encoding": {
+                "x": {
+                    "field": "step",
+                    "type": "quantitative",
+                    "title": "step"
+                },
+                "y": {
+                    "field": "eval/loss",
+                    "type": "quantitative",
+                    "title": "eval/loss",
+                    "scale": {
+                        "zero": false
+                    }
+                },
+                "color": {
+                    "field": "rev",
+                    "type": "nominal"
+                }
+            },
+            "layer": [
+                {
+                    "mark": "line"
+                },
+                {
+                    "selection": {
+                        "label": {
+                            "type": "single",
+                            "nearest": true,
+                            "on": "mouseover",
+                            "encodings": [
+                                "x"
+                            ],
+                            "empty": "none",
+                            "clear": "mouseout"
+                        }
+                    },
+                    "mark": "point",
+                    "encoding": {
+                        "opacity": {
+                            "condition": {
+                                "selection": "label",
+                                "value": 1
+                            },
+                            "value": 0
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "transform": [
+                {
+                    "filter": {
+                        "selection": "label"
+                    }
+                }
+            ],
+            "layer": [
+                {
+                    "mark": {
+                        "type": "rule",
+                        "color": "gray"
+                    },
+                    "encoding": {
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        }
+                    }
+                },
+                {
+                    "encoding": {
+                        "text": {
+                            "type": "quantitative",
+                            "field": "eval/loss"
+                        },
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        },
+                        "y": {
+                            "field": "eval/loss",
+                            "type": "quantitative"
+                        }
+                    },
+                    "layer": [
+                        {
+                            "mark": {
+                                "type": "text",
+                                "align": "left",
+                                "dx": 5,
+                                "dy": -5
+                            },
+                            "encoding": {
+                                "color": {
+                                    "type": "nominal",
+                                    "field": "rev"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+;
+            vegaEmbed('#plot_eval_loss', spec);
+        </script>
+    </div>
+    
+
+    <div id = "plot_train_iou_score">
+        <script type = "text/javascript">
+            var spec = {
+    "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+    "data": {
+        "values": [
+    {
+        "rev": "workspace",
+        "step": "0",
+        "timestamp": "1661686873453",
+        "train/iou_score": "0.8136036396026611"
+    },
+    {
+        "rev": "workspace",
+        "step": "1",
+        "timestamp": "1661686875159",
+        "train/iou_score": "0.7892330884933472"
+    },
+    {
+        "rev": "workspace",
+        "step": "2",
+        "timestamp": "1661686876821",
+        "train/iou_score": "0.8148598670959473"
+    },
+    {
+        "rev": "workspace",
+        "step": "3",
+        "timestamp": "1661686878534",
+        "train/iou_score": "0.8267232179641724"
+    },
+    {
+        "rev": "workspace",
+        "step": "4",
+        "timestamp": "1661686880235",
+        "train/iou_score": "0.8291571736335754"
+    },
+    {
+        "rev": "workspace",
+        "step": "5",
+        "timestamp": "1661686881928",
+        "train/iou_score": "0.8393006920814514"
+    },
+    {
+        "rev": "workspace",
+        "step": "6",
+        "timestamp": "1661686883670",
+        "train/iou_score": "0.8301912546157837"
+    },
+    {
+        "rev": "workspace",
+        "step": "7",
+        "timestamp": "1661686885367",
+        "train/iou_score": "0.8337785005569458"
+    },
+    {
+        "rev": "workspace",
+        "step": "8",
+        "timestamp": "1661686887084",
+        "train/iou_score": "0.814418613910675"
+    },
+    {
+        "rev": "workspace",
+        "step": "9",
+        "timestamp": "1661686888807",
+        "train/iou_score": "0.8209070563316345"
+    },
+    {
+        "rev": "workspace",
+        "step": "10",
+        "timestamp": "1661686890489",
+        "train/iou_score": "0.8344745635986328"
+    },
+    {
+        "rev": "workspace",
+        "step": "11",
+        "timestamp": "1661686892191",
+        "train/iou_score": "0.8499736189842224"
+    },
+    {
+        "rev": "workspace",
+        "step": "12",
+        "timestamp": "1661686893872",
+        "train/iou_score": "0.8459499478340149"
+    },
+    {
+        "rev": "workspace",
+        "step": "13",
+        "timestamp": "1661686895583",
+        "train/iou_score": "0.8384323716163635"
+    },
+    {
+        "rev": "workspace",
+        "step": "14",
+        "timestamp": "1661686897263",
+        "train/iou_score": "0.8238951563835144"
+    },
+    {
+        "rev": "workspace",
+        "step": "15",
+        "timestamp": "1661686898956",
+        "train/iou_score": "0.8363149762153625"
+    },
+    {
+        "rev": "workspace",
+        "step": "16",
+        "timestamp": "1661686900654",
+        "train/iou_score": "0.7879086136817932"
+    },
+    {
+        "rev": "workspace",
+        "step": "17",
+        "timestamp": "1661686902332",
+        "train/iou_score": "0.8009077906608582"
+    },
+    {
+        "rev": "workspace",
+        "step": "18",
+        "timestamp": "1661686904044",
+        "train/iou_score": "0.8042482137680054"
+    },
+    {
+        "rev": "workspace",
+        "step": "19",
+        "timestamp": "1661686905740",
+        "train/iou_score": "0.8228979110717773"
+    },
+    {
+        "rev": "workspace",
+        "step": "20",
+        "timestamp": "1661686907424",
+        "train/iou_score": "0.8076176643371582"
+    },
+    {
+        "rev": "workspace",
+        "step": "21",
+        "timestamp": "1661686909121",
+        "train/iou_score": "0.8163806796073914"
+    },
+    {
+        "rev": "workspace",
+        "step": "22",
+        "timestamp": "1661686910800",
+        "train/iou_score": "0.8034489154815674"
+    },
+    {
+        "rev": "workspace",
+        "step": "23",
+        "timestamp": "1661686912490",
+        "train/iou_score": "0.7486770153045654"
+    },
+    {
+        "rev": "workspace",
+        "step": "24",
+        "timestamp": "1661686914171",
+        "train/iou_score": "0.7822369337081909"
+    }
+]
+    },
+    "title": "",
+    "width": 300,
+    "height": 300,
+    "layer": [
+        {
+            "encoding": {
+                "x": {
+                    "field": "step",
+                    "type": "quantitative",
+                    "title": "step"
+                },
+                "y": {
+                    "field": "train/iou_score",
+                    "type": "quantitative",
+                    "title": "train/iou_score",
+                    "scale": {
+                        "zero": false
+                    }
+                },
+                "color": {
+                    "field": "rev",
+                    "type": "nominal"
+                }
+            },
+            "layer": [
+                {
+                    "mark": "line"
+                },
+                {
+                    "selection": {
+                        "label": {
+                            "type": "single",
+                            "nearest": true,
+                            "on": "mouseover",
+                            "encodings": [
+                                "x"
+                            ],
+                            "empty": "none",
+                            "clear": "mouseout"
+                        }
+                    },
+                    "mark": "point",
+                    "encoding": {
+                        "opacity": {
+                            "condition": {
+                                "selection": "label",
+                                "value": 1
+                            },
+                            "value": 0
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "transform": [
+                {
+                    "filter": {
+                        "selection": "label"
+                    }
+                }
+            ],
+            "layer": [
+                {
+                    "mark": {
+                        "type": "rule",
+                        "color": "gray"
+                    },
+                    "encoding": {
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        }
+                    }
+                },
+                {
+                    "encoding": {
+                        "text": {
+                            "type": "quantitative",
+                            "field": "train/iou_score"
+                        },
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        },
+                        "y": {
+                            "field": "train/iou_score",
+                            "type": "quantitative"
+                        }
+                    },
+                    "layer": [
+                        {
+                            "mark": {
+                                "type": "text",
+                                "align": "left",
+                                "dx": 5,
+                                "dy": -5
+                            },
+                            "encoding": {
+                                "color": {
+                                    "type": "nominal",
+                                    "field": "rev"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+;
+            vegaEmbed('#plot_train_iou_score', spec);
+        </script>
+    </div>
+    
+
+    <div id = "plot_train_loss">
+        <script type = "text/javascript">
+            var spec = {
+    "$schema": "https://vega.github.io/schema/vega-lite/v4.json",
+    "data": {
+        "values": [
+    {
+        "rev": "workspace",
+        "step": "0",
+        "timestamp": "1661686873452",
+        "train/loss": "0.11104962229728699"
+    },
+    {
+        "rev": "workspace",
+        "step": "1",
+        "timestamp": "1661686875158",
+        "train/loss": "0.10465918481349945"
+    },
+    {
+        "rev": "workspace",
+        "step": "2",
+        "timestamp": "1661686876820",
+        "train/loss": "0.10278171300888062"
+    },
+    {
+        "rev": "workspace",
+        "step": "3",
+        "timestamp": "1661686878533",
+        "train/loss": "0.09690000116825104"
+    },
+    {
+        "rev": "workspace",
+        "step": "4",
+        "timestamp": "1661686880234",
+        "train/loss": "0.09311984479427338"
+    },
+    {
+        "rev": "workspace",
+        "step": "5",
+        "timestamp": "1661686881927",
+        "train/loss": "0.08507858961820602"
+    },
+    {
+        "rev": "workspace",
+        "step": "6",
+        "timestamp": "1661686883668",
+        "train/loss": "0.09116800129413605"
+    },
+    {
+        "rev": "workspace",
+        "step": "7",
+        "timestamp": "1661686885366",
+        "train/loss": "0.0894761011004448"
+    },
+    {
+        "rev": "workspace",
+        "step": "8",
+        "timestamp": "1661686887083",
+        "train/loss": "0.09214985370635986"
+    },
+    {
+        "rev": "workspace",
+        "step": "9",
+        "timestamp": "1661686888806",
+        "train/loss": "0.09942227602005005"
+    },
+    {
+        "rev": "workspace",
+        "step": "10",
+        "timestamp": "1661686890488",
+        "train/loss": "0.09236971288919449"
+    },
+    {
+        "rev": "workspace",
+        "step": "11",
+        "timestamp": "1661686892189",
+        "train/loss": "0.0811443105340004"
+    },
+    {
+        "rev": "workspace",
+        "step": "12",
+        "timestamp": "1661686893871",
+        "train/loss": "0.07639322429895401"
+    },
+    {
+        "rev": "workspace",
+        "step": "13",
+        "timestamp": "1661686895582",
+        "train/loss": "0.0889151319861412"
+    },
+    {
+        "rev": "workspace",
+        "step": "14",
+        "timestamp": "1661686897262",
+        "train/loss": "0.09159621596336365"
+    },
+    {
+        "rev": "workspace",
+        "step": "15",
+        "timestamp": "1661686898953",
+        "train/loss": "0.08295948058366776"
+    },
+    {
+        "rev": "workspace",
+        "step": "16",
+        "timestamp": "1661686900653",
+        "train/loss": "0.10568709671497345"
+    },
+    {
+        "rev": "workspace",
+        "step": "17",
+        "timestamp": "1661686902331",
+        "train/loss": "0.11064668744802475"
+    },
+    {
+        "rev": "workspace",
+        "step": "18",
+        "timestamp": "1661686904032",
+        "train/loss": "0.10866117477416992"
+    },
+    {
+        "rev": "workspace",
+        "step": "19",
+        "timestamp": "1661686905739",
+        "train/loss": "0.09962308406829834"
+    },
+    {
+        "rev": "workspace",
+        "step": "20",
+        "timestamp": "1661686907423",
+        "train/loss": "0.09002915769815445"
+    },
+    {
+        "rev": "workspace",
+        "step": "21",
+        "timestamp": "1661686909117",
+        "train/loss": "0.09671107679605484"
+    },
+    {
+        "rev": "workspace",
+        "step": "22",
+        "timestamp": "1661686910799",
+        "train/loss": "0.10314182192087173"
+    },
+    {
+        "rev": "workspace",
+        "step": "23",
+        "timestamp": "1661686912489",
+        "train/loss": "0.1060091033577919"
+    },
+    {
+        "rev": "workspace",
+        "step": "24",
+        "timestamp": "1661686914167",
+        "train/loss": "0.10820483416318893"
+    }
+]
+    },
+    "title": "",
+    "width": 300,
+    "height": 300,
+    "layer": [
+        {
+            "encoding": {
+                "x": {
+                    "field": "step",
+                    "type": "quantitative",
+                    "title": "step"
+                },
+                "y": {
+                    "field": "train/loss",
+                    "type": "quantitative",
+                    "title": "train/loss",
+                    "scale": {
+                        "zero": false
+                    }
+                },
+                "color": {
+                    "field": "rev",
+                    "type": "nominal"
+                }
+            },
+            "layer": [
+                {
+                    "mark": "line"
+                },
+                {
+                    "selection": {
+                        "label": {
+                            "type": "single",
+                            "nearest": true,
+                            "on": "mouseover",
+                            "encodings": [
+                                "x"
+                            ],
+                            "empty": "none",
+                            "clear": "mouseout"
+                        }
+                    },
+                    "mark": "point",
+                    "encoding": {
+                        "opacity": {
+                            "condition": {
+                                "selection": "label",
+                                "value": 1
+                            },
+                            "value": 0
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "transform": [
+                {
+                    "filter": {
+                        "selection": "label"
+                    }
+                }
+            ],
+            "layer": [
+                {
+                    "mark": {
+                        "type": "rule",
+                        "color": "gray"
+                    },
+                    "encoding": {
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        }
+                    }
+                },
+                {
+                    "encoding": {
+                        "text": {
+                            "type": "quantitative",
+                            "field": "train/loss"
+                        },
+                        "x": {
+                            "field": "step",
+                            "type": "quantitative"
+                        },
+                        "y": {
+                            "field": "train/loss",
+                            "type": "quantitative"
+                        }
+                    },
+                    "layer": [
+                        {
+                            "mark": {
+                                "type": "text",
+                                "align": "left",
+                                "dx": 5,
+                                "dy": -5
+                            },
+                            "encoding": {
+                                "color": {
+                                    "type": "nominal",
+                                    "field": "rev"
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+;
+            vegaEmbed('#plot_train_loss', spec);
+        </script>
+    </div>
+    
 </body>
 </html>
