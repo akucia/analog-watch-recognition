@@ -227,10 +227,10 @@ class HandPredictor(ABC):
         Returns keypoints in pixel coordinates of the image
         """
         image_np = np.expand_dims(np.array(image), 0).astype("float32")
-        predicted = self._batch_predict(image_np)[0]
+        predicted = self._batch_predict(image_np)[0].squeeze()
 
         predicted = predicted > self.confidence_threshold
-        polygon = Polygon.from_binary_mask(predicted.squeeze())
+        polygon = Polygon.from_binary_mask(predicted)
 
         scale_x = image.width / predicted.shape[0]
         scale_y = image.height / predicted.shape[1]

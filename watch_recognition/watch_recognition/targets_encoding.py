@@ -539,7 +539,7 @@ def vonmises_kde(data, kappa, n_bins=100):
 
 
 def fit_lines_to_hands_mask(
-    padded_mask: np.ndarray,
+    mask: np.ndarray,
     center: Point,
     use_largest_region: bool = True,
     debug: bool = False,
@@ -547,8 +547,9 @@ def fit_lines_to_hands_mask(
     min_prominence: float = 5e-4,
     min_peak_width: float = 3,
 ) -> List[Line]:
+    assert len(mask.shape) == 2, f"mask must have 2D shape, got {mask.shape}"
     if use_largest_region:
-        label_image = label(padded_mask)
+        label_image = label(mask)
         # select the largest object to filter out small false positives
         regions = sorted(regionprops(label_image), key=lambda r: r.area, reverse=True)
         if not regions:
@@ -563,11 +564,11 @@ def fit_lines_to_hands_mask(
         ) = region.bbox
         region_bbox = BBox(xmin, ymin, xmax, ymax, name="")
 
-        padded_mask = label_image == region.label
+        mask = label_image == region.label
         if debug:
             region_bbox.plot()
             center.plot()
-            plt.imshow(padded_mask)
+            plt.imshow(mask)
             plt.show()
         if not region_bbox.contains(center):
             return []
@@ -575,12 +576,12 @@ def fit_lines_to_hands_mask(
     # TODO proper debug handling
     # TODO optionally restrict to the largest shape found in the mask
     if debug:
-        plt.imshow(padded_mask)
+        plt.imshow(mask)
         center.plot()
         plt.show()
     vectors = []
     points = []
-    for i, row in enumerate(padded_mask):
+    for i, row in enumerate(mask):
         for j, value in enumerate(row):
             if value > 0:
                 line1 = Line(center, Point(j, i))
@@ -601,7 +602,7 @@ def fit_lines_to_hands_mask(
     if debug:
         fig, ax = plt.subplots(1, 2, figsize=(15, 7))
         ax = ax.ravel()
-        ax[1].imshow(padded_mask)
+        ax[1].imshow(mask)
         center.plot(ax[1])
 
     kernel = "gaussian"
@@ -670,7 +671,7 @@ def fit_lines_to_hands_mask(
         Y = -0.005 - 0.01 * np.random.random(X.shape[0])
         ax[0].plot(X[:, 0], Y, "+k")
 
-        empty_mask = np.zeros((*padded_mask.shape, 3)).astype("uint8")
+        empty_mask = np.zeros((*mask.shape, 3)).astype("uint8")
         ax[1].invert_yaxis()
 
         for i, peak_points in enumerate(peak_to_points.values()):

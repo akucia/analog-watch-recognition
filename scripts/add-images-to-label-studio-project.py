@@ -22,8 +22,6 @@ from watch_recognition.predictors import (
     RetinaNetDetectorGRPC,
 )
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.StreamHandler())
 storage_client = storage.Client()
 
 
@@ -36,12 +34,12 @@ def upload_blob(
     blob = bucket.blob(destination_blob_name)
 
     if blob.exists():
-        logger.debug(f"object {destination_blob_name} already exists - skipping")
+        logging.debug(f"object {destination_blob_name} already exists - skipping")
         return destination_blob_name
 
     blob.upload_from_filename(source_file_name)
 
-    logger.debug(f"File {source_file_name} uploaded to {destination_blob_name}.")
+    logging.debug(f"File {source_file_name} uploaded to {destination_blob_name}.")
     return destination_blob_name
 
 
@@ -55,13 +53,13 @@ def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
     name = url.split("/")[-1]
     save_file = save_dir / name
     if not save_file.exists():
-        logger.debug(f"downloading {name}")
+        logging.debug(f"downloading {name}")
         with requests.get(url, stream=True) as response:
             with save_file.open("wb") as f:
                 f.write(response.content)
     extract_dir = save_dir / save_file.stem
     with tarfile.open(save_file) as tar:
-        logger.debug(f"extracting {name}")
+        logging.debug(f"extracting {name}")
         tar.extractall(extract_dir)
 
     return extract_dir
@@ -100,9 +98,9 @@ def main(
     shuffle_images: bool,
 ):
     if verbose:
-        logger.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        logger.setLevel(logging.INFO)
+        logging.basicConfig(level=logging.INFO)
     source_dir = Path(source_dir)
     assert source_dir.exists()
 
@@ -146,6 +144,7 @@ def main(
         shuffle(image_paths)
     if n_images:
         image_paths = image_paths[:n_images]
+    imported_tasks = 0
     progress_bar = tqdm(image_paths)
     for img_path in progress_bar:
         progress_bar.set_description(img_path.name)
@@ -168,6 +167,7 @@ def main(
             blob_name=blob_path,
         )
         if blob_url in imported_blobs:
+            logging.debug(f"{blob_url} already in project")
             continue
         upload_blob(
             bucket_name=bucket_name,
@@ -281,6 +281,8 @@ def main(
             }
             dataset.append(image_data)
             project.import_tasks([image_data])
+            imported_tasks += 1
+    print(f"imported {imported_tasks} tasks")
     if export_file:
         with Path(export_file).open("w") as f:
             json.dump(dataset, f, indent=2)
