@@ -13,7 +13,7 @@ from tqdm import tqdm
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
-from watch_recognition.predictors import RetinanetDetector
+from watch_recognition.predictors import RetinanetDetectorLocal, RetinanetDetector
 from watch_recognition.train.object_detection_task import visualize_detections
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.utilities import retinanet_prepare_image
@@ -53,7 +53,7 @@ def main():
     label_to_cls = {"WatchFace": 1}
     # model is trained with 0 as a valid cls but coco metrics ignore cls 0
     cls_to_label = {0: "WatchFace"}
-    detector = RetinanetDetector(
+    detector = RetinanetDetectorLocal(
         Path("models/detector/"), class_to_label_name=cls_to_label
     )
 

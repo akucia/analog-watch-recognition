@@ -16,7 +16,7 @@ from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
 from watch_recognition.utilities import BBox, resize_and_pad_image
-
+from tensorflow_serving.apis import model_pb2, predict_pb2, prediction_log_pb2
 
 def swap_xy(boxes):
     """Swaps order the of x and y coordinates of the boxes.
@@ -836,7 +836,7 @@ def main(
     warmup_tf_record_file = model_path / "assets.extra" / "tf_serving_warmup_requests"
     warmup_tf_record_file.parent.mkdir(exist_ok=True, parents=True)
     with tf.io.TFRecordWriter(str(warmup_tf_record_file)) as writer:
-        tensor_proto = tf.make_tensor_proto(img_np)
+        tensor_proto = tf.make_tensor_proto(input_image)
         request = predict_pb2.PredictRequest(
             model_spec=model_pb2.ModelSpec(signature_name="serving_default"),
             inputs={"image": tensor_proto},

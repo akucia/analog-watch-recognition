@@ -12,7 +12,7 @@ from tqdm import tqdm
 from watch_recognition.label_studio_adapters import (
     load_label_studio_kp_detection_dataset,
 )
-from watch_recognition.predictors import KPHeatmapPredictorV2Local, RetinanetDetector
+from watch_recognition.predictors import KPHeatmapPredictorV2Local, RetinanetDetector, RetinanetDetectorLocal
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.visualization import visualize_keypoints
 
@@ -58,7 +58,7 @@ def generate_kp_coco_annotations_from_model(
 @click.command()
 @click.option("--kp-confidence-threshold", default=0.5, type=float)
 def main(kp_confidence_threshold):
-    detector = RetinanetDetector(
+    detector = RetinanetDetectorLocal(
         Path("models/detector/"), class_to_label_name={0: "WatchFace"}
     )
     # TODO this should be in params.yaml
