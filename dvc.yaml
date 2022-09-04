@@ -1,6 +1,6 @@
 stages:
   download-images:
-    cmd: python scripts/download-images.py datasets/watch-faces.json
+    cmd: python scripts/download-images.py datasets/watch-faces.json --concurrent
     deps:
     - scripts/download-images.py
     - datasets/watch-faces.json
