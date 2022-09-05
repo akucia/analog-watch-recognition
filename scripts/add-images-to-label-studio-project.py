@@ -2,6 +2,7 @@ import dataclasses
 import json
 import logging
 import tarfile
+import time
 from hashlib import md5
 from pathlib import Path
 from random import shuffle
@@ -97,6 +98,7 @@ def main(
     n_images: int,
     shuffle_images: bool,
 ):
+    t0 = time.perf_counter()
     if verbose:
         logging.basicConfig(level=logging.DEBUG)
     else:
@@ -144,23 +146,14 @@ def main(
         shuffle(image_paths)
     if n_images:
         image_paths = image_paths[:n_images]
-    imported_tasks = 0
     progress_bar = tqdm(image_paths)
+    # TODO refactor to allow for multithreading
     for img_path in progress_bar:
         progress_bar.set_description(img_path.name)
         if img_path.parent.name.lower() in {"train", "test", "val"}:
             fold = img_path.parent.name.lower()
         else:
-            with img_path.open("rb") as f:
-                data = f.read()
-                int_hash = int(md5(data).hexdigest(), 16)
-                float_hash = int_hash / 2**128
-            if float_hash < 0.8:
-                fold = "train"
-            elif float_hash < 0.9:
-                fold = "val"
-            else:
-                fold = "test"
+            fold = _assign_fold_from_bytes_content(img_path)
         blob_path = str(Path(fold) / img_path.name)
         blob_url = generate_blob_gstorage_path(
             bucket_name=bucket_name,
@@ -215,8 +208,8 @@ def main(
                         pred_center, hour_kp, minute_kp, pred_top
                     )
 
-                    time = f"{read_hour:02.0f}:{read_minute:02.0f}"
-                    transcriptions.append(time)
+                    predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
+                    transcriptions.append(predicted_time)
                 else:
                     transcriptions.append("??:??")
             print(transcriptions)
@@ -281,11 +274,26 @@ def main(
             }
             dataset.append(image_data)
             project.import_tasks([image_data])
-            imported_tasks += 1
-    print(f"imported {imported_tasks} tasks")
     if export_file:
         with Path(export_file).open("w") as f:
             json.dump(dataset, f, indent=2)
+
+    elapsed = time.perf_counter() - t0
+    print(f"{len(image_paths)} images added in {elapsed:.2f}s")
+
+
+def _assign_fold_from_bytes_content(img_path):
+    with img_path.open("rb") as f:
+        data = f.read()
+        int_hash = int(md5(data).hexdigest(), 16)
+        float_hash = int_hash / 2**128
+        if float_hash < 0.8:
+            fold = "train"
+        elif float_hash < 0.9:
+            fold = "val"
+        else:
+            fold = "test"
+        return fold
 
 
 def file_name_from_gstorage_url(image_url):

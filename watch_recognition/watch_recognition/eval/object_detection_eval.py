@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import numpy as np
@@ -13,7 +14,7 @@ from tqdm import tqdm
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
-from watch_recognition.predictors import RetinanetDetectorLocal, RetinanetDetector
+from watch_recognition.predictors import RetinanetDetector, RetinanetDetectorLocal
 from watch_recognition.train.object_detection_task import visualize_detections
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.utilities import retinanet_prepare_image
@@ -47,6 +48,7 @@ def generate_coco_annotations_from_model(
 
 
 def main():
+    t0 = time.perf_counter()
     model = keras.models.load_model("models/detector/")
 
     dataset_path = Path("datasets/watch-faces-local.json")
@@ -151,6 +153,8 @@ def main():
 
         df_95 = pd.DataFrame({"Recall": coco_eval.params.recThrs, "Precision": pr_95})
         df_95.to_csv(f"metrics/detector/PR-IoU@0.95_{split}.tsv", sep="\t", index=False)
+    elapsed = time.perf_counter() - t0
+    print(f"Object detection evaluation done in {elapsed:.2f}s")
 
 
 if __name__ == "__main__":

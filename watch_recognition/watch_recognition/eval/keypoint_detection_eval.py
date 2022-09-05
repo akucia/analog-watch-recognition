@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import click
@@ -12,7 +13,11 @@ from tqdm import tqdm
 from watch_recognition.label_studio_adapters import (
     load_label_studio_kp_detection_dataset,
 )
-from watch_recognition.predictors import KPHeatmapPredictorV2Local, RetinanetDetector, RetinanetDetectorLocal
+from watch_recognition.predictors import (
+    KPHeatmapPredictorV2Local,
+    RetinanetDetector,
+    RetinanetDetectorLocal,
+)
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 from watch_recognition.visualization import visualize_keypoints
 
@@ -58,6 +63,7 @@ def generate_kp_coco_annotations_from_model(
 @click.command()
 @click.option("--kp-confidence-threshold", default=0.5, type=float)
 def main(kp_confidence_threshold):
+    t0 = time.perf_counter()
     detector = RetinanetDetectorLocal(
         Path("models/detector/"), class_to_label_name={0: "WatchFace"}
     )
@@ -152,6 +158,8 @@ def main(kp_confidence_threshold):
         #
         # df_95 = pd.DataFrame({"Recall": coco_eval.params.recThrs, "Precision": pr_95})
         # df_95.to_csv(f"metrics/keypoint/PR-IoU@0.95_{split}.tsv", sep="\t", index=False)
+    elapsed = time.perf_counter() - t0
+    print(f"Keypoint detecto eval done in {elapsed:.2f}s")
 
 
 if __name__ == "__main__":
