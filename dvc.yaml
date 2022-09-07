@@ -20,7 +20,6 @@ stages:
       --batch-size ${detector.batch-size} 
       --confidence-threshold ${detector.confidence-threshold} 
       --seed ${seed}
-      --fine-tune-from-checkpoint
     params:
       - detector
       - seed
@@ -99,7 +98,6 @@ stages:
       --batch-size ${keypoint.batch-size}
       --confidence-threshold ${keypoint.confidence-threshold}
       --seed ${seed}
-      --fine-tune-from-checkpoint
     params:
       - keypoint
       - seed
@@ -150,7 +148,6 @@ stages:
       --batch-size ${segmentation.batch-size}
       --confidence-threshold ${segmentation.confidence-threshold}
       --seed ${seed}
-      --fine-tune-from-checkpoint
     params:
       - segmentation
       - seed
