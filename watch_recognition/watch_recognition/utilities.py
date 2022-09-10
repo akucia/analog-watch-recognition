@@ -695,3 +695,20 @@ def match_objects_to_bboxes(
             if bbox.contains(obj.center):
                 rectangles_to_kps[bbox].append(obj)
     return dict(rectangles_to_kps)
+
+
+def iou_bbox_matching(a: List[BBox], b: List[BBox]) -> Dict[BBox, Optional[BBox]]:
+    if not b:
+        return dict.fromkeys(a)
+    matching = {}
+    for bbox_a in a:
+        scores = sorted(b, key=lambda bbox_b: bbox_b.iou(bbox_a), reverse=True)
+        top_score_bbox = scores[0]
+        if top_score_bbox in matching.values():
+            matching[bbox_a] = None
+        elif top_score_bbox.iou(bbox_a) > 0:
+            matching[bbox_a] = top_score_bbox
+        else:
+            matching[bbox_a] = None
+
+    return matching

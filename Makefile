@@ -1,6 +1,7 @@
 update-dataset:
 	python scripts/download-dataset.py 1 --export-file datasets/watch-faces.json
-
+update-image-cache: update-dataset
+	dvc repro -s download-images
 add-images:
 	python scripts/add-images-to-label-studio-project.py --source-dir ./new-images --label-studio-project ${PROJECT_ID} --label-studio-host ${LABEL_STUDIO_URL} --label-studio-api-token ${LABEL_STUDIO_ACCESS_TOKEN}  --n-images 50 --shuffle-images
 

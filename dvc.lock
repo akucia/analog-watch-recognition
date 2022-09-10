@@ -4,8 +4,8 @@ stages:
     cmd: python scripts/download-images.py datasets/watch-faces.json --concurrent
     deps:
     - path: datasets/watch-faces.json
-      md5: e00b9915f01e7e120532a6d54a61c252
-      size: 585871
+      md5: b91771b4afbcc268f6e3b76ff195e06b
+      size: 1037986
     - path: scripts/download-images.py
       md5: a037cfab1a482a356f1d7d62804041d3
       size: 3961
@@ -15,16 +15,16 @@ stages:
       size: 16911707
       nfiles: 46
     - path: datasets/train
-      md5: 9a3f5b148227c37600c3af6a9b0b0161.dir
-      size: 82169507
-      nfiles: 154
+      md5: c517cd143a36c8444e7e19718ab7153c.dir
+      size: 94131818
+      nfiles: 218
     - path: datasets/val
       md5: 8ac3dabbeb73f54d330cb1c0f26e8d62.dir
       size: 17982237
       nfiles: 36
     - path: datasets/watch-faces-local.json
-      md5: db7c3dda8302f2f04fc4d627941d0551
-      size: 581754
+      md5: 7bf58251585ed74a9dfbd79c2c97b908
+      size: 1031086
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
       60  --batch-size 16  --confidence-threshold 0.5  --seed 42
@@ -139,9 +139,12 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: f9487ab092c4acc02321245bec74e596.dir
-      size: 230176
-      nfiles: 36
+      md5: 54eb7ebdea76a1446a0446df24363dae.dir
+      size: 190697
+      nfiles: 33
+    - path: scripts/update-metrics-table-and-graph.py
+      md5: 6f25059ae2169ced7fd4c1d01fd04ea0
+      size: 2094
   train-keypoint:
     cmd: python watch_recognition/watch_recognition/train/heatmap_regression_task.py
       --epochs 60 --batch-size 16 --confidence-threshold 0.5 --seed 42
@@ -290,3 +293,28 @@ stages:
       md5: 3c12c44389ed179e56428f1ef23564cc.dir
       size: 36518038
       nfiles: 5
+  eval-end-2-end:
+    cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py --concurrent
+    deps:
+    - path: datasets/watch-faces-local.json
+      md5: 7bf58251585ed74a9dfbd79c2c97b908
+      size: 1031086
+    - path: models/detector
+      md5: c8ee744e619baf859a79d31740caddad.dir
+      size: 155280910
+      nfiles: 6
+    - path: models/keypoint
+      md5: 3d14403bb1c0811c028e3ba8da69b497.dir
+      size: 36542592
+      nfiles: 6
+    - path: models/segmentation
+      md5: 3c12c44389ed179e56428f1ef23564cc.dir
+      size: 36518038
+      nfiles: 5
+    outs:
+    - path: metrics/end_2_end_eval.csv
+      md5: f521a679167cdc0eadd0c28342370aab
+      size: 14982
+    - path: metrics/end_2_end_summary.json
+      md5: 710a0a62121610d0eabb28bd982eb7ef
+      size: 298

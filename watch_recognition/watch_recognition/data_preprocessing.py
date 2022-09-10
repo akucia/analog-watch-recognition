@@ -194,7 +194,7 @@ def load_keypoints_data_as_kp(
 
 def load_image(
     image_path: str,
-    image_size: Optional[Tuple[int, int]],
+    image_size: Optional[Tuple[int, int]] = None,
     preserve_aspect_ratio: bool = False,
 ):
     if image_path.startswith("gs://"):

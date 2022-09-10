@@ -276,7 +276,7 @@ class HandPredictorLocal(HandPredictor):
         super().__init__(confidence_threshold=confidence_threshold)
 
     def _batch_predict(self, batch_image_numpy: np.ndarray) -> np.ndarray:
-        predicted = self.model.predict(batch_image_numpy)
+        predicted = self.model.predict(batch_image_numpy, verbose=0)
         return predicted
 
 
@@ -557,37 +557,61 @@ class RotationPredictor:
         return image.rotate(-angle, resample=BICUBIC), -angle
 
 
-class ClockTimePredictor:
-    def __init__(self):
-        self.detector: TFLiteDetector = ""
-        self.rotation_predictor: RotationPredictor = ""
-        self.kp_predictor: KPPredictor = ""
-        self.hands_predictor: HandPredictor = ""
+class TimePredictor:
+    def __init__(
+        self,
+        detector: RetinanetDetector,
+        kp_predictor: KPHeatmapPredictorV2,
+        hand_predictor: HandPredictor,
+    ):
+        self.detector = detector
+        self.kp_predictor = kp_predictor
+        self.hand_predictor = hand_predictor
 
     def predict(self, image) -> List[BBox]:
-        bboxes = self.detector.predict(image)
-        results = []
+        pil_img = image.convert("RGB")
+        bboxes = self.detector.predict(pil_img)
+        transcriptions = []
+
+        bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
         for box in bboxes:
-            pred_center, pred_top = self.kp_predictor.predict_from_image_and_bbox(
-                image, box, rotation_predictor=self.rotation_predictor
-            )
-            # TODO remove debug drawing and move it to a different method
-            # frame = pred_center.draw_marker(frame, thickness=2)
-            # frame = pred_top.draw_marker(frame, thickness=2)
-            minute_and_hour, other = self.hands_predictor.predict_from_image_and_bbox(
-                image, box, pred_center
+            points = self.kp_predictor.predict_from_image_and_bbox(pil_img, box)
+            detected_center_points = [p for p in points if p.name == "Center"]
+            if detected_center_points:
+                detected_center_points = sorted(
+                    detected_center_points, key=lambda p: p.score, reverse=True
+                )[0]
+            else:
+                transcriptions.append("??:??")
+                continue
+
+            detected_top_points = [p for p in points if p.name == "Top"]
+            if detected_top_points:
+                detected_top_points = sorted(
+                    detected_top_points, key=lambda p: p.score, reverse=True
+                )[0]
+            else:
+                transcriptions.append("??:??")
+                continue
+            (
+                minute_and_hour,
+                other,
+                polygon,
+            ) = self.hand_predictor.predict_from_image_and_bbox(
+                pil_img, box, detected_center_points, debug=False
             )
             if minute_and_hour:
                 pred_minute, pred_hour = minute_and_hour
+                minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
+                hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
                 read_hour, read_minute = points_to_time(
-                    pred_center, pred_hour.end, pred_minute.end, pred_top
+                    detected_center_points, hour_kp, minute_kp, detected_top_points
                 )
-                # frame = pred_minute.draw(frame, thickness=3)
-                # frame = pred_minute.end.draw_marker(frame, thickness=2)
-                # frame = pred_hour.draw(frame, thickness=5)
-                # frame = pred_hour.end.draw_marker(frame, thickness=2)
 
-                time = f"{read_hour:.0f}:{read_minute:.0f}"
-                box = dataclasses.replace(box, name=time)
-                results.append(box)
-        return results
+                predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
+                transcriptions.append(predicted_time)
+        bboxes = [
+            bbox.rename(transcription)
+            for bbox, transcription in zip(bboxes, transcriptions)
+        ]
+        return bboxes

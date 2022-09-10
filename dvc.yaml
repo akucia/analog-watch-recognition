@@ -169,7 +169,20 @@ stages:
           persist: true
       - models/segmentation/:
           persist: true
+  eval-end-2-end:
+    cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py --concurrent
+    deps:
+      - watch_recognition/watch_recognition/eval/end-to-end-eval.py
+      - models/detector
+      - models/keypoint
+      - models/segmentation
+      - datasets/watch-faces-local.json
+
+    metrics:
+      - metrics/end_2_end_eval.csv
+      - metrics/end_2_end_summary.json
   update-metrics:
       cmd: python scripts/update-metrics-table-and-graph.py
       deps:
+        - scripts/update-metrics-table-and-graph.py
         - metrics
