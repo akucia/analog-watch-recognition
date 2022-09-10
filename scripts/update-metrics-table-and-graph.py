@@ -14,7 +14,7 @@ if __name__ == "__main__":
     ]
 
     metrics_start = readme_lines.index("# Metrics\n")
-    metrics_end = readme_lines.index("# Demo - version 2\n")
+    metrics_end = readme_lines.index("## End 2 end metrics definitions\n")
     metrics_tables_md = []
     commands = [
         [

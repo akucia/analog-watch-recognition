@@ -55,9 +55,9 @@ flowchart TD
 |---------------------------|------------------|-------------|--------|-------------------|--------------|
 | metrics/segmentation.json | 0.448            | 0.381       | 59     | 0.748             | 0.114        |
 
-# Metrics definition
+## End 2 end metrics definitions
 Final metric for the entire system is 'x-min accuracy' which is the fraction of system predictions accurate within x minutes. Example:  
-$$ 1-min-acc = 1 - {|time - time_pred | < 1 min \over N_samples} $$
+$$\text{1-min-acc} = 1 - {|{|time - {time}_{pred}| < 1min}| \over N_{samples}}$$
 # Demo - version 2
 
 <img src="example_data/IMG_0039_render.jpg?raw=true" width=400> <img src="example_data/IMG_0040_render.jpg?raw=true" width=400>

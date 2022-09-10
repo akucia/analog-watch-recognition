@@ -318,3 +318,49 @@ stages:
     - path: metrics/end_2_end_summary.json
       md5: 710a0a62121610d0eabb28bd982eb7ef
       size: 298
+  eval-segmentation:
+    cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
+      0.5
+    deps:
+    - path: models/detector/
+      md5: c8ee744e619baf859a79d31740caddad.dir
+      size: 155280910
+      nfiles: 6
+    - path: models/segmentation/
+      md5: 3c12c44389ed179e56428f1ef23564cc.dir
+      size: 36518038
+      nfiles: 5
+    - path: watch_recognition/watch_recognition/eval/segmentation_eval.py
+      md5: 291f3f92f4524b483521abbe5d84e3bd
+      size: 4105
+    outs:
+    - path: example_predictions/segmentation/train_0.jpg
+      md5: f2dcfdbb90490a29dc333049a4b0ab84
+      size: 34930
+    - path: example_predictions/segmentation/train_1.jpg
+      md5: 3cd25d1816f0af257237e6a64966d2df
+      size: 35573
+    - path: example_predictions/segmentation/train_2.jpg
+      md5: e9dab32f6ca23378fd6417558d74525b
+      size: 35452
+    - path: example_predictions/segmentation/train_3.jpg
+      md5: f3c39bdbb5dec797060841a309859dd6
+      size: 43163
+    - path: example_predictions/segmentation/train_4.jpg
+      md5: 4b172b11be3aff0302b640f098ab9383
+      size: 38106
+    - path: example_predictions/segmentation/val_0.jpg
+      md5: f2dcfdbb90490a29dc333049a4b0ab84
+      size: 34930
+    - path: example_predictions/segmentation/val_1.jpg
+      md5: e15f02277647121895eeaf190c1a3751
+      size: 35929
+    - path: example_predictions/segmentation/val_2.jpg
+      md5: fb550c766de6a04489c82e2b97c9981e
+      size: 34962
+    - path: example_predictions/segmentation/val_3.jpg
+      md5: f3c39bdbb5dec797060841a309859dd6
+      size: 43163
+    - path: example_predictions/segmentation/val_4.jpg
+      md5: 99af9d6ea3475b1da8b5057ffe879113
+      size: 38445

@@ -169,6 +169,23 @@ stages:
           persist: true
       - models/segmentation/:
           persist: true
+  eval-segmentation:
+    cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}
+    deps:
+      - models/segmentation/
+      - models/detector/
+      - watch_recognition/watch_recognition/eval/segmentation_eval.py
+    outs:
+      - example_predictions/segmentation/train_0.jpg
+      - example_predictions/segmentation/train_1.jpg
+      - example_predictions/segmentation/train_2.jpg
+      - example_predictions/segmentation/train_3.jpg
+      - example_predictions/segmentation/train_4.jpg
+      - example_predictions/segmentation/val_0.jpg
+      - example_predictions/segmentation/val_1.jpg
+      - example_predictions/segmentation/val_2.jpg
+      - example_predictions/segmentation/val_3.jpg
+      - example_predictions/segmentation/val_4.jpg
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py --concurrent
     deps:
