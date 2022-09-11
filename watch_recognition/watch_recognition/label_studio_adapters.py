@@ -127,10 +127,28 @@ def load_label_studio_kp_detection_dataset(
 def load_label_studio_bbox_detection_dataset(
     source: Path,
     label_mapping: Optional[Dict[str, int]],
-    image_size: Tuple[int, int] = (400, 400),
+    image_size: Optional[Tuple[int, int]] = (400, 400),
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
 ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    dataset_gen = _load_label_studio_bbox_detection_dataset(
+        source=source,
+        label_mapping=label_mapping,
+        max_num_images=max_num_images,
+        split=split,
+    )
+    for (image_path, image_bboxes, class_labels) in dataset_gen:
+        image_np = load_image(str(image_path), image_size=image_size).astype("uint8")
+        yield image_np, image_bboxes, class_labels
+
+
+# TODO rename and make public
+def _load_label_studio_bbox_detection_dataset(
+    source: Path,
+    label_mapping: Optional[Dict[str, int]],
+    max_num_images: Optional[int] = None,
+    split: Optional[str] = "train",
+) -> Iterator[Tuple[Path, np.ndarray, np.ndarray]]:
     with source.open("r") as f:
         tasks = json.load(f)
     if split is not None:
@@ -140,24 +158,28 @@ def load_label_studio_bbox_detection_dataset(
         tasks = tasks[:max_num_images]
 
     for task in tasks:
-        image_bboxes = []
-        class_labels = []
+        if "bbox" not in task:
+            continue
+        class_labels, image_bboxes = _extract_bboxes_from_task(label_mapping, task)
         image_path = source.parent / task["image"]
-        img_np = load_image(
-            str(image_path), image_size=image_size, preserve_aspect_ratio=True
-        )
-        if "bbox" in task:
-            for obj in task["bbox"]:
-                # label studio keeps
-                bbox = BBox.from_ltwh(
-                    obj["x"],
-                    obj["y"],
-                    obj["width"],
-                    obj["height"],
-                    obj["rectanglelabels"][0],
-                ).scale(1 / 100, 1 / 100)
+        image_bboxes = np.array(image_bboxes).reshape(-1, 4).astype("float32")
+        class_labels = np.array(class_labels).reshape(-1, 1).astype("int32")
+        yield image_path, image_bboxes, class_labels
 
-                image_bboxes.append([bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max])
-                class_labels.append(label_mapping[bbox.name])
-        image_bboxes = np.array(image_bboxes).reshape(-1, 4)
-        yield img_np, np.array(image_bboxes), np.array(class_labels)
+
+def _extract_bboxes_from_task(label_mapping, task):
+    image_bboxes = []
+    class_labels = []
+    for obj in task["bbox"]:
+        # label studio keeps
+        bbox = BBox.from_ltwh(
+            obj["x"],
+            obj["y"],
+            obj["width"],
+            obj["height"],
+            obj["rectanglelabels"][0],
+        ).scale(1 / 100, 1 / 100)
+
+        image_bboxes.append([bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max])
+        class_labels.append(label_mapping[bbox.name])
+    return class_labels, image_bboxes
