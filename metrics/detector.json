@@ -1,9 +1,17 @@
 {
     "step": 59,
     "train": {
-        "loss": 0.04061587154865265
+        "loss": 0.12431761622428894,
+        "classification_loss": 0.002918428275734186,
+        "regularization_loss": 0.0,
+        "box_loss": 0.12139918655157089
     },
     "eval": {
-        "loss": 0.42029106616973877
+        "Mean Average Precision": 0.353355348110199,
+        "Recall": 0.6833333373069763,
+        "loss": 1.7555711269378662,
+        "classification_loss": 0.5208823680877686,
+        "box_loss": 1.2346887588500977,
+        "regularization_loss": 0.0
     }
 }
