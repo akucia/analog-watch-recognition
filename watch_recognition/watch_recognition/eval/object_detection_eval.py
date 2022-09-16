@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
 from PIL import Image
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
@@ -17,7 +16,6 @@ from watch_recognition.label_studio_adapters import (
 from watch_recognition.predictors import RetinanetDetector, RetinanetDetectorLocal
 from watch_recognition.train.object_detection_task import visualize_detections
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
-from watch_recognition.utilities import retinanet_prepare_image
 
 
 def generate_coco_annotations_from_model(
@@ -49,7 +47,7 @@ def generate_coco_annotations_from_model(
 
 def main():
     t0 = time.perf_counter()
-    model = keras.models.load_model("models/detector/")
+    model = keras.models.load_model("models/detector/", compile=False)
 
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
@@ -74,36 +72,30 @@ def main():
         for i, (image, bbox, cls) in enumerate(
             load_label_studio_bbox_detection_dataset(
                 dataset_path,
-                image_size=(384, 384),
                 label_mapping=label_to_cls,
                 max_num_images=5,
                 split=split,
             )
         ):
-            image = tf.cast(image, dtype=tf.float32)
-            input_image, ratio = retinanet_prepare_image(image)
-            ratio = ratio.numpy()
-            nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = model.predict(
-                input_image, verbose=0
-            )
-            nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-                nmsed_boxes[0],
-                nmsed_scores[0],
-                nmsed_classes[0],
-                valid_detections[0],
-            )
-            nmsed_boxes = nmsed_boxes[:valid_detections]
-            nmsed_classes = nmsed_classes[:valid_detections]
-            nmsed_scores = nmsed_scores[:valid_detections]
-            nmsed_boxes = nmsed_boxes / ratio
-            class_names = [cls_to_label[x] for x in nmsed_classes[:valid_detections]]
+
+            predicted_boxes = model.predict(
+                np.expand_dims(image, axis=0).astype(np.float32),
+                False,
+                verbose=0,
+            )[0].numpy()
+            # TODO integrate bbox scaling with model export
+            predicted_boxes[:, 0] *= image.shape[1] / 512
+            predicted_boxes[:, 1] *= image.shape[0] / 512
+            predicted_boxes[:, 2] *= image.shape[1] / 512
+            predicted_boxes[:, 3] *= image.shape[0] / 512
+            class_names = [cls_to_label[x] for x in predicted_boxes[:, 4]]
             save_file = Path(f"example_predictions/detector/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
             visualize_detections(
                 image,
-                nmsed_boxes,
+                predicted_boxes[:, :4],
                 class_names,
-                nmsed_scores,
+                predicted_boxes[:, 5],
                 savefile=save_file,
             )
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")

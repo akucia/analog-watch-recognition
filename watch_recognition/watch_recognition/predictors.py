@@ -428,32 +428,21 @@ class RetinanetDetector(ABC):
     def predict(self, image: ImageType) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
         # TODO integrate the image preprocessing with the exported model
-        input_image, ratio = retinanet_prepare_image(np.array(image))
-        ratio = ratio.numpy()
-        (
-            nmsed_boxes,
-            nmsed_classes,
-            nmsed_scores,
-            valid_detections,
-        ) = self._batch_predict(input_image.numpy())
-        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
-            nmsed_boxes[0],
-            nmsed_scores[0],
-            nmsed_classes[0],
-            valid_detections[0],
-        )
-        nmsed_boxes = nmsed_boxes[:valid_detections]
-        nmsed_classes = nmsed_classes[:valid_detections]
-        nmsed_scores = nmsed_scores[:valid_detections]
-        nmsed_boxes = nmsed_boxes / ratio
+        image_np = np.expand_dims(np.array(image), axis=0)
+        predictions = self._batch_predict(image_np)[0]
         bboxes = []
-        for box, cls, score in zip(nmsed_boxes, nmsed_classes, nmsed_scores):
+        for box, cls, score in zip(
+            predictions[:, :4], predictions[:, 4], predictions[:, 5]
+        ):
+
             # cast everything to float to prevent issues with JSON serialization
             # and stick to types specified by BBox class
             float_bbox = list(map(float, box))
+            # TODO integrate bbox scaling with model export - models should return
+            #  outputs in normalized coordinates
             bbox = BBox(
                 *float_bbox, name=self.class_to_label_name[cls], score=float(score)
-            )
+            ).scale(x=image.width / 512, y=image.height / 512)
             bboxes.append(bbox)
         return bboxes
 
@@ -464,15 +453,11 @@ class RetinanetDetectorLocal(RetinanetDetector):
         model_path: Path,
         class_to_label_name: Dict[int, str],
     ):
-        self.model = tf.keras.models.load_model(model_path)
+        self.model = tf.keras.models.load_model(model_path, compile=False)
         super().__init__(class_to_label_name=class_to_label_name)
 
-    def _batch_predict(self, input_image):
-        nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = self.model.predict(
-            input_image,
-            verbose=0,
-        )
-        return nmsed_boxes, nmsed_classes, nmsed_scores, valid_detections
+    def _batch_predict(self, input_images):
+        return self.model.predict(input_images, False, verbose=0).numpy()
 
 
 class RetinaNetDetectorGRPC(RetinanetDetector):
@@ -496,6 +481,7 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
         request = predict_pb2.PredictRequest()
         request.model_spec.name = self.model_name
         request.model_spec.signature_name = "serving_default"
+        # TODO this will require updates
         request.inputs["image"].CopyFrom(tf.make_tensor_proto(input_images))
         result = self.stub.Predict(request, self.timeout)
         parsed_results = {}
@@ -509,7 +495,6 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
                 raise ValueError(f"unrecognized dtype for {output}")
             shape = [dim.size for dim in output.tensor_shape.dim]
             parsed_results[key] = np.array(value).reshape(shape)
-
         nmsed_boxes = parsed_results["RetinaNet"]
         nmsed_classes = parsed_results["RetinaNet_2"]
         nmsed_scores = parsed_results["RetinaNet_1"]

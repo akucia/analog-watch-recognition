@@ -170,6 +170,8 @@ def _load_label_studio_bbox_detection_dataset(
 def _extract_bboxes_from_task(label_mapping, task):
     image_bboxes = []
     class_labels = []
+    if "bbox" not in task:
+        return np.empty(shape=(0, 4)), np.empty(shape=(0, 1))
     for obj in task["bbox"]:
         # label studio keeps
         bbox = BBox.from_ltwh(

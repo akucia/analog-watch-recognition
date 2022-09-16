@@ -27,51 +27,50 @@ stages:
       size: 1031086
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
-      60  --batch-size 16  --confidence-threshold 0.5  --seed 42
+      2  --batch-size 8  --max-images 8 --seed 42
     deps:
     - path: checkpoints/detector/
-      md5: 262b04cceb42d0e7658bf70da75b501e.dir
-      size: 436687933
+      md5: 4166b569fa7cedf26eeff87404858907.dir
+      size: 422523158
       nfiles: 3
     - path: datasets/test
       md5: 6904a01888485f56672750554a7bb1e0.dir
       size: 16911707
       nfiles: 46
     - path: datasets/train
-      md5: 9a3f5b148227c37600c3af6a9b0b0161.dir
-      size: 82169507
-      nfiles: 154
+      md5: c517cd143a36c8444e7e19718ab7153c.dir
+      size: 94131818
+      nfiles: 218
     - path: datasets/val
       md5: 8ac3dabbeb73f54d330cb1c0f26e8d62.dir
       size: 17982237
       nfiles: 36
     - path: datasets/watch-faces-local.json
-      md5: db7c3dda8302f2f04fc4d627941d0551
-      size: 581754
+      md5: 7bf58251585ed74a9dfbd79c2c97b908
+      size: 1031086
     - path: watch_recognition/watch_recognition/train/object_detection_task.py
-      md5: 4f2a8f7f6133997316921fba3ea47740
-      size: 32743
+      md5: 15719348a385d3632d5aa830ff58d581
+      size: 10944
     params:
       params.yaml:
         detector:
-          epochs: 60
-          batch-size: 16
-          confidence-threshold: 0.5
+          epochs: 2
+          batch-size: 8
         seed: 42
     outs:
     - path: example_predictions/detector/test-image.jpg
-      md5: 1b781313a38c68e64ebf5942ba6e9ccb
-      size: 128246
+      md5: 24750cf5712252a80d9b4f588641d720
+      size: 125330
     - path: metrics/detector.json
-      md5: 32d925097b0b980413b21603c28fb299
-      size: 133
+      md5: 6487180096986572999301c33754e6ca
+      size: 440
     - path: metrics/detector/scalars
-      md5: cb7e9d00d3d164c899f0b43bda0ef86f.dir
-      size: 4526
-      nfiles: 2
+      md5: ef82da300d8a518f23550faf8858635f.dir
+      size: 942
+      nfiles: 10
     - path: models/detector/
-      md5: c8ee744e619baf859a79d31740caddad.dir
-      size: 155280910
+      md5: 009f0c03e28ad3ea1ee70ce7458d27b3.dir
+      size: 432211646
       nfiles: 6
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
