@@ -7,10 +7,10 @@ detector:
 
 keypoint:
   epochs: 60
-  batch-size: 16
+  batch-size: 32
   confidence-threshold: 0.5
 
 segmentation:
   epochs: 60
-  batch-size: 16
+  batch-size: 32
   confidence-threshold: 0.5

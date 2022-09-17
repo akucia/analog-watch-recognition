@@ -79,6 +79,8 @@ class KPPredictor(ABC):
         running the model.
         Returns keypoints in pixel coordinates of the image
         """
+        if bbox.area < 1:
+            return []
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
             points = self.predict(crop, rotation_predictor=rotation_predictor)
             points = [point.translate(bbox.left, bbox.top) for point in points]
@@ -440,9 +442,10 @@ class RetinanetDetector(ABC):
             float_bbox = list(map(float, box))
             # TODO integrate bbox scaling with model export - models should return
             #  outputs in normalized coordinates
+            clip_bbox = BBox(0,0,512,512)
             bbox = BBox(
                 *float_bbox, name=self.class_to_label_name[cls], score=float(score)
-            ).scale(x=image.width / 512, y=image.height / 512)
+            ).intersection(clip_bbox).scale(x=image.width / 512, y=image.height / 512)
             bboxes.append(bbox)
         return bboxes
 

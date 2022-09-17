@@ -187,7 +187,7 @@ stages:
       - example_predictions/segmentation/val_3.jpg
       - example_predictions/segmentation/val_4.jpg
   eval-end-2-end:
-    cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py --concurrent
+    cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py
     deps:
       - watch_recognition/watch_recognition/eval/end-to-end-eval.py
       - models/detector

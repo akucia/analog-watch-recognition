@@ -200,18 +200,18 @@ def main(
         # callbacks_lib.ReduceLROnPlateau(patience=20),
     ]
 
-    if not fine_tune_from_checkpoint:
-        callbacks_list.append(
-            tf.keras.callbacks.ModelCheckpoint(
-                checkpoint_path,
-                monitor="val_loss",
-                verbose=1,
-                save_best_only=True,
-                save_weights_only=True,
-                mode="auto",
-                save_freq="epoch",
-            ),
-        )
+    # if not fine_tune_from_checkpoint:
+    #     callbacks_list.append(
+    #         tf.keras.callbacks.ModelCheckpoint(
+    #             checkpoint_path,
+    #             monitor="val_loss",
+    #             verbose=1,
+    #             save_best_only=True,
+    #             save_weights_only=True,
+    #             mode="auto",
+    #             save_freq="epoch",
+    #         ),
+    #     )
 
     # -- setup dataset pipeline
     dataset_path = Path("datasets/watch-faces-local.json")
