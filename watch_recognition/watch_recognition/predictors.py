@@ -79,9 +79,9 @@ class KPPredictor(ABC):
         running the model.
         Returns keypoints in pixel coordinates of the image
         """
-        if bbox.area < 1:
-            return []
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
+            if crop.width * crop.height < 1:
+                return []
             points = self.predict(crop, rotation_predictor=rotation_predictor)
             points = [point.translate(bbox.left, bbox.top) for point in points]
             return points
@@ -122,6 +122,8 @@ class KPHeatmapPredictorV2(ABC):
         Returns keypoints in pixel coordinates of the image
         """
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
+            if crop.width * crop.height < 1:
+                return []
             points = self.predict(crop)
             points = [point.translate(bbox.left, bbox.top) for point in points]
             return points
@@ -259,6 +261,8 @@ class HandPredictor(ABC):
         Returns keypoints in pixel coordinates of the image
         """
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
+            if crop.width * crop.height < 1:
+                return [], [], None
             center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
             valid_lines, other_lines, polygon = self.predict(
                 crop, center_point_inside_bbox, debug=debug
@@ -441,9 +445,9 @@ class RetinanetDetector(ABC):
             # and stick to types specified by BBox class
             float_bbox = list(map(float, box))
             # TODO integrate bbox scaling with model export - models should return
-            #  outputs in normalized coordinates
+            #  outputs in normalized coordinates in corners format
             clip_bbox = BBox(0,0,512,512)
-            bbox = BBox(
+            bbox = BBox.from_ltwh(
                 *float_bbox, name=self.class_to_label_name[cls], score=float(score)
             ).intersection(clip_bbox).scale(x=image.width / 512, y=image.height / 512)
             bboxes.append(bbox)

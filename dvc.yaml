@@ -50,11 +50,9 @@ stages:
       - example_predictions/detector/train_1.jpg
       - example_predictions/detector/train_2.jpg
       - example_predictions/detector/train_3.jpg
-      - example_predictions/detector/train_4.jpg
       - example_predictions/detector/val_0.jpg
       - example_predictions/detector/val_1.jpg
       - example_predictions/detector/val_2.jpg
-      - example_predictions/detector/val_3.jpg
     metrics:
       - metrics/detector/coco_train.json:
           cache: false

@@ -163,7 +163,7 @@ class BBox:
 
     def scale(self, x: float, y: float) -> "BBox":
         return BBox(
-            self.x_min * x, self.y_min * y, self.x_max * x, self.y_max * y, self.name
+            self.x_min * x, self.y_min * y, self.x_max * x, self.y_max * y, self.name, self.score
         )
 
     @property
@@ -289,6 +289,8 @@ class BBox:
             y_min=y_min,
             x_max=x_max,
             y_max=y_max,
+            name=self.name,
+            score=self.score,
         )
 
     def iou(self, other: "BBox") -> float:

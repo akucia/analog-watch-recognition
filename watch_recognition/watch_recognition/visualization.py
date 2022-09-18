@@ -52,7 +52,7 @@ def visualize_detections(
     ax = plt.gca()
     for box, _cls, score in zip(boxes, classes, scores):
         text = "{}: {:.2f}".format(_cls, score)
-        bbox = BBox(*box, name=text, score=score)
+        bbox = BBox.from_ltwh(*box, name=text, score=score)
         bbox.plot(ax=ax)
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight")
