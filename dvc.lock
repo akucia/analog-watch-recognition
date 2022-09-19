@@ -27,7 +27,7 @@ stages:
       size: 1028857
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
-      60  --batch-size 16  --confidence-threshold 0.5  --seed 42
+      120  --batch-size 16  --confidence-threshold 0.5  --seed 42
     deps:
     - path: checkpoints/detector/
       md5: 733a88cd5d39ec938c4c74742abc844d.dir
@@ -49,93 +49,93 @@ stages:
       md5: c900823f5b63cc402ad8b7aa3aad8707
       size: 1028857
     - path: watch_recognition/watch_recognition/train/object_detection_task.py
-      md5: 44173eb43a48d9990d835c5ed293ce1f
-      size: 11019
+      md5: 5d8457e535f91e6bbd0b2076f561fba5
+      size: 11694
     params:
       params.yaml:
         detector:
-          epochs: 60
+          epochs: 120
           batch-size: 16
           confidence-threshold: 0.5
         seed: 42
     outs:
     - path: example_predictions/detector/test-image.jpg
-      md5: bd1c3dff2d61b4a3de0787c7423f11c8
-      size: 131269
+      md5: 31bda61efb2670a6a6e00f3c447a4c3a
+      size: 128960
     - path: metrics/detector.json
-      md5: 52f9f8b6507b5fe8f6aa4c24bc1f8d92
-      size: 480
+      md5: 5320896a370b116b606e725cc0637710
+      size: 478
     - path: metrics/detector/scalars
-      md5: 6ff16415f93887a7495c594b802d8a79.dir
-      size: 20682
+      md5: 0011df22172b7697eaf32a669e688f4c.dir
+      size: 41016
       nfiles: 10
     - path: models/detector/
-      md5: cfb3ce9f1a3cb628e3ae52f24bda6ee0.dir
-      size: 432222822
+      md5: 8478705c9e18e892ce650a28f25d406c.dir
+      size: 432226691
       nfiles: 6
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
     - path: models/detector/
-      md5: cfb3ce9f1a3cb628e3ae52f24bda6ee0.dir
-      size: 432222822
+      md5: 8478705c9e18e892ce650a28f25d406c.dir
+      size: 432226691
       nfiles: 6
     - path: watch_recognition/watch_recognition/eval/object_detection_eval.py
       md5: 1cf0aeeb84dfb02f2c20a18176c1177c
       size: 5655
     outs:
     - path: example_predictions/detector/train_0.jpg
-      md5: f986c200aebaa8fcbc47d15c7a4467d6
-      size: 110713
+      md5: 930f5cf375bdc33f47f054e3616679ae
+      size: 112717
     - path: example_predictions/detector/train_1.jpg
-      md5: e917d80dc037d0324201d5d235910758
-      size: 137416
+      md5: b8e1654be68d3c70b4e5f027d23790df
+      size: 136800
     - path: example_predictions/detector/train_2.jpg
-      md5: b34b12da3fcd5d76f147fb99557a9c9b
-      size: 153785
+      md5: 094fc9ee4605449576897cde9f363754
+      size: 153836
     - path: example_predictions/detector/train_3.jpg
-      md5: a5c28ad7ba0ab69194db10d8ba3bffe3
-      size: 98498
+      md5: b93d9eda3b7a2231c444c4abe6d9a87e
+      size: 98206
     - path: example_predictions/detector/val_0.jpg
-      md5: 126c716e9fe8f9fa0bc89fb4333ff39d
-      size: 141128
+      md5: e88d8736fd775bc672dc0f2f68765abe
+      size: 141102
     - path: example_predictions/detector/val_1.jpg
-      md5: 37ab8115a83ac1aa30a3aed1bfd91783
-      size: 201512
+      md5: f1d34d9bebe0a0ca692486ef94c5704e
+      size: 186500
     - path: example_predictions/detector/val_2.jpg
-      md5: 8c94cd415f1f74545a0428324a531cd7
-      size: 112034
+      md5: e38c940c5bb44d8d7699094cdb044fc7
+      size: 110336
     - path: metrics/detector/PR-IoU@0.50_train.tsv
-      md5: 1d35dea276356bd4c8d3cf27320f4b0f
-      size: 2456
+      md5: b151368781daadb428bef3f0ba1f0ba1
+      size: 2304
     - path: metrics/detector/PR-IoU@0.50_val.tsv
-      md5: 7356432b6caa7acfcb9b4a9548962078
-      size: 1768
+      md5: a6f3407db6e7bec6d41ba23ce3d26e7e
+      size: 1966
     - path: metrics/detector/PR-IoU@0.75_train.tsv
-      md5: 1d35dea276356bd4c8d3cf27320f4b0f
-      size: 2456
+      md5: a65952e5f11a5a55ae0836e57b4b0072
+      size: 2220
     - path: metrics/detector/PR-IoU@0.75_val.tsv
-      md5: ef2dcf6ce1bab6ac4aae433b1a196237
-      size: 1820
+      md5: 37000248e3b8c901e86f391cd993b3d5
+      size: 1914
     - path: metrics/detector/PR-IoU@0.95_train.tsv
-      md5: 67cdfa6707a9daba8d6791a2eed4c3ea
-      size: 1644
+      md5: 74126798b3155fd2f7ada1d906e028f9
+      size: 1211
     - path: metrics/detector/PR-IoU@0.95_val.tsv
-      md5: b625c0a25b4ce632e00a82a7a47f4144
-      size: 1187
+      md5: eb9c22f401e52e662cc9020d738478e0
+      size: 1059
     - path: metrics/detector/coco_train.json
-      md5: d51a9dae78490c21bf15754987693495
+      md5: 60f778e04120fa4289263958b2006049
       size: 286
     - path: metrics/detector/coco_val.json
-      md5: 75b36863aa048befd414ac81db7331d8
-      size: 286
+      md5: 68b3031bdc79102a187ab2dfba6a4726
+      size: 285
   update-metrics:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: d7ab119f7b8f853c6e12573cb47e179f.dir
-      size: 369200
-      nfiles: 47
+      md5: 17be53d67a504ee55ee6ba166c82734d.dir
+      size: 496016
+      nfiles: 51
     - path: scripts/update-metrics-table-and-graph.py
       md5: b6166e699fc2111731ce9ebed407e806
       size: 2108
@@ -192,8 +192,8 @@ stages:
       --kp-confidence-threshold 0.5
     deps:
     - path: models/detector/
-      md5: cfb3ce9f1a3cb628e3ae52f24bda6ee0.dir
-      size: 432222822
+      md5: 8478705c9e18e892ce650a28f25d406c.dir
+      size: 432226691
       nfiles: 6
     - path: models/keypoint/
       md5: 6381f41f1e5f70130f1dbcfdfd0e93fc.dir
@@ -234,10 +234,10 @@ stages:
       md5: ff048920ba32ea4af0046e4d0f93bab8
       size: 39189
     - path: metrics/keypoint/coco_train.json
-      md5: 7c4a696e83bffbaa92e17926cb7e875c
-      size: 267
+      md5: a63db7f6935e87c2a40b621bb185f494
+      size: 261
     - path: metrics/keypoint/coco_val.json
-      md5: 7c57c4a68d5dbd47f40146be8c22b2a5
+      md5: 784a75da48a86588bd7c1da677a224f6
       size: 247
   train-segmentation:
     cmd: python watch_recognition/watch_recognition/train/segmentation_task.py --epochs
@@ -294,8 +294,8 @@ stages:
       md5: c900823f5b63cc402ad8b7aa3aad8707
       size: 1028857
     - path: models/detector
-      md5: cfb3ce9f1a3cb628e3ae52f24bda6ee0.dir
-      size: 432222822
+      md5: 8478705c9e18e892ce650a28f25d406c.dir
+      size: 432226691
       nfiles: 6
     - path: models/keypoint
       md5: 6381f41f1e5f70130f1dbcfdfd0e93fc.dir
@@ -310,18 +310,18 @@ stages:
       size: 7483
     outs:
     - path: metrics/end_2_end_eval.csv
-      md5: b300cb831e3f427190775928b4365c81
-      size: 15081
+      md5: 257327e8c9b080149a708af4344cb8fd
+      size: 15106
     - path: metrics/end_2_end_summary.json
-      md5: 8511e56032c38a59c02e4a5a3be26e56
-      size: 268
+      md5: c952f0eaafa22e315af81f1b754890f8
+      size: 267
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
       0.5
     deps:
     - path: models/detector/
-      md5: cfb3ce9f1a3cb628e3ae52f24bda6ee0.dir
-      size: 432222822
+      md5: 8478705c9e18e892ce650a28f25d406c.dir
+      size: 432226691
       nfiles: 6
     - path: models/segmentation/
       md5: 7964f5d267cb6f2e7a5dcbd9a02e38f1.dir
@@ -335,17 +335,17 @@ stages:
       md5: 9ccd9d6d5feaf64e24b91b096f900def
       size: 42252
     - path: example_predictions/segmentation/train_1.jpg
-      md5: 7bd487c620c2288c12d95c308fff6d7f
-      size: 43138
+      md5: 1262c6f98600ce6d96d0f2fddfa4a3a4
+      size: 43904
     - path: example_predictions/segmentation/train_2.jpg
-      md5: 42b02d8dc16016607b5ffdb7815ddece
-      size: 42899
+      md5: 5c27d9e6e976ff2d90e2f0729adfc65c
+      size: 43821
     - path: example_predictions/segmentation/train_3.jpg
       md5: 0b8da3d70568524bf018c4be15f55109
       size: 52590
     - path: example_predictions/segmentation/train_4.jpg
-      md5: 655c36ca85fccbd9e86361a32eedb59f
-      size: 46817
+      md5: 6999eb6194c4309c53e320baee55cc2a
+      size: 46149
     - path: example_predictions/segmentation/val_0.jpg
       md5: b96110c3651c679f3572c2715f3cacc0
       size: 42996
@@ -356,8 +356,8 @@ stages:
       md5: 5c27d9e6e976ff2d90e2f0729adfc65c
       size: 43821
     - path: example_predictions/segmentation/val_3.jpg
-      md5: 5a0bf82256373c90ed3e9346f9dd7299
-      size: 51770
+      md5: 0b8da3d70568524bf018c4be15f55109
+      size: 52590
     - path: example_predictions/segmentation/val_4.jpg
-      md5: 6999eb6194c4309c53e320baee55cc2a
-      size: 46149
+      md5: 655c36ca85fccbd9e86361a32eedb59f
+      size: 46817

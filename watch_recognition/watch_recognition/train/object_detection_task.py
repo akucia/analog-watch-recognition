@@ -21,10 +21,9 @@ from watch_recognition.label_studio_adapters import (
 from watch_recognition.visualization import visualize_detections
 
 
-def visualize_dataset(dataset, bounding_box_format, ax=None):
+def visualize_dataset(dataset: tf.data.Dataset, bounding_box_format: str, ax=None):
     color = tf.constant(((255.0, 0, 255.0),))
-    iterator = iter(dataset)
-    example = next(iterator)
+    example = next(iter(dataset))
     images, boxes = example["images"], example["bounding_boxes"]
     boxes = keras_cv.bounding_box.convert_format(
         boxes, source=bounding_box_format, target="rel_yxyx", images=images
@@ -41,6 +40,7 @@ def visualize_dataset(dataset, bounding_box_format, ax=None):
         plt.subplot(9 // 3, 9 // 3, i + 1)
         plt.imshow(plotted_images[i].numpy().astype("uint8"))
     ax.axis("off")
+    return ax
 
 
 def convert_format_and_resize_image(bounding_box_format, img_size):
@@ -95,7 +95,7 @@ def load(
         bounding_box_format=bounding_box_format, img_size=img_size
     )
     dataset = dataset.map(_map_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    dataset = dataset.cache()
+    # dataset = dataset.cache()
     if shuffle:
         if not batch_size and not shuffle_buffer:
             raise ValueError(
@@ -157,6 +157,65 @@ def main(
     debug_data_path = Path("debug/detector")
     debug_data_path.mkdir(exist_ok=True, parents=True)
 
+    # -- setup dataset pipeline
+    dataset_path = Path("datasets/watch-faces-local.json")
+    train_dataset = load(
+        dataset_path,
+        label_to_cls=label_to_cls,
+        bounding_box_format="xywh",
+        split="train",
+        batch_size=batch_size,
+        img_size=image_size,
+        max_images=max_images,
+    )
+    val_dataset = load(
+        dataset_path,
+        label_to_cls=label_to_cls,
+        bounding_box_format="xywh",
+        split="val",
+        batch_size=batch_size,
+        img_size=image_size,
+        max_images=max_images,
+    )
+    AUGMENTATION_LAYERS = [
+        keras_cv.layers.ChannelShuffle(groups=3),
+        keras_cv.layers.RandomHue(0.5, [0.0, 255.0]),
+        keras_cv.layers.AutoContrast(value_range=[0.0, 255.0]),
+        keras_cv.layers.GridMask(),
+        keras_cv.layers.RandomColorJitter([0.0, 255.0], 0.5, 0.5, 0.5, 0.5),
+        keras_cv.layers.preprocessing.RandomFlip(bounding_box_format="xywh"),
+        keras_cv.layers.preprocessing.RandomShear(
+            x_factor=0.15,
+            y_factor=0.15,
+            bounding_box_format="xywh",
+            fill_mode="nearest",
+        ),
+        keras_cv.layers.preprocessing.RandomRotation(
+            bounding_box_format="xywh", fill_mode="nearest", factor=1
+        ),
+    ]
+    pipeline = keras_cv.layers.RandomAugmentationPipeline(
+        layers=AUGMENTATION_LAYERS, augmentations_per_image=2
+    )
+
+    def augment_fn(sample):
+        return pipeline(sample)
+
+    train_dataset = train_dataset.map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
+
+    visualize_dataset(train_dataset, bounding_box_format="xywh")
+    plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
+
+    visualize_dataset(val_dataset, bounding_box_format="xywh")
+    plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
+
+    train_dataset = train_dataset.map(
+        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
+    val_dataset = val_dataset.map(
+        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
+
     # -- setup train model
 
     train_model = keras_cv.models.RetinaNet(
@@ -212,51 +271,6 @@ def main(
     #             save_freq="epoch",
     #         ),
     #     )
-
-    # -- setup dataset pipeline
-    dataset_path = Path("datasets/watch-faces-local.json")
-    train_dataset = load(
-        dataset_path,
-        label_to_cls=label_to_cls,
-        bounding_box_format="xywh",
-        split="train",
-        batch_size=batch_size,
-        img_size=image_size,
-        max_images=max_images,
-    )
-    val_dataset = load(
-        dataset_path,
-        label_to_cls=label_to_cls,
-        bounding_box_format="xywh",
-        split="val",
-        batch_size=batch_size,
-        img_size=image_size,
-        max_images=max_images,
-    )
-
-    augmentation_layers = [
-        # keras_cv.layers.RandomShear(x_factor=0.1, bounding_box_format="xywh"),
-    ]
-
-    def augment_fn(sample):
-        for layer in augmentation_layers:
-            sample = layer(sample)
-        return sample
-
-    train_dataset = train_dataset.map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
-
-    visualize_dataset(train_dataset, bounding_box_format="xywh")
-    plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
-
-    visualize_dataset(val_dataset, bounding_box_format="xywh")
-    plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
-
-    train_dataset = train_dataset.map(
-        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
-    ).prefetch(tf.data.AUTOTUNE)
-    val_dataset = val_dataset.map(
-        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
-    ).prefetch(tf.data.AUTOTUNE)
 
     # -- train model
     train_model.fit(
