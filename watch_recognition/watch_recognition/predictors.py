@@ -20,13 +20,7 @@ from watch_recognition.targets_encoding import (
     fit_lines_to_hands_mask,
     line_selector,
 )
-from watch_recognition.utilities import (
-    BBox,
-    Line,
-    Point,
-    Polygon,
-    retinanet_prepare_image,
-)
+from watch_recognition.utilities import BBox, Line, Point, Polygon
 
 
 class KPPredictor(ABC):
@@ -446,10 +440,14 @@ class RetinanetDetector(ABC):
             float_bbox = list(map(float, box))
             # TODO integrate bbox scaling with model export - models should return
             #  outputs in normalized coordinates in corners format
-            clip_bbox = BBox(0,0,512,512)
-            bbox = BBox.from_ltwh(
-                *float_bbox, name=self.class_to_label_name[cls], score=float(score)
-            ).intersection(clip_bbox).scale(x=image.width / 512, y=image.height / 512)
+            clip_bbox = BBox(0, 0, 512, 512)
+            bbox = (
+                BBox.from_ltwh(
+                    *float_bbox, name=self.class_to_label_name[cls], score=float(score)
+                )
+                .intersection(clip_bbox)
+                .scale(x=image.width / 512, y=image.height / 512)
+            )
             bboxes.append(bbox)
         return bboxes
 

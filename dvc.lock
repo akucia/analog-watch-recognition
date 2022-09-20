@@ -335,14 +335,14 @@ stages:
       md5: fa45b6fe4fbb9c7c17314b2ab0efa93c
       size: 35419
     - path: example_predictions/segmentation/train_1.jpg
-      md5: 3cd25d1816f0af257237e6a64966d2df
-      size: 35573
+      md5: 3ad17c0143743905531ab3a7d5b6c691
+      size: 36306
     - path: example_predictions/segmentation/train_2.jpg
-      md5: fb550c766de6a04489c82e2b97c9981e
-      size: 34962
+      md5: 4554e1e646bf3c5976a5dadd9532fd6c
+      size: 35835
     - path: example_predictions/segmentation/train_3.jpg
-      md5: 63deaff45ee7cc90082fceb6955efc65
-      size: 43075
+      md5: 9be9f9a4ab977c3a5358c8ba12ea2361
+      size: 42378
     - path: example_predictions/segmentation/train_4.jpg
       md5: d003e6b9954f721241b9e62b2eac33b1
       size: 38586

@@ -1,4 +1,3 @@
-import json
 import time
 from pathlib import Path
 
@@ -8,22 +7,17 @@ import numpy as np
 from more_itertools import flatten
 from PIL import Image
 from pycocotools.coco import COCO
-from pycocotools.cocoeval import COCOeval
 from tqdm import tqdm
 
 from watch_recognition.label_studio_adapters import (
-    load_label_studio_kp_detection_dataset,
     load_label_studio_polygon_detection_dataset,
 )
 from watch_recognition.predictors import (
     HandPredictorLocal,
     KPHeatmapPredictorV2Local,
     RetinanetDetector,
-    RetinanetDetectorLocal,
 )
-from watch_recognition.train.segmentation_task import encode_polygon_to_mask
-from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
-from watch_recognition.visualization import visualize_keypoints, visualize_masks
+from watch_recognition.visualization import visualize_masks
 
 
 def generate_kp_coco_annotations_from_model(
@@ -90,7 +84,7 @@ def main(confidence_threshold):
                 bbox_labels=bbox_labels,
                 label_mapping=label_to_cls,
                 max_num_images=5,
-                split="train",
+                split=split,
             )
         ):
             results = model.model.predict(np.expand_dims(image_np, axis=0), verbose=0)[
@@ -110,7 +104,7 @@ def main(confidence_threshold):
                 masks.append(mask)
 
             visualize_masks(image_np, masks, savefile=save_file)
-
+        # TODO any segmentation metrics?
     elapsed = time.perf_counter() - t0
     print(f"Segmentation eval done in {elapsed:.2f}s")
 

@@ -10,12 +10,12 @@ import tensorflow.python.keras.backend as K
 from dvclive.keras import DvcLiveCallback
 from PIL import Image
 from segmentation_models.metrics import IOUScore
-from tensorflow_serving.apis import model_pb2, predict_pb2, prediction_log_pb2
 
 from watch_recognition.label_studio_adapters import (
     load_label_studio_polygon_detection_dataset,
 )
 from watch_recognition.models import get_segmentation_model
+from watch_recognition.serving import save_tf_serving_warmup_request
 from watch_recognition.utilities import Polygon
 from watch_recognition.visualization import visualize_masks
 
@@ -86,6 +86,8 @@ def main(
     # TODO new data loader - augment before cropping
     bbox_labels = ["WatchFace"]
     checkpoint_path = Path("checkpoints/segmentation/checkpoint")
+    model_save_path = Path("models/segmentation/")
+    model_save_path.mkdir(exist_ok=True, parents=True)
     crop_size = image_size
     dataset_train = list(
         load_label_studio_polygon_detection_dataset(
@@ -184,7 +186,6 @@ def main(
     # TODO name outputs
     inference_model = tf.keras.Model(inputs=image, outputs=predictions)
     inference_model.set_weights(train_model.get_weights())
-    model_save_path = Path("models/segmentation/")
     inference_model.save(model_save_path)
 
     # run on a single example image for sanity check if exported detector is working
@@ -210,20 +211,13 @@ def main(
 
     visualize_masks(image_np, masks, savefile=save_file)
 
+    #  -- export warmup data for tf serving
+    with Image.open(example_image_path) as img:
+        example_image_np = np.array(img)
     warmup_tf_record_file = (
         model_save_path / "assets.extra" / "tf_serving_warmup_requests"
     )
-    warmup_tf_record_file.parent.mkdir(exist_ok=True, parents=True)
-    with tf.io.TFRecordWriter(str(warmup_tf_record_file)) as writer:
-        tensor_proto = tf.make_tensor_proto(input_image)
-        request = predict_pb2.PredictRequest(
-            model_spec=model_pb2.ModelSpec(signature_name="serving_default"),
-            inputs={"image": tensor_proto},
-        )
-        log = prediction_log_pb2.PredictionLog(
-            predict_log=prediction_log_pb2.PredictLog(request=request)
-        )
-        writer.write(log.SerializeToString())
+    save_tf_serving_warmup_request(example_image_np, warmup_tf_record_file)
 
 
 if __name__ == "__main__":

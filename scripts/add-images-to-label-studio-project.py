@@ -114,12 +114,6 @@ def main(
         image_name = file_name_from_gstorage_url(image_url)
         imported_blobs.add(image_name)
 
-    # project.connect_google_import_storage(
-    #     bucket=bucket_name,
-    #     google_application_credentials=service_account_file,
-    #     presign_ttl=60,
-    #     title=bucket_name,
-    # )
     cls_to_label = {0: "WatchFace"}
     detector = RetinaNetDetectorGRPC(
         "localhost:8500", model_name="detector", class_to_label_name=cls_to_label
