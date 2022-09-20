@@ -1,5 +1,6 @@
 """
-Adapted from keras-cv examples https://github.com/keras-team/keras-cv/blob/master/examples/models/object_detection/retina_net/basic/pascal_voc/train.py
+Adapted from keras-cv examples
+https://github.com/keras-team/keras-cv/blob/master/examples/models/object_detection/retina_net/basic/pascal_voc/train.py
 """
 from pathlib import Path
 from typing import Optional
@@ -13,11 +14,12 @@ from dvclive.keras import DvcLiveCallback
 from keras_cv import bounding_box
 from PIL import Image
 from tensorflow import keras
-from tensorflow_serving.apis import model_pb2, predict_pb2, prediction_log_pb2
+from tensorflow.python.keras.callbacks import ReduceLROnPlateau
 
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
+from watch_recognition.serving import save_tf_serving_warmup_request
 from watch_recognition.visualization import visualize_detections
 
 
@@ -141,7 +143,7 @@ def main(
 ):
     # -- configuration
     if fine_tune_from_checkpoint:
-        print(f"fine tuning is currently disabled")
+        print("fine tuning is currently disabled")
         fine_tune_from_checkpoint = False
 
     if seed is not None:
@@ -151,8 +153,8 @@ def main(
     image_size = (512, 512)
     num_classes = len(label_to_cls)
     checkpoint_path = Path("checkpoints/detector/checkpoint")
-    model_path = Path("models/detector/")
-    model_path.mkdir(exist_ok=True, parents=True)
+    model_save_path = Path("models/detector/")
+    model_save_path.mkdir(exist_ok=True, parents=True)
     metrics_path = "metrics/detector"
     debug_data_path = Path("debug/detector")
     debug_data_path.mkdir(exist_ok=True, parents=True)
@@ -232,7 +234,7 @@ def main(
         keras_cv.metrics.COCOMeanAveragePrecision(
             class_ids=[0],
             bounding_box_format="xywh",
-            name="Mean Average Precision",
+            name="MeanAveragePrecision",
         ),
         keras_cv.metrics.COCORecall(
             class_ids=[0],
@@ -255,8 +257,8 @@ def main(
 
     callbacks_list = [
         DvcLiveCallback(path=metrics_path),
+        ReduceLROnPlateau(patience=20, verbose=1),
         # callbacks_lib.EarlyStopping(patience=50),
-        # callbacks_lib.ReduceLROnPlateau(patience=20),
     ]
 
     # if not fine_tune_from_checkpoint:
@@ -295,14 +297,19 @@ def main(
     # outputs = tf.keras.layers.Lambda()(outputs)
     inference_model = keras.Model(inputs=image, outputs=outputs)
 
-    inference_model.save(model_path)
+    inference_model.save(model_save_path)
 
     # run on a single example image for sanity check if exported detector is working
     example_image_path = Path("example_data/test-image.jpg")
     with Image.open(example_image_path) as img:
         example_image_np = np.array(img)
-    input_image = np.expand_dims(example_image_np, axis=0)
-    boxes = inference_model.predict(input_image, False, verbose=0).numpy()[0]
+        input_image = np.expand_dims(example_image_np, axis=0)
+        boxes = inference_model.predict(input_image, False, verbose=0).numpy()[0]
+        boxes[:, 0] *= img.width / 512
+        boxes[:, 1] *= img.height / 512
+        boxes[:, 2] *= img.width / 512
+        boxes[:, 3] *= img.height / 512
+
     class_names = [cls_to_label[x] for x in boxes[:, 4]]
     save_file = Path(f"example_predictions/detector/{example_image_path.name}")
     save_file.parent.mkdir(exist_ok=True)
@@ -314,27 +321,15 @@ def main(
         boxes[:, 5],
         savefile=save_file,
     )
+
     #  -- export warmup data for tf serving
     example_image_path = Path("example_data/test-image.jpg")
     with Image.open(example_image_path) as img:
         example_image_np = np.array(img)
-
-    warmup_tf_record_file = model_path / "assets.extra" / "tf_serving_warmup_requests"
+    warmup_tf_record_file = (
+        model_save_path / "assets.extra" / "tf_serving_warmup_requests"
+    )
     save_tf_serving_warmup_request(example_image_np, warmup_tf_record_file)
-
-
-def save_tf_serving_warmup_request(example_image_np, warmup_tf_record_file):
-    warmup_tf_record_file.parent.mkdir(exist_ok=True, parents=True)
-    with tf.io.TFRecordWriter(str(warmup_tf_record_file)) as writer:
-        tensor_proto = tf.make_tensor_proto(example_image_np)
-        request = predict_pb2.PredictRequest(
-            model_spec=model_pb2.ModelSpec(signature_name="serving_default"),
-            inputs={"image": tensor_proto},
-        )
-        log = prediction_log_pb2.PredictionLog(
-            predict_log=prediction_log_pb2.PredictLog(request=request)
-        )
-        writer.write(log.SerializeToString())
 
 
 if __name__ == "__main__":
