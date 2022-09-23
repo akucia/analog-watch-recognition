@@ -97,6 +97,7 @@ def load(
         bounding_box_format=bounding_box_format, img_size=img_size
     )
     dataset = dataset.map(_map_fn, num_parallel_calls=tf.data.AUTOTUNE)
+    dataset = dataset.cache()
     if shuffle:
         if not batch_size and not shuffle_buffer:
             raise ValueError(

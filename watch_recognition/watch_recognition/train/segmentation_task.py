@@ -5,6 +5,7 @@ from typing import List, Tuple
 import click
 import cv2
 import keras_cv
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow.python.keras.backend as K
@@ -54,6 +55,21 @@ def unpackage_dict(inputs):
     return inputs["images"], inputs["segmentation_masks"]
 
 
+def visualize_dataset(dataset: tf.data.Dataset):
+    example = next(iter(dataset))
+    images, all_masks = example["images"], example["segmentation_masks"]
+    images, all_masks = images.numpy(), all_masks.numpy()
+    plt.figure(figsize=(10, 10))
+    plt.tight_layout()
+    plt.axis("off")
+    max_imgs = min(9, len(images))
+    for i in range(max_imgs):
+        ax = plt.subplot(9 // 3, 9 // 3, i + 1)
+        image = images[i]
+        masks = all_masks[i].squeeze() > 0
+        visualize_masks(image, [masks], ax=ax)
+
+
 @click.command()
 @click.option("--epochs", default=1, type=int)
 @click.option("--batch-size", default=32, type=int)
@@ -80,9 +96,7 @@ def main(
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
-    label_to_cls = {
-        "Hands": 0,
-    }
+    label_to_cls = {"Hands": 0}
     # TODO this should be in params.yaml
     dataset_path = Path("datasets/watch-faces-local.json")
     cls_to_label = {v: k for k, v in label_to_cls.items()}
@@ -93,6 +107,10 @@ def main(
     checkpoint_path = Path("checkpoints/segmentation/checkpoint")
     model_save_path = Path("models/segmentation/")
     model_save_path.mkdir(exist_ok=True, parents=True)
+
+    debug_data_path = Path("debug/segmentation")
+    debug_data_path.mkdir(exist_ok=True, parents=True)
+
     crop_size = image_size
     dataset_train = list(
         load_label_studio_polygon_detection_dataset(
@@ -135,11 +153,8 @@ def main(
 
     train_dataset = train_dataset.map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
 
-    visualize_dataset(train_dataset, bounding_box_format="xywh")
-    plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
-
-    visualize_dataset(val_dataset, bounding_box_format="xywh")
-    plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
+    train_dataset = train_dataset.shuffle(8 * batch_size)
+    train_dataset = train_dataset.batch(batch_size)
 
     dataset_val = list(
         load_label_studio_polygon_detection_dataset(
@@ -164,6 +179,15 @@ def main(
     val_dataset = tf.data.Dataset.from_tensor_slices(
         {"images": X_val, "segmentation_masks": y_val}
     )
+
+    val_dataset = val_dataset.shuffle(8 * batch_size)
+    val_dataset = val_dataset.batch(batch_size)
+
+    visualize_dataset(train_dataset)
+    plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
+
+    visualize_dataset(val_dataset)
+    plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
 
     train_dataset = train_dataset.map(
         unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
@@ -252,7 +276,9 @@ def main(
             interpolation=cv2.INTER_NEAREST,
         ).astype("bool")
         masks.append(mask)
-
+    plt.figure()
+    plt.tight_layout()
+    plt.axis("off")
     visualize_masks(image_np, masks, savefile=save_file)
 
     #  -- export warmup data for tf serving

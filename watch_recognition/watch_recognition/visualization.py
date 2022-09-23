@@ -23,16 +23,13 @@ def visualize_keypoints(image: np.ndarray, points: List[Point], savefile=None):
     return ax
 
 
-def visualize_masks(image: np.ndarray, masks: List[np.ndarray], savefile=None):
-    plt.figure()
-    plt.tight_layout()
-    plt.axis("off")
+def visualize_masks(image: np.ndarray, masks: List[np.ndarray], savefile=None, ax=None):
     colors = distinctipy.get_colors(len(masks))
     overlay = image.astype("uint8")
-    ax = plt.gca()
+    ax = ax or plt.gca()
     for mask, color in zip(masks, colors):
         img = np.zeros(shape=(*mask.shape[:2], 3)).astype("uint8")
-        img[mask] = np.array(color).astype("uint8") * 255
+        img[mask] = (np.array(color) * 255).astype("uint8")
         overlay = cv2.addWeighted(overlay, 0.8, img, 0.2, 0)
     ax.imshow(overlay)
     if savefile is not None:
