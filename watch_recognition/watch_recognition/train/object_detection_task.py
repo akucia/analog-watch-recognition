@@ -97,7 +97,6 @@ def load(
         bounding_box_format=bounding_box_format, img_size=img_size
     )
     dataset = dataset.map(_map_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    # dataset = dataset.cache()
     if shuffle:
         if not batch_size and not shuffle_buffer:
             raise ValueError(
@@ -191,9 +190,6 @@ def main(
             y_factor=0.15,
             bounding_box_format="xywh",
             fill_mode="nearest",
-        ),
-        keras_cv.layers.preprocessing.RandomRotation(
-            bounding_box_format="xywh", fill_mode="nearest", factor=1
         ),
     ]
     pipeline = keras_cv.layers.RandomAugmentationPipeline(

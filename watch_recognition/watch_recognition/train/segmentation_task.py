@@ -4,6 +4,7 @@ from typing import List, Tuple
 
 import click
 import cv2
+import keras_cv
 import numpy as np
 import tensorflow as tf
 import tensorflow.python.keras.backend as K
@@ -47,6 +48,10 @@ def encode_polygon_to_mask(
         cls = int(polygon.name)
         mask[:, :, cls] += poly_mask
     return (mask > 0).astype(np.float32)
+
+
+def unpackage_dict(inputs):
+    return inputs["images"], inputs["segmentation_masks"]
 
 
 @click.command()
@@ -109,6 +114,33 @@ def main(
     y = np.array(y)
     print(X.shape, y.shape)
 
+    train_dataset = tf.data.Dataset.from_tensor_slices(
+        {"images": X, "segmentation_masks": y}
+    )
+
+    augmentation_layers = [
+        keras_cv.layers.ChannelShuffle(groups=3),
+        keras_cv.layers.RandomHue(0.5, [0.0, 255.0]),
+        keras_cv.layers.AutoContrast(value_range=[0.0, 255.0]),
+        keras_cv.layers.GridMask(),
+        keras_cv.layers.RandomColorJitter([0.0, 255.0], 0.5, 0.5, 0.5, 0.5),
+        keras_cv.layers.preprocessing.RandomFlip(),
+    ]
+    pipeline = keras_cv.layers.RandomAugmentationPipeline(
+        layers=augmentation_layers, augmentations_per_image=2
+    )
+
+    def augment_fn(sample):
+        return pipeline(sample)
+
+    train_dataset = train_dataset.map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
+
+    visualize_dataset(train_dataset, bounding_box_format="xywh")
+    plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
+
+    visualize_dataset(val_dataset, bounding_box_format="xywh")
+    plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
+
     dataset_val = list(
         load_label_studio_polygon_detection_dataset(
             dataset_path,
@@ -128,6 +160,19 @@ def main(
     X_val = np.array(X_val)
     y_val = np.array(y_val)
     print(X_val.shape, y_val.shape)
+
+    val_dataset = tf.data.Dataset.from_tensor_slices(
+        {"images": X_val, "segmentation_masks": y_val}
+    )
+
+    train_dataset = train_dataset.map(
+        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
+    val_dataset = val_dataset.map(
+        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
+
+    # -- setup train model
 
     train_model = get_segmentation_model(
         image_size=image_size,
@@ -161,10 +206,9 @@ def main(
         )
     # -- train model
     train_model.fit(
-        X,
-        y,
+        train_dataset,
         epochs=epochs,
-        validation_data=(X_val, y_val),
+        validation_data=val_dataset,
         callbacks=callbacks_list,
         verbose=verbosity,
         batch_size=batch_size,

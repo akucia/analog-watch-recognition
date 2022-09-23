@@ -132,6 +132,14 @@ class BBox:
     name: str = ""
     score: Optional[float] = None
 
+    # def __post_init__(self):
+    #     x_min, x_max = min(self.x_min, self.x_max), max(self.x_min, self.x_max)
+    #     y_min, y_max = min(self.y_min, self.y_max), max(self.y_min, self.y_max)
+    #     object.__setattr__(self, "x_min", x_min)
+    #     object.__setattr__(self, "x_max", x_max)
+    #     object.__setattr__(self, "y_min", y_min)
+    #     object.__setattr__(self, "y_max", y_max)
+
     @classmethod
     def from_center_width_height(
         cls, center_x, center_y, width, height, name="", score=None
@@ -163,7 +171,12 @@ class BBox:
 
     def scale(self, x: float, y: float) -> "BBox":
         return BBox(
-            self.x_min * x, self.y_min * y, self.x_max * x, self.y_max * y, self.name, self.score
+            self.x_min * x,
+            self.y_min * y,
+            self.x_max * x,
+            self.y_max * y,
+            self.name,
+            self.score,
         )
 
     @property
@@ -182,6 +195,16 @@ class BBox:
 
         return dataclasses.replace(
             self, x_min=x_min, x_max=x_max, y_min=y_min, y_max=y_max
+        )
+
+    def translate(self, x: float = 0.0, y: float = 0.0) -> "BBox":
+        return BBox(
+            x_min=self.x_min + x,
+            x_max=self.x_max + x,
+            y_min=self.y_min + y,
+            y_max=self.y_max + y,
+            score=self.score,
+            name=self.name,
         )
 
     @property
@@ -279,11 +302,21 @@ class BBox:
         }
 
     def intersection(self, other: "BBox") -> "BBox":
+
         x_min = max(self.x_min, other.x_min)
         x_max = min(self.x_max, other.x_max)
+        # x_min, x_max = min(x_min, x_max), max(x_min, x_max)
 
         y_min = max(self.y_min, other.y_min)
         y_max = min(self.y_max, other.y_max)
+
+        width = x_max - x_min
+        height = y_max - y_min
+        if width < 0 or height < 0:
+            x_min = 0
+            y_min = 0
+            x_max = 0
+            y_max = 0
         return BBox(
             x_min=x_min,
             y_min=y_min,
@@ -300,21 +333,29 @@ class BBox:
         union_area = self.area + other.area - intersection_area
         return intersection_area / union_area
 
-    def plot(self, ax=None, color="red", **kwargs):
+    def plot(
+        self,
+        ax=None,
+        color: str = "red",
+        linewidth: int = 1,
+        draw_name_label: bool = True,
+        **kwargs,
+    ):
         if ax is None:
             ax = plt.gca()
         rect = patches.Rectangle(
             (self.left, self.top),
             self.width,
             self.height,
-            linewidth=1,
             edgecolor=color,
             facecolor="none",
+            linewidth=linewidth,
+            **kwargs,
         )
 
         # Add the patch to the Axes
         ax.add_patch(rect)
-        if self.name:
+        if self.name and draw_name_label:
             ax.text(
                 self.x_min,
                 self.y_min,
@@ -586,15 +627,17 @@ class Polygon:
 
 
 def mean_line(lines: List[Line], weighted=True) -> Line:
-    lengths = [l.length for l in lines]
-    mean_slope = np.average([l.slope for l in lines], weights=lengths)
+    lengths = [linr.length for linr in lines]
+    mean_slope = np.average([line.slope for line in lines], weights=lengths)
     max_distance = 0
     for l1, l2 in combinations(lines, 2):
         d = l1.start.distance(l2.end)
         if d > max_distance:
             max_distance = d
     line_length = max_distance
-    center = Point(*np.median(np.array([l.center.as_array for l in lines]), axis=0))
+    center = Point(
+        *np.median(np.array([line.center.as_array for line in lines]), axis=0)
+    )
     end = center.translate(line_length / 2, mean_slope * line_length / 2)
     start = center.translate(-line_length / 2, -mean_slope * line_length / 2)
 
@@ -712,5 +755,6 @@ def iou_bbox_matching(a: List[BBox], b: List[BBox]) -> Dict[BBox, Optional[BBox]
             matching[bbox_a] = top_score_bbox
         else:
             matching[bbox_a] = None
+    # TODO unmatched assigned to matching[None]?
 
     return matching

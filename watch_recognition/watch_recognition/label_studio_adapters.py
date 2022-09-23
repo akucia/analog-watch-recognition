@@ -148,6 +148,7 @@ def _load_label_studio_bbox_detection_dataset(
     label_mapping: Optional[Dict[str, int]],
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
+    skip_empty: bool = True,
 ) -> Iterator[Tuple[Path, np.ndarray, np.ndarray]]:
     with source.open("r") as f:
         tasks = json.load(f)
@@ -158,7 +159,7 @@ def _load_label_studio_bbox_detection_dataset(
         tasks = tasks[:max_num_images]
 
     for task in tasks:
-        if "bbox" not in task:
+        if "bbox" not in task and skip_empty:
             continue
         class_labels, image_bboxes = _extract_bboxes_from_task(label_mapping, task)
         image_path = source.parent / task["image"]
