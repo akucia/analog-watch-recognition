@@ -141,18 +141,18 @@ def main(
         train_model.load_weights(checkpoint_path)
 
     callbacks_list = [DvcLiveCallback(path="metrics/keypoint")]
-    if not fine_tune_from_checkpoint:
-        callbacks_list.append(
-            tf.keras.callbacks.ModelCheckpoint(
-                checkpoint_path,
-                monitor="val_loss",
-                verbose=1,
-                save_best_only=True,
-                save_weights_only=True,
-                mode="auto",
-                save_freq="epoch",
-            ),
-        )
+    # if not fine_tune_from_checkpoint:
+    #     callbacks_list.append(
+    #         tf.keras.callbacks.ModelCheckpoint(
+    #             checkpoint_path,
+    #             monitor="val_loss",
+    #             verbose=1,
+    #             save_best_only=True,
+    #             save_weights_only=True,
+    #             mode="auto",
+    #             save_freq="epoch",
+    #         ),
+    #     )
     # -- train model
     train_model.fit(
         X,
