@@ -132,13 +132,24 @@ class BBox:
     name: str = ""
     score: Optional[float] = None
 
-    # def __post_init__(self):
-    #     x_min, x_max = min(self.x_min, self.x_max), max(self.x_min, self.x_max)
-    #     y_min, y_max = min(self.y_min, self.y_max), max(self.y_min, self.y_max)
-    #     object.__setattr__(self, "x_min", x_min)
-    #     object.__setattr__(self, "x_max", x_max)
-    #     object.__setattr__(self, "y_min", y_min)
-    #     object.__setattr__(self, "y_max", y_max)
+    def __post_init__(self):
+        x_min, x_max = min(self.x_min, self.x_max), max(self.x_min, self.x_max)
+        y_min, y_max = min(self.y_min, self.y_max), max(self.y_min, self.y_max)
+        object.__setattr__(self, "x_min", x_min)
+        object.__setattr__(self, "x_max", x_max)
+        object.__setattr__(self, "y_min", y_min)
+        object.__setattr__(self, "y_max", y_max)
+
+    @classmethod
+    def unit(cls, name="", score=None):
+        return BBox(
+            x_min=0,
+            y_min=0,
+            x_max=1,
+            y_max=1,
+            name=name,
+            score=score,
+        )
 
     @classmethod
     def from_center_width_height(
@@ -206,6 +217,28 @@ class BBox:
             score=self.score,
             name=self.name,
         )
+
+    def reflect(self, x: Optional[float] = None, y: Optional[float] = None) -> "BBox":
+        # TODO this should be more generic
+        if x is not None:
+            reflected_box = BBox(
+                x_min=2 * x - self.x_min,
+                x_max=2 * x - self.x_max,
+                y_min=self.y_min,
+                y_max=self.y_max,
+                score=self.score,
+                name=self.name,
+            )
+        if y is not None:
+            reflected_box = BBox(
+                x_min=self.x_min,
+                x_max=self.x_max,
+                y_min=2 * y - self.y_min,
+                y_max=2 * y - self.y_max,
+                score=self.score,
+                name=self.name,
+            )
+        return reflected_box
 
     @property
     def as_coordinates_tuple(self) -> Tuple[float, float, float, float]:

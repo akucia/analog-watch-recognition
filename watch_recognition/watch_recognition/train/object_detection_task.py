@@ -124,7 +124,6 @@ def unpackage_dict(inputs):
 @click.option("--batch-size", default=32)
 @click.option("--max-images", default=None, type=int)
 @click.option("--seed", default=None, type=int)
-@click.option("--confidence-threshold", default=0.5, type=float)
 @click.option("--verbosity", default=1, type=int)
 @click.option(
     "--fine-tune-from-checkpoint",
@@ -137,7 +136,6 @@ def main(
     batch_size: int,
     max_images: Optional[int],
     seed: Optional[int],
-    confidence_threshold: Optional[float],
     verbosity: int,
     fine_tune_from_checkpoint: bool,
 ):
@@ -280,9 +278,7 @@ def main(
         verbose=verbosity,
     )
     #  -- export inference-only model
-    # TODO doesn't really work now :/
-    # inference_model = train_model
-    image = tf.keras.Input(shape=[None, None, 3], name="image")
+    image = tf.keras.Input(shape=[None, None, 3], name="image", dtype="uint8")
     resized_image = tf.keras.layers.Resizing(
         *image_size,
         interpolation="bilinear",
@@ -291,7 +287,9 @@ def main(
     outputs = train_model(resized_image)
     outputs = train_model.decode_training_predictions(resized_image, outputs)
     # todo normalize outputs' coordinates
-    # outputs = tf.keras.layers.Lambda()(outputs)
+    outputs = tf.keras.layers.Lambda(
+        lambda x: x.to_tensor(default_value=-1), name="bboxes"
+    )(outputs)
     inference_model = keras.Model(inputs=image, outputs=outputs)
 
     inference_model.save(model_save_path)
@@ -301,7 +299,7 @@ def main(
     with Image.open(example_image_path) as img:
         example_image_np = np.array(img)
         input_image = np.expand_dims(example_image_np, axis=0)
-        boxes = inference_model.predict(input_image, False, verbose=0).numpy()[0]
+        boxes = inference_model.predict(input_image, False, verbose=0)[0]
         boxes[:, 0] *= img.width / 512
         boxes[:, 1] *= img.height / 512
         boxes[:, 2] *= img.width / 512
@@ -323,10 +321,10 @@ def main(
     example_image_path = Path("example_data/test-image.jpg")
     with Image.open(example_image_path) as img:
         example_image_np = np.array(img)
-    warmup_tf_record_file = (
-        model_save_path / "assets.extra" / "tf_serving_warmup_requests"
+
+    save_tf_serving_warmup_request(
+        np.expand_dims(example_image_np, axis=0), model_save_path, dtype="uint8"
     )
-    save_tf_serving_warmup_request(example_image_np, warmup_tf_record_file)
 
 
 if __name__ == "__main__":

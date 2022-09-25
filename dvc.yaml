@@ -18,7 +18,6 @@ stages:
       python watch_recognition/watch_recognition/train/object_detection_task.py 
       --epochs ${detector.epochs} 
       --batch-size ${detector.batch-size} 
-      --confidence-threshold ${detector.confidence-threshold} 
       --seed ${seed}
     params:
       - detector
@@ -38,6 +37,8 @@ stages:
           cache: false
     outs:
       - example_predictions/detector/test-image.jpg
+      - debug/detector/:
+          persist: true
       - models/detector/:
           persist: true
   eval-detector:
@@ -166,6 +167,8 @@ stages:
       - example_predictions/segmentation/test-image-2.jpg:
           persist: true
       - models/segmentation/:
+          persist: true
+      - debug/segmentation/:
           persist: true
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}

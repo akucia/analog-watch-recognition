@@ -165,7 +165,7 @@ def main(
     )
 
     #  -- export inference-only model
-    image = tf.keras.Input(shape=[None, None, 3], name="image")
+    image = tf.keras.Input(shape=[None, None, 3], name="image", dtype=tf.uint8)
     resized_image = tf.keras.layers.Resizing(
         crop_size[0], crop_size[1], interpolation="bilinear", crop_to_aspect_ratio=False
     )(image)
@@ -208,10 +208,9 @@ def main(
     #  -- export warmup data for tf serving
     with Image.open(example_image_path) as img:
         example_image_np = np.array(img)
-    warmup_tf_record_file = (
-        model_save_path / "assets.extra" / "tf_serving_warmup_requests"
+    save_tf_serving_warmup_request(
+        np.expand_dims(example_image_np, axis=0), model_save_path, dtype="uint8"
     )
-    save_tf_serving_warmup_request(example_image_np, warmup_tf_record_file)
 
 
 if __name__ == "__main__":

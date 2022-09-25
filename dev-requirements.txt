@@ -2,3 +2,6 @@ tensorflow_datasets
 dvc[gcs]
 dvc[gs]
 ./watch_recognition/
+isort
+black
+flake8
