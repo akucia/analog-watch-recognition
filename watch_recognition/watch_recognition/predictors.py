@@ -462,7 +462,7 @@ class RetinanetDetectorLocal(RetinanetDetector):
         super().__init__(class_to_label_name=class_to_label_name)
 
     def _batch_predict(self, input_images):
-        return self.model.predict(input_images, False, verbose=0).numpy()
+        return self.model.predict(input_images, False, verbose=0)
 
 
 class RetinaNetDetectorGRPC(RetinanetDetector):

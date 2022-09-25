@@ -82,7 +82,7 @@ def main():
                 np.expand_dims(image, axis=0).astype(np.float32),
                 False,
                 verbose=0,
-            )[0].numpy()
+            )[0]
             # TODO integrate bbox scaling with model export
             predicted_boxes[:, 0] *= image.shape[1] / 512
             predicted_boxes[:, 1] *= image.shape[0] / 512
