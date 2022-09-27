@@ -5,7 +5,7 @@ from concurrent import futures
 from concurrent.futures import as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import click
 import pandas as pd
@@ -101,6 +101,7 @@ def main(concurrent: bool = False):
                 )
                 records.extend(evaluation_records)
     df = pd.DataFrame(records)
+    df = df.sort_values("image_path")
     df.to_csv("metrics/end_2_end_eval.csv", index=False)
     summary_metrics = {}
     for split in SPLITS:
@@ -119,13 +120,16 @@ def main(concurrent: bool = False):
     print(f"End 2 end evaluation done in {elapsed:.2f}s")
 
 
-def _evaluate_on_single_image(img_path, targets, split, time_predictor):
+def _evaluate_on_single_image(
+    img_path: Path, targets: List[BBox], split: str, time_predictor: TimePredictor
+) -> List[Dict]:
     valid_targets = [target for target in targets if target.name != "??:??"]
     with Image.open(img_path) as img:
         predictions = time_predictor.predict(img)
+        predictions = [
+            bbox.scale(1 / img.width, 1 / img.height) for bbox in predictions
+        ]
     targets_to_predictions = iou_bbox_matching(valid_targets, predictions)
-    # TODO build pandas df
-    # TODO add multiprocessing (if possible) for speedup
     evaluation_records = []
     for target, pred in targets_to_predictions.items():
         predicted_time = pred.name if pred is not None else None

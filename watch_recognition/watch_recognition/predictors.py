@@ -5,9 +5,12 @@ from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
+import cv2
 import grpc
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from distinctipy import distinctipy
 from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
@@ -21,6 +24,7 @@ from watch_recognition.targets_encoding import (
     line_selector,
 )
 from watch_recognition.utilities import BBox, Line, Point, Polygon
+from watch_recognition.visualization import visualize_masks
 
 
 class KPPredictor(ABC):
@@ -95,16 +99,49 @@ class KPHeatmapPredictorV2(ABC):
         Returns keypoints in pixel coordinates of the image
         """
 
-        image_np = np.array(image)
-        batch_image_np = np.expand_dims(image_np, 0).astype("float32")
-        predicted = self._batch_predict(batch_image_np)[0]
+        heatmap = self.predict_heatmap(image)
         points = self._decode_keypoints(
-            predicted,
-            crop_image_width=image_np.shape[1],
-            crop_image_height=image_np.shape[0],
+            heatmap,
+            crop_image_width=image.width,
+            crop_image_height=image.height,
         )
 
         return points
+
+    def predict_heatmap(self, image: Union[ImageType, np.ndarray]) -> np.ndarray:
+        """Runs predictions on a crop of a watch face.
+        Returns heatmap of keypoint regions
+        """
+
+        image_np = np.array(image)
+        batch_image_np = np.expand_dims(image_np, 0)
+        predicted = self._batch_predict(batch_image_np)[0]
+        return predicted
+
+    def predict_and_plot(
+        self, image: Union[ImageType, np.ndarray], mode: str = "keypoints"
+    ):
+        if mode == "keypoints":
+            points = self.predict(image)
+            colors = distinctipy.get_colors(len(self.class_to_label_name))
+            plt.imshow(image)
+            for i, point in enumerate(points):
+                point.plot(color=colors[i])
+            plt.legend()
+        elif mode == "heatmap":
+            heatmap = self.predict_heatmap(image)
+            predicted = heatmap > self.confidence_threshold
+            masks = []
+            for cls, name in self.class_to_label_name.items():
+                mask = predicted[:, :, cls]
+                mask = cv2.resize(
+                    mask.astype("uint8"),
+                    (image.width, image.height),
+                    interpolation=cv2.INTER_NEAREST,
+                ).astype("bool")
+                masks.append(mask)
+
+            visualize_masks(np.array(image), masks)
 
     def predict_from_image_and_bbox(
         self,
@@ -224,7 +261,7 @@ class HandPredictor(ABC):
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
-        image_np = np.expand_dims(np.array(image), 0).astype("float32")
+        image_np = np.expand_dims(np.array(image), 0)
         predicted = self._batch_predict(image_np)[0].squeeze()
 
         predicted = predicted > self.confidence_threshold
@@ -241,6 +278,24 @@ class HandPredictor(ABC):
         all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
         polygon = polygon.scale(scale_x, scale_y)
         return (*line_selector(all_hands_lines, center=center_point), polygon)
+
+    def predict_mask_and_draw(self, image: Union[ImageType, np.ndarray]):
+        image_np = np.array(image)
+        image_batch_np = np.expand_dims(image_np, 0)
+        predicted = self._batch_predict(image_batch_np)[0]
+
+        predicted = predicted > self.confidence_threshold
+        masks = []
+        for cls, name in {0: "ClockHands"}.items():
+            mask = predicted[:, :, cls]
+            mask = cv2.resize(
+                mask.astype("uint8"),
+                image_np.shape[:2][::-1],
+                interpolation=cv2.INTER_NEAREST,
+            ).astype("bool")
+            masks.append(mask)
+
+        visualize_masks(image_np, masks)
 
     def predict_from_image_and_bbox(
         self,
@@ -451,6 +506,12 @@ class RetinanetDetector(ABC):
             bboxes.append(bbox)
         return bboxes
 
+    def predict_and_plot(self, image: ImageType):
+        bboxes = self.predict(image)
+        plt.imshow(image)
+        for bbox in bboxes:
+            bbox.plot()
+
 
 class RetinanetDetectorLocal(RetinanetDetector):
     def __init__(
@@ -489,22 +550,10 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
         # TODO this will require updates
         request.inputs["image"].CopyFrom(tf.make_tensor_proto(input_images))
         result = self.stub.Predict(request, self.timeout)
-        parsed_results = {}
-        for key in {"RetinaNet", "RetinaNet_1", "RetinaNet_2", "RetinaNet_3"}:
-            output = result.outputs[key]
-            if output.float_val:
-                value = output.float_val
-            elif output.int_val:
-                value = output.int_val
-            else:
-                raise ValueError(f"unrecognized dtype for {output}")
-            shape = [dim.size for dim in output.tensor_shape.dim]
-            parsed_results[key] = np.array(value).reshape(shape)
-        nmsed_boxes = parsed_results["RetinaNet"]
-        nmsed_classes = parsed_results["RetinaNet_2"]
-        nmsed_scores = parsed_results["RetinaNet_1"]
-        valid_detections = parsed_results["RetinaNet_3"]
-        return nmsed_boxes, nmsed_classes, nmsed_scores, valid_detections
+        output = result.outputs["bboxes"]
+        value = output.float_val
+        shape = [dim.size for dim in output.tensor_shape.dim]
+        return np.array(value).reshape(shape)
 
 
 def _hash_image(image: ImageType) -> str:

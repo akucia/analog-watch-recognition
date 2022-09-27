@@ -30,7 +30,7 @@ def visualize_masks(image: np.ndarray, masks: List[np.ndarray], savefile=None, a
     for mask, color in zip(masks, colors):
         img = np.zeros(shape=(*mask.shape[:2], 3)).astype("uint8")
         img[mask] = (np.array(color) * 255).astype("uint8")
-        overlay = cv2.addWeighted(overlay, 0.8, img, 0.2, 0)
+        overlay = cv2.addWeighted(overlay, 0.7, img, 0.3, 0.0)
     ax.imshow(overlay)
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight")

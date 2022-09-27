@@ -1,23 +1,46 @@
 # Graph
-usage: dvc dag [-h] [-q | -v] [--dot] [--full] [-o] [target]
-
-Visualize DVC project DAG.
-Documentation: <https://man.dvc.org/dag>
-
-positional arguments:
-  target         Stage or output to show pipeline for (optional). Finds all stages in the workspace by default.
-
-optional arguments:
-  -h, --help     show this help message and exit
-  -q, --quiet    Be quiet.
-  -v, --verbose  Be verbose.
-  --dot          Print DAG with .dot format.
-  --full         Show full DAG that the target belongs too, instead of showing DAG consisting only of ancestors.
-  -o, --outs     Print output files instead of stages.
+```mermaid
+flowchart TD
+	node1["checkpoints/detector.dvc"]
+	node2["checkpoints/keypoint.dvc"]
+	node3["checkpoints/segmentation.dvc"]
+	node4["datasets/watch-faces.json.dvc"]
+	node5["download-images"]
+	node6["eval-detector"]
+	node7["eval-end-2-end"]
+	node8["eval-keypoint"]
+	node9["eval-segmentation"]
+	node10["train-detector"]
+	node11["train-keypoint"]
+	node12["train-segmentation"]
+	node13["update-metrics"]
+	node1-->node10
+	node2-->node11
+	node3-->node12
+	node4-->node5
+	node5-->node7
+	node5-->node10
+	node5-->node11
+	node5-->node12
+	node6-->node13
+	node7-->node13
+	node8-->node13
+	node10-->node6
+	node10-->node7
+	node10-->node8
+	node10-->node9
+	node10-->node13
+	node11-->node7
+	node11-->node8
+	node11-->node13
+	node12-->node7
+	node12-->node9
+	node12-->node13
+```
 # Metrics
 | Path                           | train.1-min_acc   | train.10-min_acc   | train.60-min_acc   | val.1-min_acc   | val.10-min_acc   | val.60-min_acc   |
 |--------------------------------|-------------------|--------------------|--------------------|-----------------|------------------|------------------|
-| metrics/end_2_end_summary.json | 0.0               | 0.0                | 0.0                | 0.0             | 0.0              | 0.0              |
+| metrics/end_2_end_summary.json | 0.153             | 0.255              | 0.459              | 0.052           | 0.091            | 0.169            |
 
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.MeanAveragePrecision   | eval.Recall   | eval.box_loss   | eval.classification_loss   | eval.loss   | eval.regularization_loss   | step   | train.box_loss   | train.classification_loss   | train.loss   | train.regularization_loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|-----------------|------------------|-------------------|--------------|-----------------------------|---------------|-----------------|----------------------------|-------------|----------------------------|--------|------------------|-----------------------------|--------------|-----------------------------|
@@ -25,11 +48,10 @@ optional arguments:
 | metrics/detector/coco_train.json | 0.889          | 0.778               | 0.889          | -1.0           | 0.863           | 0.909            | 0.909             | 218          | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
 | metrics/detector/coco_val.json   | 0.754          | 0.477               | 0.552          | -1.0           | 0.579           | 0.631            | 0.631             | 36           | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
 
-| Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
-|----------------------------------|----------------|---------------------|----------------|----------------|---------------------|----------------|--------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/keypoint.json            | -              | -                   | -              | -              | -                   | -              | -            | 0.446            | 0.546       | 59     | 0.888             | 0.111        |
-| metrics/keypoint/coco_train.json | 0.788          | 0.654               | 0.6            | 0.923          | 0.831               | 0.797          | 218          | -                | -           | -      | -                 | -            |
-| metrics/keypoint/coco_val.json   | 0.527          | 0.314               | 0.25           | 0.724          | 0.552               | 0.552          | 36           | -                | -           | -      | -                 | -            |
+| Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | Num Images   |
+|----------------------------------|----------------|---------------------|----------------|----------------|---------------------|----------------|--------------|
+| metrics/keypoint/coco_train.json | 0.788          | 0.654               | 0.6            | 0.923          | 0.831               | 0.797          | 218          |
+| metrics/keypoint/coco_val.json   | 0.527          | 0.314               | 0.25           | 0.724          | 0.552               | 0.552          | 36           |
 
 | Path                      | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |---------------------------|------------------|-------------|--------|-------------------|--------------|

@@ -31,5 +31,6 @@ setuptools.setup(
         "google-api-python-client>=2.58.0",
         "more-itertools~=8.14.0",
         "opencv-python",
+        "dvclive",
     ],
 )
