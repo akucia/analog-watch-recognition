@@ -28,7 +28,6 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/object_detection_task.py
-      - checkpoints/detector/
     metrics:
       - metrics/detector.json:
           cache: false
@@ -106,7 +105,6 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/heatmap_regression_task.py
-      - checkpoints/keypoint/
     metrics:
       - metrics/keypoint.json:
           cache: false
@@ -156,7 +154,6 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/segmentation_task.py
-      - checkpoints/segmentation/
     metrics:
       - metrics/segmentation.json:
           cache: false
