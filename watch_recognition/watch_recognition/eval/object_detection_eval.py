@@ -4,17 +4,16 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 from PIL import Image
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-from tensorflow import keras
 from tqdm import tqdm
 
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
 from watch_recognition.predictors import RetinanetDetector, RetinanetDetectorLocal
-from watch_recognition.train.object_detection_task import visualize_detections
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 
 
@@ -47,8 +46,6 @@ def generate_coco_annotations_from_model(
 
 def main():
     t0 = time.perf_counter()
-    model = keras.models.load_model("models/detector/", compile=False)
-
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
     # model is trained with 0 as a valid cls but coco metrics ignore cls 0
@@ -77,27 +74,13 @@ def main():
                 split=split,
             )
         ):
-
-            predicted_boxes = model.predict(
-                np.expand_dims(image, axis=0).astype(np.float32),
-                False,
-                verbose=0,
-            )[0]
-            # TODO integrate bbox scaling with model export
-            predicted_boxes[:, 0] *= image.shape[1] / 512
-            predicted_boxes[:, 1] *= image.shape[0] / 512
-            predicted_boxes[:, 2] *= image.shape[1] / 512
-            predicted_boxes[:, 3] *= image.shape[0] / 512
-            class_names = [cls_to_label[x] for x in predicted_boxes[:, 4]]
             save_file = Path(f"example_predictions/detector/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
-            visualize_detections(
-                image,
-                predicted_boxes[:, :4],
-                class_names,
-                predicted_boxes[:, 5],
-                savefile=save_file,
-            )
+            plt.tight_layout()
+            detector.predict_and_plot(image)
+            plt.axis("off")
+            plt.savefig(save_file, bbox_inches="tight")
+
         coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
         label_studio_bbox_detection_dataset_to_coco(
             dataset_path,

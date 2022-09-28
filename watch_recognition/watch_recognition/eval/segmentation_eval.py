@@ -2,8 +2,7 @@ import time
 from pathlib import Path
 
 import click
-import cv2
-import numpy as np
+from matplotlib import pyplot as plt
 from more_itertools import flatten
 from PIL import Image
 from pycocotools.coco import COCO
@@ -17,7 +16,6 @@ from watch_recognition.predictors import (
     KPHeatmapPredictorV2Local,
     RetinanetDetector,
 )
-from watch_recognition.visualization import visualize_masks
 
 
 def generate_kp_coco_annotations_from_model(
@@ -67,7 +65,6 @@ def main(confidence_threshold):
         "Hands": 0,
     }
     dataset_path = Path("datasets/watch-faces-local.json")
-    cls_to_label = {v: k for k, v in label_to_cls.items()}
     model = HandPredictorLocal(
         Path("models/segmentation/"),
         confidence_threshold=confidence_threshold,
@@ -87,23 +84,13 @@ def main(confidence_threshold):
                 split=split,
             )
         ):
-            results = model.model.predict(np.expand_dims(image_np, axis=0), verbose=0)[
-                0
-            ]
-
             save_file = Path(f"example_predictions/segmentation/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
-            masks = []
-            for cls, name in cls_to_label.items():
-                mask = results[:, :, cls] > confidence_threshold
-                mask = cv2.resize(
-                    mask.astype("uint8"),
-                    image_np.shape[:2][::-1],
-                    interpolation=cv2.INTER_NEAREST,
-                ).astype("bool")
-                masks.append(mask)
+            plt.tight_layout()
+            model.predict_mask_and_draw(image_np)
+            plt.axis("off")
+            plt.savefig(save_file, bbox_inches="tight")
 
-            visualize_masks(image_np, masks, savefile=save_file)
         # TODO any segmentation metrics?
     elapsed = time.perf_counter() - t0
     print(f"Segmentation eval done in {elapsed:.2f}s")

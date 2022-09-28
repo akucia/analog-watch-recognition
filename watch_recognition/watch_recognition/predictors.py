@@ -480,7 +480,7 @@ class RetinanetDetector(ABC):
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         pass
 
-    def predict(self, image: ImageType) -> List[BBox]:
+    def predict(self, image: Union[ImageType, np.ndarray]) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
         # TODO integrate the image preprocessing with the exported model
         image_np = np.expand_dims(np.array(image), axis=0)
@@ -496,17 +496,27 @@ class RetinanetDetector(ABC):
             # TODO integrate bbox scaling with model export - models should return
             #  outputs in normalized coordinates in corners format
             clip_bbox = BBox(0, 0, 512, 512)
+            if isinstance(image, ImageType):
+                width = image.width
+                height = image.height
+            elif isinstance(image, np.ndarray):
+                width = image.shape[1]
+                height = image.shape[0]
+            else:
+                raise ValueError(
+                    f"image type {type(image)} is not supported, please provide PIL.Image or np.array"
+                )
             bbox = (
                 BBox.from_ltwh(
                     *float_bbox, name=self.class_to_label_name[cls], score=float(score)
                 )
                 .intersection(clip_bbox)
-                .scale(x=image.width / 512, y=image.height / 512)
+                .scale(x=width / 512, y=height / 512)
             )
             bboxes.append(bbox)
         return bboxes
 
-    def predict_and_plot(self, image: ImageType):
+    def predict_and_plot(self, image: Union[ImageType, np.ndarray]):
         bboxes = self.predict(image)
         plt.imshow(image)
         for bbox in bboxes:

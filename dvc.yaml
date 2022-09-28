@@ -45,14 +45,6 @@ stages:
     deps:
       - models/detector/
       - watch_recognition/watch_recognition/eval/object_detection_eval.py
-    outs:
-      - example_predictions/detector/train_0.jpg
-      - example_predictions/detector/train_1.jpg
-      - example_predictions/detector/train_2.jpg
-      - example_predictions/detector/train_3.jpg
-      - example_predictions/detector/val_0.jpg
-      - example_predictions/detector/val_1.jpg
-      - example_predictions/detector/val_2.jpg
     metrics:
       - metrics/detector/coco_train.json:
           cache: false
@@ -89,6 +81,13 @@ stages:
           y: Precision
           title: Val PR-IoU@0.95
           cache: false
+      - example_predictions/detector/train_0.jpg
+      - example_predictions/detector/train_1.jpg
+      - example_predictions/detector/train_2.jpg
+      - example_predictions/detector/train_3.jpg
+      - example_predictions/detector/val_0.jpg
+      - example_predictions/detector/val_1.jpg
+      - example_predictions/detector/val_2.jpg
   train-keypoint:
     cmd: >-
       python watch_recognition/watch_recognition/train/heatmap_regression_task.py
@@ -122,17 +121,6 @@ stages:
       - models/keypoint/
       - models/detector/
       - watch_recognition/watch_recognition/eval/keypoint_detection_eval.py
-    outs:
-      - example_predictions/keypoint/train_0.jpg
-      - example_predictions/keypoint/train_1.jpg
-      - example_predictions/keypoint/train_2.jpg
-      - example_predictions/keypoint/train_3.jpg
-      - example_predictions/keypoint/train_4.jpg
-      - example_predictions/keypoint/val_0.jpg
-      - example_predictions/keypoint/val_1.jpg
-      - example_predictions/keypoint/val_2.jpg
-      - example_predictions/keypoint/val_3.jpg
-      - example_predictions/keypoint/val_4.jpg
     metrics:
       - metrics/keypoint/coco_train.json:
           cache: false
@@ -160,6 +148,17 @@ stages:
     plots:
       - metrics/segmentation/scalars/:
           cache: false
+      - example_predictions/keypoint/train_0.jpg
+      - example_predictions/keypoint/train_1.jpg
+      - example_predictions/keypoint/train_2.jpg
+      - example_predictions/keypoint/train_3.jpg
+      - example_predictions/keypoint/train_4.jpg
+      - example_predictions/keypoint/val_0.jpg
+      - example_predictions/keypoint/val_1.jpg
+      - example_predictions/keypoint/val_2.jpg
+      - example_predictions/keypoint/val_3.jpg
+      - example_predictions/keypoint/val_4.jpg
+
     outs:
       - example_predictions/segmentation/test-image-2.jpg:
           persist: true
@@ -173,7 +172,7 @@ stages:
       - models/segmentation/
       - models/detector/
       - watch_recognition/watch_recognition/eval/segmentation_eval.py
-    outs:
+    plots:
       - example_predictions/segmentation/train_0.jpg
       - example_predictions/segmentation/train_1.jpg
       - example_predictions/segmentation/train_2.jpg

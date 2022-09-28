@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 
 import click
+import matplotlib.pyplot as plt
 import numpy as np
 from more_itertools import flatten
 from PIL import Image
@@ -19,7 +20,6 @@ from watch_recognition.predictors import (
     RetinanetDetectorLocal,
 )
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
-from watch_recognition.visualization import visualize_keypoints
 
 
 def generate_kp_coco_annotations_from_model(
@@ -103,12 +103,12 @@ def main(kp_confidence_threshold):
                 split=split,
             )
         ):
-
-            points = kp_detector.predict(image)
-
             save_file = Path(f"example_predictions/keypoint/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
-            visualize_keypoints(image, points, savefile=save_file)
+            plt.tight_layout()
+            kp_detector.predict_and_plot(image)
+            plt.axis("off")
+            plt.savefig(save_file, bbox_inches="tight")
 
         coco_tmp_dataset_file = Path(f"/tmp/coco-kp-{split}.json")
         label_studio_bbox_detection_dataset_to_coco(
