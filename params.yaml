@@ -6,11 +6,11 @@ detector:
   confidence-threshold: 0.5
 
 keypoint:
-  epochs: 60
+  epochs: 100
   batch-size: 32
   confidence-threshold: 0.5
 
 segmentation:
-  epochs: 60
+  epochs: 100
   batch-size: 32
   confidence-threshold: 0.5

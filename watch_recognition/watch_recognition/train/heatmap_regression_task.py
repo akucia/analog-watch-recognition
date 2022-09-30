@@ -9,6 +9,7 @@ import tensorflow as tf
 from dvclive.keras import DvcLiveCallback
 from PIL import Image
 from segmentation_models.metrics import IOUScore
+from tensorflow.python.keras.callbacks import ReduceLROnPlateau
 
 from watch_recognition.label_studio_adapters import (
     load_label_studio_kp_detection_dataset,
@@ -140,7 +141,10 @@ def main(
     if fine_tune_from_checkpoint and checkpoint_path.exists():
         train_model.load_weights(checkpoint_path)
 
-    callbacks_list = [DvcLiveCallback(path="metrics/keypoint")]
+    callbacks_list = [
+        DvcLiveCallback(path="metrics/keypoint"),
+        ReduceLROnPlateau(patience=15, verbose=1, factor=0.5),
+    ]
     # if not fine_tune_from_checkpoint:
     #     callbacks_list.append(
     #         tf.keras.callbacks.ModelCheckpoint(

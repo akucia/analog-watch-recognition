@@ -34,8 +34,10 @@ stages:
     plots:
       - metrics/detector/scalars:
           cache: false
+      - example_predictions/detector/test-image.jpg:
+          persist: true
     outs:
-      - example_predictions/detector/test-image.jpg
+
       - debug/detector/:
           persist: true
       - models/detector/:
@@ -110,9 +112,9 @@ stages:
     plots:
       - metrics/keypoint/scalars/:
           cache: false
-    outs:
       - example_predictions/keypoint/test-image-2.jpg:
           persist: true
+    outs:
       - models/keypoint/:
           persist: true
   eval-keypoint:
@@ -148,20 +150,9 @@ stages:
     plots:
       - metrics/segmentation/scalars/:
           cache: false
-      - example_predictions/keypoint/train_0.jpg
-      - example_predictions/keypoint/train_1.jpg
-      - example_predictions/keypoint/train_2.jpg
-      - example_predictions/keypoint/train_3.jpg
-      - example_predictions/keypoint/train_4.jpg
-      - example_predictions/keypoint/val_0.jpg
-      - example_predictions/keypoint/val_1.jpg
-      - example_predictions/keypoint/val_2.jpg
-      - example_predictions/keypoint/val_3.jpg
-      - example_predictions/keypoint/val_4.jpg
-
-    outs:
       - example_predictions/segmentation/test-image-2.jpg:
           persist: true
+    outs:
       - models/segmentation/:
           persist: true
       - debug/segmentation/:
