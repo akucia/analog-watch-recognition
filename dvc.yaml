@@ -128,6 +128,17 @@ stages:
           cache: false
       - metrics/keypoint/coco_val.json:
           cache: false
+    plots:
+      - example_predictions/keypoint/train_0.jpg
+      - example_predictions/keypoint/train_1.jpg
+      - example_predictions/keypoint/train_2.jpg
+      - example_predictions/keypoint/train_3.jpg
+      - example_predictions/keypoint/train_4.jpg
+      - example_predictions/keypoint/val_0.jpg
+      - example_predictions/keypoint/val_1.jpg
+      - example_predictions/keypoint/val_2.jpg
+      - example_predictions/keypoint/val_3.jpg
+      - example_predictions/keypoint/val_4.jpg
   train-segmentation:
     cmd: >-
       python watch_recognition/watch_recognition/train/segmentation_task.py
