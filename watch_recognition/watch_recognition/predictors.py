@@ -98,12 +98,13 @@ class KPHeatmapPredictorV2(ABC):
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
+        image_width, image_height = _get_image_shape(image)
 
         heatmap = self.predict_heatmap(image)
         points = self._decode_keypoints(
             heatmap,
-            crop_image_width=image.width,
-            crop_image_height=image.height,
+            crop_image_width=image_width,
+            crop_image_height=image_height,
         )
 
         return points
@@ -254,21 +255,22 @@ class HandPredictor(ABC):
 
     def predict(
         self,
-        image: ImageType,
+        image: Union[ImageType, np.ndarray],
         center_point: Point,
         debug: bool = False,
     ) -> Tuple[Tuple[Line, Line], List[Line], Polygon]:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
+        image_width, image_height = _get_image_shape(image)
         image_np = np.expand_dims(np.array(image), 0)
         predicted = self._batch_predict(image_np)[0].squeeze()
 
         predicted = predicted > self.confidence_threshold
         polygon = Polygon.from_binary_mask(predicted)
 
-        scale_x = image.width / predicted.shape[0]
-        scale_y = image.height / predicted.shape[1]
+        scale_x = image_width / predicted.shape[0]
+        scale_y = image_height / predicted.shape[1]
 
         center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
 
@@ -483,6 +485,7 @@ class RetinanetDetector(ABC):
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
         # TODO integrate the image preprocessing with the exported model
+        image_width, image_height = _get_image_shape(image)
         image_np = np.expand_dims(np.array(image), axis=0)
         predictions = self._batch_predict(image_np)[0]
         bboxes = []
@@ -496,22 +499,13 @@ class RetinanetDetector(ABC):
             # TODO integrate bbox scaling with model export - models should return
             #  outputs in normalized coordinates in corners format
             clip_bbox = BBox(0, 0, 512, 512)
-            if isinstance(image, ImageType):
-                width = image.width
-                height = image.height
-            elif isinstance(image, np.ndarray):
-                width = image.shape[1]
-                height = image.shape[0]
-            else:
-                raise ValueError(
-                    f"image type {type(image)} is not supported, please provide PIL.Image or np.array"
-                )
+
             bbox = (
                 BBox.from_ltwh(
                     *float_bbox, name=self.class_to_label_name[cls], score=float(score)
                 )
                 .intersection(clip_bbox)
-                .scale(x=width / 512, y=height / 512)
+                .scale(x=image_width / 512, y=image_height / 512)
             )
             bboxes.append(bbox)
         return bboxes
@@ -664,3 +658,17 @@ class TimePredictor:
             for bbox, transcription in zip(bboxes, transcriptions)
         ]
         return bboxes
+
+
+def _get_image_shape(image: Union[ImageType, np.ndarray]):
+    if isinstance(image, ImageType):
+        image_width = image.width
+        image_height = image.height
+    elif isinstance(image, np.ndarray):
+        image_width = image.shape[1]
+        image_height = image.shape[0]
+    else:
+        raise ValueError(
+            f"image type {type(image)} is not supported, please provide PIL.Image or np.array"
+        )
+    return image_width, image_height

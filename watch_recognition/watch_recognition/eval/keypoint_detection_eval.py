@@ -105,6 +105,7 @@ def main(kp_confidence_threshold):
         ):
             save_file = Path(f"example_predictions/keypoint/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
+            plt.figure()
             plt.tight_layout()
             kp_detector.predict_and_plot(image)
             plt.axis("off")

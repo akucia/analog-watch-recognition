@@ -1,61 +1,59 @@
 # Graph
 ```mermaid
 flowchart TD
-	node1["checkpoints/detector.dvc"]
-	node2["checkpoints/keypoint.dvc"]
-	node3["checkpoints/segmentation.dvc"]
-	node4["datasets/watch-faces.json.dvc"]
-	node5["download-images"]
-	node6["eval-detector"]
-	node7["eval-end-2-end"]
-	node8["eval-keypoint"]
-	node9["eval-segmentation"]
-	node10["train-detector"]
-	node11["train-keypoint"]
-	node12["train-segmentation"]
-	node13["update-metrics"]
-	node1-->node10
-	node2-->node11
-	node3-->node12
-	node4-->node5
-	node5-->node7
+	node1["datasets/watch-faces.json.dvc"]
+	node2["download-images"]
+	node3["eval-detector"]
+	node4["eval-end-2-end"]
+	node5["eval-keypoint"]
+	node6["eval-segmentation"]
+	node7["train-detector"]
+	node8["train-keypoint"]
+	node9["train-segmentation"]
+	node10["update-metrics"]
+	node1-->node2
+	node2-->node4
+	node2-->node7
+	node2-->node8
+	node2-->node9
+	node3-->node10
+	node4-->node10
 	node5-->node10
-	node5-->node11
-	node5-->node12
-	node6-->node13
-	node7-->node13
-	node8-->node13
-	node10-->node6
-	node10-->node7
-	node10-->node8
-	node10-->node9
-	node10-->node13
-	node11-->node7
-	node11-->node8
-	node11-->node13
-	node12-->node7
-	node12-->node9
-	node12-->node13
+	node7-->node3
+	node7-->node4
+	node7-->node5
+	node7-->node6
+	node7-->node10
+	node8-->node4
+	node8-->node5
+	node8-->node10
+	node9-->node4
+	node9-->node6
+	node9-->node10
+	node11["checkpoints/segmentation.dvc"]
+	node12["checkpoints/detector.dvc"]
+	node13["checkpoints/keypoint.dvc"]
 ```
 # Metrics
 | Path                           | train.1-min_acc   | train.10-min_acc   | train.60-min_acc   | val.1-min_acc   | val.10-min_acc   | val.60-min_acc   |
 |--------------------------------|-------------------|--------------------|--------------------|-----------------|------------------|------------------|
-| metrics/end_2_end_summary.json | 0.153             | 0.255              | 0.459              | 0.052           | 0.091            | 0.169            |
+| metrics/end_2_end_summary.json | 0.166             | 0.247              | 0.462              | 0.065           | 0.104            | 0.156            |
 
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.MeanAveragePrecision   | eval.Recall   | eval.box_loss   | eval.classification_loss   | eval.loss   | eval.regularization_loss   | step   | train.box_loss   | train.classification_loss   | train.loss   | train.regularization_loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|-----------------|------------------|-------------------|--------------|-----------------------------|---------------|-----------------|----------------------------|-------------|----------------------------|--------|------------------|-----------------------------|--------------|-----------------------------|
-| metrics/detector.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | 0.155                       | 0.324         | 3.154           | 3.12                       | 6.274       | 0.0                        | 99     | 0.453            | 0.103                       | 0.556        | 0.0                         |
-| metrics/detector/coco_train.json | 0.889          | 0.778               | 0.889          | -1.0           | 0.863           | 0.909            | 0.909             | 218          | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
-| metrics/detector/coco_val.json   | 0.754          | 0.477               | 0.552          | -1.0           | 0.579           | 0.631            | 0.631             | 36           | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
+| metrics/detector.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | 0.341                       | 0.555         | 3.218           | 2.475                      | 5.693       | 0.0                        | 99     | 0.62             | 0.211                       | 0.83         | 0.0                         |
+| metrics/detector/coco_train.json | 0.865          | 0.753               | 0.865          | -1.0           | 0.844           | 0.899            | 0.899             | 221          | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
+| metrics/detector/coco_val.json   | 0.731          | 0.434               | 0.471          | -1.0           | 0.528           | 0.621            | 0.621             | 36           | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
 
-| Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | Num Images   |
-|----------------------------------|----------------|---------------------|----------------|----------------|---------------------|----------------|--------------|
-| metrics/keypoint/coco_train.json | 0.788          | 0.654               | 0.6            | 0.923          | 0.831               | 0.797          | 218          |
-| metrics/keypoint/coco_val.json   | 0.527          | 0.314               | 0.25           | 0.724          | 0.552               | 0.552          | 36           |
+| Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
+|----------------------------------|----------------|---------------------|----------------|----------------|---------------------|----------------|--------------|------------------|-------------|--------|-------------------|--------------|
+| metrics/keypoint.json            | -              | -                   | -              | -              | -                   | -              | -            | 0.461            | 0.531       | 99     | 0.911             | 0.088        |
+| metrics/keypoint/coco_train.json | 0.737          | 0.528               | 0.42           | 0.903          | 0.748               | 0.665          | 221          | -                | -           | -      | -                 | -            |
+| metrics/keypoint/coco_val.json   | 0.61           | 0.299               | 0.189          | 0.793          | 0.538               | 0.448          | 36           | -                | -           | -      | -                 | -            |
 
 | Path                      | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |---------------------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/segmentation.json | 0.552            | 0.289       | 59     | 0.686             | 0.182        |
+| metrics/segmentation.json | 0.603            | 0.249       | 99     | 0.818             | 0.1          |
 
 ## End 2 end metrics definitions
 Final metric for the entire system is 'x-min accuracy' which is the fraction of system predictions accurate within x minutes. Example:  

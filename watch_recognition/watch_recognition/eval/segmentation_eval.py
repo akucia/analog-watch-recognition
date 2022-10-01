@@ -86,6 +86,7 @@ def main(confidence_threshold):
         ):
             save_file = Path(f"example_predictions/segmentation/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
+            plt.figure()
             plt.tight_layout()
             model.predict_mask_and_draw(image_np)
             plt.axis("off")

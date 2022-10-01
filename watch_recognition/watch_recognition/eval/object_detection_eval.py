@@ -76,6 +76,7 @@ def main():
         ):
             save_file = Path(f"example_predictions/detector/{split}_{i}.jpg")
             save_file.parent.mkdir(exist_ok=True)
+            plt.figure()
             plt.tight_layout()
             detector.predict_and_plot(image)
             plt.axis("off")
