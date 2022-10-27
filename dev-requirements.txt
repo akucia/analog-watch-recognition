@@ -3,4 +3,5 @@ dvc[gcs]
 dvc[gs]
 isort
 black
-flake8
+pyflakes
+streamlit~=1.13.0

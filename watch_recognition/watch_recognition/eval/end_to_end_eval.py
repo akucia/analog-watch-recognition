@@ -67,19 +67,21 @@ def main(concurrent: bool = False):
     records = []
     for split in SPLITS:
         print(f"evaluating {split}")
-        image_paths, all_targets = load_bboxes_with_transcription(source, split)
-        data = zip(image_paths, all_targets)
+        with source.open("r") as f:
+            tasks = json.load(f)
+        if split is not None:
+            tasks = [task for task in tasks if task["image"].startswith(split)]
+        example_ids = [task["id"] for task in tasks]
         if concurrent:
             with futures.ThreadPoolExecutor(os.cpu_count() // 3 or 1) as executor:
                 task_futures = []
                 try:
-                    for img_path, targets in data:
+                    for example_id in example_ids:
                         future = executor.submit(
                             _evaluate_on_single_image,
-                            img_path,
-                            targets,
-                            split,
+                            example_id,
                             time_predictor,
+                            source,
                         )
                         task_futures.append(future)
                     for future in tqdm(
@@ -95,9 +97,11 @@ def main(concurrent: bool = False):
                             print(f"waiting for {future} to complete...")
                     raise
         else:
-            for img_path, targets in tqdm(data, total=len(image_paths)):
+            for example_id in tqdm(example_ids):
                 evaluation_records = _evaluate_on_single_image(
-                    img_path, targets, split, time_predictor
+                    example_id,
+                    time_predictor,
+                    source,
                 )
                 records.extend(evaluation_records)
     df = pd.DataFrame(records)
@@ -121,8 +125,9 @@ def main(concurrent: bool = False):
 
 
 def _evaluate_on_single_image(
-    img_path: Path, targets: List[BBox], split: str, time_predictor: TimePredictor
+    example_id: int, time_predictor: TimePredictor, source_path: Path
 ) -> List[Dict]:
+    targets, img_path = load_example_with_transcription(example_id, source_path)
     valid_targets = [target for target in targets if target.name != "??:??"]
     with Image.open(img_path) as img:
         predictions = time_predictor.predict(img)
@@ -139,8 +144,9 @@ def _evaluate_on_single_image(
             else None
         )
         record = {
+            "example_id": example_id,
             "image_path": str(img_path),
-            "split": split,
+            "split": img_path.parent.name,
             "target": target.name,
             "pred": predicted_time,
             "total_minutes_diff": target_prediction_diff,
@@ -149,61 +155,63 @@ def _evaluate_on_single_image(
     return evaluation_records
 
 
-def load_bboxes_with_transcription(
-    source: Path, split: str
-) -> Tuple[List[Path], List[List[BBox]]]:
+def load_example_with_transcription(
+    example_id: str, source: Path
+) -> Tuple[List[BBox], Path]:
     with source.open("r") as f:
         tasks = json.load(f)
-    if split is not None:
-        tasks = [task for task in tasks if task["image"].startswith(split)]
-    images = []
-    bboxes = []
-    for task in tqdm(tasks):
-        image_bboxes = []
-        image_transcriptions = []
-        image_path = source.parent / task["image"]
+    tasks = [task for task in tasks if task["id"] == example_id]
+    if len(tasks) == 0:
+        raise ValueError(f"example `{example_id}` not found")
+    elif len(tasks) > 1:
+        raise ValueError(f"found multiple examples for `{example_id}`")
 
-        if "bbox" in task:
-            for obj in task["bbox"]:
-                bbox = BBox.from_ltwh(
-                    obj["x"],
-                    obj["y"],
-                    obj["width"],
-                    obj["height"],
-                    obj["rectanglelabels"][0],
-                ).scale(1 / 100, 1 / 100)
+    task = tasks[0]
 
-                image_bboxes.append(bbox)
-        if "transcription" in task:
-            transcriptions = task["transcription"]
-            if isinstance(transcriptions, str):
-                image_transcriptions.append(transcriptions)
-            elif isinstance(transcriptions, list):
-                image_transcriptions.extend(transcriptions)
-            else:
-                raise ValueError(
-                    f"unknown type of transcriptions, expected list or str, "
-                    f"got {type(transcriptions)}"
-                )
+    image_bboxes, image_path = _load_single_example_with_transcription(task)
+    return image_bboxes, source.parent / image_path
 
-        if len(image_bboxes) > len(image_transcriptions):
-            print(f"missing transcription on task id: {task['id']}, please fix it!")
-            image_transcriptions.extend(
-                ["??:??"] * (len(image_transcriptions) - len(image_bboxes))
+
+def _load_single_example_with_transcription(task):
+    image_bboxes = []
+    image_transcriptions = []
+    if "bbox" in task:
+        for obj in task["bbox"]:
+            bbox = BBox.from_ltwh(
+                obj["x"],
+                obj["y"],
+                obj["width"],
+                obj["height"],
+                obj["rectanglelabels"][0],
+            ).scale(1 / 100, 1 / 100)
+
+            image_bboxes.append(bbox)
+    if "transcription" in task:
+        transcriptions = task["transcription"]
+        if isinstance(transcriptions, str):
+            image_transcriptions.append(transcriptions)
+        elif isinstance(transcriptions, list):
+            image_transcriptions.extend(transcriptions)
+        else:
+            raise ValueError(
+                f"unknown type of transcriptions, expected list or str, "
+                f"got {type(transcriptions)}"
             )
-        elif len(image_bboxes) < len(image_transcriptions):
-            print(f"too many transcriptions on task id: {task['id']}, please fix it!")
-            image_transcriptions.extend(
-                ["??:??"] * (len(image_transcriptions) - len(image_bboxes))
-            )
-
-        bboxes_with_transcriptions = [
-            bbox.rename(transcription)
-            for bbox, transcription in zip(image_bboxes, image_transcriptions)
-        ]
-        bboxes.append(bboxes_with_transcriptions)
-        images.append(image_path)
-    return images, bboxes
+    if len(image_bboxes) > len(image_transcriptions):
+        print(f"missing transcription on task id: {task['id']}, please fix it!")
+        image_transcriptions.extend(
+            ["??:??"] * (len(image_transcriptions) - len(image_bboxes))
+        )
+    elif len(image_bboxes) < len(image_transcriptions):
+        print(f"too many transcriptions on task id: {task['id']}, please fix it!")
+        image_transcriptions.extend(
+            ["??:??"] * (len(image_transcriptions) - len(image_bboxes))
+        )
+    bboxes_with_transcriptions = [
+        bbox.rename(transcription)
+        for bbox, transcription in zip(image_bboxes, image_transcriptions)
+    ]
+    return bboxes_with_transcriptions, Path(task["image"])
 
 
 if __name__ == "__main__":

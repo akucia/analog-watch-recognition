@@ -24,17 +24,23 @@ def visualize_keypoints(image: np.ndarray, points: List[Point], savefile=None):
 
 
 def visualize_masks(image: np.ndarray, masks: List[np.ndarray], savefile=None, ax=None):
-    colors = distinctipy.get_colors(len(masks))
-    overlay = image.astype("uint8")
     ax = ax or plt.gca()
-    for mask, color in zip(masks, colors):
-        img = np.zeros(shape=(*mask.shape[:2], 3)).astype("uint8")
-        img[mask] = (np.array(color) * 255).astype("uint8")
-        overlay = cv2.addWeighted(overlay, 0.7, img, 0.3, 0.0)
+    overlay = draw_masks(image, masks)
     ax.imshow(overlay)
     if savefile is not None:
         plt.savefig(savefile, bbox_inches="tight")
     return ax
+
+
+def draw_masks(image, masks, colors=None):
+    colors = colors or distinctipy.get_colors(len(masks))
+    overlay = image.astype("uint8")
+
+    for mask, color in zip(masks, colors):
+        heatmap = np.zeros(shape=(*mask.shape[:2], 3)).astype("uint8")
+        heatmap[mask] = (np.array(color) * 255).astype("uint8")
+        overlay = cv2.addWeighted(overlay, 1.0, heatmap, 0.5, 0.0)
+    return overlay
 
 
 def visualize_detections(

@@ -24,7 +24,7 @@ from watch_recognition.targets_encoding import (
     line_selector,
 )
 from watch_recognition.utilities import BBox, Line, Point, Polygon
-from watch_recognition.visualization import visualize_masks
+from watch_recognition.visualization import draw_masks
 
 
 class KPPredictor(ABC):
@@ -119,30 +119,26 @@ class KPHeatmapPredictorV2(ABC):
         predicted = self._batch_predict(batch_image_np)[0]
         return predicted
 
-    def predict_and_plot(
-        self, image: Union[ImageType, np.ndarray], mode: str = "keypoints"
-    ):
-        if mode == "keypoints":
-            points = self.predict(image)
-            colors = distinctipy.get_colors(len(self.class_to_label_name))
-            plt.imshow(image)
-            for i, point in enumerate(points):
-                point.plot(color=colors[i])
-            plt.legend()
-        elif mode == "heatmap":
-            heatmap = self.predict_heatmap(image)
-            predicted = heatmap > self.confidence_threshold
-            masks = []
-            for cls, name in self.class_to_label_name.items():
-                mask = predicted[:, :, cls]
-                mask = cv2.resize(
-                    mask.astype("uint8"),
-                    (image.width, image.height),
-                    interpolation=cv2.INTER_NEAREST,
-                ).astype("bool")
-                masks.append(mask)
+    def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None):
+        ax = ax or plt.gca()
+        colors = distinctipy.get_colors(len(self.class_to_label_name))
+        points = self.predict(image)
+        heatmap = self.predict_heatmap(image)
+        predicted = heatmap > self.confidence_threshold
+        masks = []
+        for cls, name in self.class_to_label_name.items():
+            mask = predicted[:, :, cls]
+            mask = cv2.resize(
+                mask.astype("uint8"),
+                (image.width, image.height),
+                interpolation=cv2.INTER_NEAREST,
+            ).astype("bool")
+            masks.append(mask)
 
-            visualize_masks(np.array(image), masks)
+        ax.imshow(draw_masks(np.array(image), masks, colors))
+        for i, point in enumerate(points):
+            point.plot(color=colors[i], ax=ax)
+        ax.legend()
 
     def predict_from_image_and_bbox(
         self,
@@ -256,9 +252,7 @@ class HandPredictor(ABC):
     def predict(
         self,
         image: Union[ImageType, np.ndarray],
-        center_point: Point,
-        debug: bool = False,
-    ) -> Tuple[Tuple[Line, Line], List[Line], Polygon]:
+    ) -> Polygon:
         """Runs predictions on a crop of a watch face.
         Returns keypoints in pixel coordinates of the image
         """
@@ -272,16 +266,11 @@ class HandPredictor(ABC):
         scale_x = image_width / predicted.shape[0]
         scale_y = image_height / predicted.shape[1]
 
-        center_scaled_to_segmask = center_point.scale(1 / scale_x, 1 / scale_y)
-
-        all_hands_lines = fit_lines_to_hands_mask(
-            predicted, center=center_scaled_to_segmask, debug=debug
-        )
-        all_hands_lines = [line.scale(scale_x, scale_y) for line in all_hands_lines]
         polygon = polygon.scale(scale_x, scale_y)
-        return (*line_selector(all_hands_lines, center=center_point), polygon)
+        return polygon
 
-    def predict_mask_and_draw(self, image: Union[ImageType, np.ndarray]):
+    def predict_mask_and_draw(self, image: Union[ImageType, np.ndarray], ax=None):
+        ax = ax or plt.gca()
         image_np = np.array(image)
         image_batch_np = np.expand_dims(image_np, 0)
         predicted = self._batch_predict(image_batch_np)[0]
@@ -297,7 +286,7 @@ class HandPredictor(ABC):
             ).astype("bool")
             masks.append(mask)
 
-        visualize_masks(image_np, masks)
+        ax.imshow(draw_masks(image_np, masks))
 
     def predict_from_image_and_bbox(
         self,
@@ -315,6 +304,7 @@ class HandPredictor(ABC):
             if crop.width * crop.height < 1:
                 return [], [], None
             center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
+            # TODO predictions decoding should be moved to a separate class
             valid_lines, other_lines, polygon = self.predict(
                 crop, center_point_inside_bbox, debug=debug
             )
@@ -323,6 +313,7 @@ class HandPredictor(ABC):
             other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
             polygon = polygon.translate(bbox.left, bbox.top)
             return valid_lines, other_lines, polygon
+            # return polygon
 
 
 class HandPredictorLocal(HandPredictor):
@@ -484,7 +475,6 @@ class RetinanetDetector(ABC):
 
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
-        # TODO integrate the image preprocessing with the exported model
         image_width, image_height = _get_image_shape(image)
         image_np = np.expand_dims(np.array(image), axis=0)
         predictions = self._batch_predict(image_np)[0]
@@ -510,11 +500,12 @@ class RetinanetDetector(ABC):
             bboxes.append(bbox)
         return bboxes
 
-    def predict_and_plot(self, image: Union[ImageType, np.ndarray]):
+    def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None):
         bboxes = self.predict(image)
-        plt.imshow(image)
+        ax = ax or plt.gca()
+        ax.imshow(image)
         for bbox in bboxes:
-            bbox.plot()
+            bbox.plot(ax=ax)
 
 
 class RetinanetDetectorLocal(RetinanetDetector):
@@ -600,6 +591,27 @@ class RotationPredictor:
         return image.rotate(-angle, resample=BICUBIC), -angle
 
 
+def decode_time(
+    polygon: Polygon,
+    center: Point,
+    top: Point,
+    image_shape,
+    debug: bool = False,
+) -> Optional[Tuple[float, float]]:
+    mask = polygon.to_binary_mask(image_shape)
+
+    # TODO this might be faster if image shape is smaller
+    all_hands_lines = fit_lines_to_hands_mask(mask, center=center, debug=debug)
+    valid_lines, other_lines = line_selector(all_hands_lines, center=center)
+
+    if valid_lines:
+        pred_minute, pred_hour = valid_lines
+        minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
+        hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
+        return points_to_time(center, hour_kp, minute_kp, top)
+    return None
+
+
 class TimePredictor:
     def __init__(
         self,
@@ -611,46 +623,46 @@ class TimePredictor:
         self.kp_predictor = kp_predictor
         self.hand_predictor = hand_predictor
 
-    def predict(self, image) -> List[BBox]:
+    def predict(self, image: ImageType) -> List[BBox]:
         pil_img = image.convert("RGB")
         bboxes = self.detector.predict(pil_img)
         transcriptions = []
 
         bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
         for box in bboxes:
-            points = self.kp_predictor.predict_from_image_and_bbox(pil_img, box)
-            detected_center_points = [p for p in points if p.name == "Center"]
-            if detected_center_points:
-                detected_center_points = sorted(
-                    detected_center_points, key=lambda p: p.score, reverse=True
-                )[0]
-            else:
-                transcriptions.append("??:??")
-                continue
+            with image.crop(box=box.as_coordinates_tuple) as crop:
+                points = self.kp_predictor.predict(crop)
+                detected_center_points = [p for p in points if p.name == "Center"]
+                if detected_center_points:
+                    detected_center_points = sorted(
+                        detected_center_points, key=lambda p: p.score, reverse=True
+                    )[0]
+                else:
+                    transcriptions.append("??:??")
+                    continue
 
-            detected_top_points = [p for p in points if p.name == "Top"]
-            if detected_top_points:
-                detected_top_points = sorted(
-                    detected_top_points, key=lambda p: p.score, reverse=True
-                )[0]
-            else:
-                transcriptions.append("??:??")
-                continue
-            (
-                minute_and_hour,
-                other,
-                polygon,
-            ) = self.hand_predictor.predict_from_image_and_bbox(
-                pil_img, box, detected_center_points, debug=False
-            )
-            if minute_and_hour:
-                pred_minute, pred_hour = minute_and_hour
-                minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
-                hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
-                read_hour, read_minute = points_to_time(
-                    detected_center_points, hour_kp, minute_kp, detected_top_points
+                detected_top_points = [p for p in points if p.name == "Top"]
+                if detected_top_points:
+                    detected_top_points = sorted(
+                        detected_top_points, key=lambda p: p.score, reverse=True
+                    )[0]
+                else:
+                    transcriptions.append("??:??")
+                    continue
+                (minute_and_hour, other, polygon,) = self.hand_predictor.predict(
+                    crop,
+                    debug=False,
+                    center_point=detected_center_points,
                 )
 
+            time = decode_time(
+                polygon,
+                detected_center_points,
+                detected_top_points,
+                image.size,
+            )
+            if time:
+                read_hour, read_minute = time
                 predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
                 transcriptions.append(predicted_time)
         bboxes = [
@@ -658,6 +670,13 @@ class TimePredictor:
             for bbox, transcription in zip(bboxes, transcriptions)
         ]
         return bboxes
+
+    def predict_and_plot(self, img):
+        fig, axarr = plt.subplots(1, 2)
+        self.detector.predict_and_plot(img, ax=axarr[0])
+        self.hand_predictor.predict_mask_and_draw(img, ax=axarr[0])
+        self.detector.predict_and_plot(img, ax=axarr[1])
+        self.kp_predictor.predict_and_plot(img, ax=axarr[1])
 
 
 def _get_image_shape(image: Union[ImageType, np.ndarray]):

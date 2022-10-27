@@ -186,9 +186,9 @@ stages:
       - example_predictions/segmentation/val_3.jpg
       - example_predictions/segmentation/val_4.jpg
   eval-end-2-end:
-    cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py
+    cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py
     deps:
-      - watch_recognition/watch_recognition/eval/end-to-end-eval.py
+      - watch_recognition/watch_recognition/eval/end_to_end_eval.py
       - models/detector
       - models/keypoint
       - models/segmentation

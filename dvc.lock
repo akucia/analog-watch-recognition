@@ -199,6 +199,36 @@ stages:
       md5: 7aee96c16f50bc522e62bc9138f49247
       size: 6302
     outs:
+    - path: example_predictions/keypoint/train_0.jpg
+      md5: 338a6543b682e3506589062e1342404c
+      size: 55602
+    - path: example_predictions/keypoint/train_1.jpg
+      md5: 842e748f76b5ff23415fa9fd0664f2bf
+      size: 52191
+    - path: example_predictions/keypoint/train_2.jpg
+      md5: 0d4fc0c08f160074264ee1869fc9a9aa
+      size: 56068
+    - path: example_predictions/keypoint/train_3.jpg
+      md5: c988e4ba83ea98b809f21a7fdb868473
+      size: 46217
+    - path: example_predictions/keypoint/train_4.jpg
+      md5: b9129eeb65ef3d923509c1ff463eb6ff
+      size: 39486
+    - path: example_predictions/keypoint/val_0.jpg
+      md5: 6d6cc87f468e2a6ccf8fc3ec4f630aad
+      size: 53135
+    - path: example_predictions/keypoint/val_1.jpg
+      md5: e162d19c6494163cc3a137e9cbd576ed
+      size: 60615
+    - path: example_predictions/keypoint/val_2.jpg
+      md5: c887e63c9b4a3c1f8943840a92f07f2f
+      size: 47908
+    - path: example_predictions/keypoint/val_3.jpg
+      md5: 1e3f059d2b636fb0ab226ec9366193fd
+      size: 57323
+    - path: example_predictions/keypoint/val_4.jpg
+      md5: b7dc1367aae7236c08fc6fa96b3140a8
+      size: 50682
     - path: metrics/keypoint/coco_train.json
       md5: 83b0575b2780727222fc8cf43110284a
       size: 262
@@ -254,7 +284,7 @@ stages:
       size: 35973303
       nfiles: 5
   eval-end-2-end:
-    cmd: python watch_recognition/watch_recognition/eval/end-to-end-eval.py
+    cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py
     deps:
     - path: datasets/watch-faces-local.json
       md5: ff7da7da2e73b2777c9b3d610cab10ff
@@ -271,9 +301,9 @@ stages:
       md5: 3092355bb88b2e4bdb656c57bd1729dd.dir
       size: 35973303
       nfiles: 5
-    - path: watch_recognition/watch_recognition/eval/end-to-end-eval.py
-      md5: 9b6aa8409d925be78528458503016657
-      size: 7613
+    - path: watch_recognition/watch_recognition/eval/end_to_end_eval.py
+      md5: 44b6048e60a21933f13c9b801b7b5792
+      size: 7809
     outs:
     - path: metrics/end_2_end_eval.csv
       md5: f040fb57eb98f53cc344638371864dd0
