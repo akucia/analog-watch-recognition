@@ -1,7 +1,6 @@
 import dataclasses
 import json
 import logging
-import tarfile
 import time
 from hashlib import md5
 from pathlib import Path
@@ -9,7 +8,6 @@ from random import shuffle
 from typing import Optional
 
 import click
-import requests
 from google.cloud import storage
 from google.cloud.storage import Bucket
 from label_studio_sdk import Client
@@ -47,23 +45,6 @@ def upload_blob(
 def generate_blob_gstorage_path(bucket_name: str, blob_name: str) -> str:
     blob_path = Path(bucket_name) / blob_name
     return "gs://" + str(blob_path)
-
-
-def download_and_uzip_model(url: str, save_dir: str = "/tmp/") -> Path:
-    save_dir = Path(save_dir)
-    name = url.split("/")[-1]
-    save_file = save_dir / name
-    if not save_file.exists():
-        logging.debug(f"downloading {name}")
-        with requests.get(url, stream=True) as response:
-            with save_file.open("wb") as f:
-                f.write(response.content)
-    extract_dir = save_dir / save_file.stem
-    with tarfile.open(save_file) as tar:
-        logging.debug(f"extracting {name}")
-        tar.extractall(extract_dir)
-
-    return extract_dir
 
 
 @click.command()
