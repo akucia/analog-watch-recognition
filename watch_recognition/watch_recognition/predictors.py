@@ -139,6 +139,7 @@ class KPHeatmapPredictorV2(ABC):
         for i, point in enumerate(points):
             point.plot(color=colors[i], ax=ax)
         ax.legend()
+        return points
 
     def predict_from_image_and_bbox(
         self,
@@ -287,6 +288,13 @@ class HandPredictor(ABC):
             masks.append(mask)
 
         ax.imshow(draw_masks(image_np, masks))
+
+    def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None) -> Polygon:
+        ax = ax or plt.gca()
+        ax.imshow(np.array(image))
+        polygon = self.predict(image)
+        polygon.plot(ax=ax)
+        return polygon
 
     def predict_from_image_and_bbox(
         self,
@@ -500,12 +508,15 @@ class RetinanetDetector(ABC):
             bboxes.append(bbox)
         return bboxes
 
-    def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None):
+    def predict_and_plot(
+        self, image: Union[ImageType, np.ndarray], ax=None
+    ) -> List[BBox]:
         bboxes = self.predict(image)
         ax = ax or plt.gca()
         ax.imshow(image)
         for bbox in bboxes:
             bbox.plot(ax=ax)
+        return bboxes
 
 
 class RetinanetDetectorLocal(RetinanetDetector):
@@ -591,14 +602,24 @@ class RotationPredictor:
         return image.rotate(-angle, resample=BICUBIC), -angle
 
 
-def decode_time(
+def read_time(
     polygon: Polygon,
-    center: Point,
-    top: Point,
-    image_shape,
+    points: List[Point],
+    image_shape: Tuple[int, int],
     debug: bool = False,
 ) -> Optional[Tuple[float, float]]:
-    mask = polygon.to_binary_mask(image_shape)
+    detected_center_points = [p for p in points if p.name == "Center"]
+    if detected_center_points:
+        center = sorted(detected_center_points, key=lambda p: p.score, reverse=True)[0]
+    else:
+        return None
+
+    detected_top_points = [p for p in points if p.name == "Top"]
+    if detected_top_points:
+        top = sorted(detected_top_points, key=lambda p: p.score, reverse=True)[0]
+    else:
+        return None
+    mask = polygon.to_binary_mask(image_shape[0], image_shape[1])
 
     # TODO this might be faster if image shape is smaller
     all_hands_lines = fit_lines_to_hands_mask(mask, center=center, debug=debug)
@@ -632,39 +653,19 @@ class TimePredictor:
         for box in bboxes:
             with image.crop(box=box.as_coordinates_tuple) as crop:
                 points = self.kp_predictor.predict(crop)
-                detected_center_points = [p for p in points if p.name == "Center"]
-                if detected_center_points:
-                    detected_center_points = sorted(
-                        detected_center_points, key=lambda p: p.score, reverse=True
-                    )[0]
-                else:
-                    transcriptions.append("??:??")
-                    continue
+                hands_polygon = self.hand_predictor.predict(crop)
 
-                detected_top_points = [p for p in points if p.name == "Top"]
-                if detected_top_points:
-                    detected_top_points = sorted(
-                        detected_top_points, key=lambda p: p.score, reverse=True
-                    )[0]
-                else:
-                    transcriptions.append("??:??")
-                    continue
-                (minute_and_hour, other, polygon,) = self.hand_predictor.predict(
-                    crop,
-                    debug=False,
-                    center_point=detected_center_points,
+                time = read_time(
+                    hands_polygon,
+                    points,
+                    crop.size,
                 )
-
-            time = decode_time(
-                polygon,
-                detected_center_points,
-                detected_top_points,
-                image.size,
-            )
             if time:
                 read_hour, read_minute = time
                 predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
                 transcriptions.append(predicted_time)
+            else:
+                transcriptions.append("??:??")
         bboxes = [
             bbox.rename(transcription)
             for bbox, transcription in zip(bboxes, transcriptions)
@@ -672,11 +673,29 @@ class TimePredictor:
         return bboxes
 
     def predict_and_plot(self, img):
-        fig, axarr = plt.subplots(1, 2)
-        self.detector.predict_and_plot(img, ax=axarr[0])
-        self.hand_predictor.predict_mask_and_draw(img, ax=axarr[0])
-        self.detector.predict_and_plot(img, ax=axarr[1])
-        self.kp_predictor.predict_and_plot(img, ax=axarr[1])
+        plt.figure()
+        fig, axarr = plt.subplots(1, 1)
+        bboxes = self.detector.predict_and_plot(img, ax=axarr)
+        plt.show()
+        for i, bbox in enumerate(bboxes):
+            with img.crop(box=bbox.as_coordinates_tuple) as crop:
+                plt.figure()
+                fig, axarr = plt.subplots(1, 2)
+                points = self.kp_predictor.predict_and_plot(
+                    crop,
+                    ax=axarr[0],
+                )
+                hands_polygon = self.hand_predictor.predict_and_plot(
+                    crop,
+                    ax=axarr[1],
+                )
+                time = read_time(hands_polygon, points, crop.size)
+                predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
+                fig.suptitle(predicted_time, fontsize=16)
+                plt.show()
+            plt.figure()
+            read_time(hands_polygon, points, crop.size, debug=True)
+            plt.show()
 
 
 def _get_image_shape(image: Union[ImageType, np.ndarray]):

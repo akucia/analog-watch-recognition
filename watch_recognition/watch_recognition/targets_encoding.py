@@ -555,7 +555,6 @@ def fit_lines_to_hands_mask(
         if not regions:
             return []
         region = regions[0]
-
         (
             ymin,
             xmin,
@@ -563,22 +562,9 @@ def fit_lines_to_hands_mask(
             xmax,
         ) = region.bbox
         region_bbox = BBox(xmin, ymin, xmax, ymax, name="")
-
         mask = label_image == region.label
-        if debug:
-            region_bbox.plot()
-            center.plot()
-            plt.imshow(mask)
-            plt.show()
         if not region_bbox.contains(center):
             return []
-
-    # TODO proper debug handling
-    # TODO optionally restrict to the largest shape found in the mask
-    if debug:
-        plt.imshow(mask)
-        center.plot()
-        plt.show()
     vectors = []
     points = []
     for i, row in enumerate(mask):
@@ -597,13 +583,6 @@ def fit_lines_to_hands_mask(
     # TODO there's a problem with linked boundaries here
     step = 0.5
     X_plot = np.arange(0, 180, step)[:, np.newaxis]  # KDE requires 2D inputs
-    # print(X_plot)
-    ax = None
-    if debug:
-        fig, ax = plt.subplots(1, 2, figsize=(15, 7))
-        ax = ax.ravel()
-        ax[1].imshow(mask)
-        center.plot(ax[1])
 
     kernel = "gaussian"
     lw = 2
@@ -619,32 +598,22 @@ def fit_lines_to_hands_mask(
         distance=5,
         prominence=min_prominence,
     )
-    if debug:
-        print(properties)
     results_half = peak_widths(exp_dens, peaks, rel_height=0.5)[0]
     colors = distinctipy.get_colors(len(peaks), n_attempts=1)
     peak_to_points = defaultdict(list)
+    peak_to_angles = defaultdict(list)
     for i, (peak_idx, peak_w) in enumerate(zip(peaks, results_half)):
         peak_position = X_plot[peak_idx, 0]
         left_peak_border = max(peak_position - peak_w / 2, X_plot[0, 0])
         right_peak_border = min(peak_position + peak_w / 2, X_plot[-1, 0])
-        left_peak_border_idx = np.argwhere(X_plot[:, 0] <= left_peak_border)[-1][0]
-        right_peak_border_idx = np.argwhere(X_plot[:, 0] >= right_peak_border)[0][0]
         points_ids_left = angles >= left_peak_border
         points_ids_right = angles <= right_peak_border
         points_ids = points_ids_left & points_ids_right
         points_ids = points_ids.squeeze()
 
-        peak_to_points[peak_idx].extend((np.array(points)[points_ids]))
+        peak_to_points[peak_idx].extend(np.array(points)[points_ids])
+        peak_to_angles[peak_idx].extend(np.array(angles)[points_ids])
 
-        if debug:
-            # print(peak_position, peak_height, peak_w)
-            ax[0].fill_between(
-                X_plot[left_peak_border_idx:right_peak_border_idx, 0],
-                exp_dens[left_peak_border_idx:right_peak_border_idx],
-                facecolor=colors[i],
-                alpha=0.5,
-            )
     fitted_hands = [
         Line.from_multiple_points(points) for points in peak_to_points.values()
     ]
@@ -659,8 +628,10 @@ def fit_lines_to_hands_mask(
         dataclasses.replace(hand, score=width)
         for hand, width in zip(hands, results_half)
     ]
-
     if debug:
+        fig, ax = plt.subplots(1, 2, figsize=(15, 7))
+        ax = ax.ravel()
+        # left plot
         ax[0].plot(
             X_plot[:, 0],
             exp_dens,
@@ -672,17 +643,25 @@ def fit_lines_to_hands_mask(
         ax[0].plot(X[:, 0], Y, "+k")
 
         empty_mask = np.zeros((*mask.shape, 3)).astype("uint8")
-        ax[1].invert_yaxis()
+        for i, (peak_idx, peak_points) in enumerate(peak_to_points.items()):
+            left_peak_border = np.min(peak_to_angles[peak_idx])
+            right_peak_border = np.max(peak_to_angles[peak_idx])
+            left_peak_border_idx = np.argwhere(X_plot[:, 0] <= left_peak_border)[-1][0]
+            right_peak_border_idx = np.argwhere(X_plot[:, 0] >= right_peak_border)[0][0]
 
-        for i, peak_points in enumerate(peak_to_points.values()):
+            ax[0].fill_between(
+                X_plot[left_peak_border_idx:right_peak_border_idx, 0],
+                exp_dens[left_peak_border_idx:right_peak_border_idx],
+                facecolor=colors[i],
+                alpha=0.5,
+            )
             for p in peak_points:
                 color = (np.array(colors[i]) * 255).astype("uint8")
                 empty_mask = p.draw(empty_mask, color=color)
             hands[i].plot(ax=ax[1], color="white", lw=2)
+        # right plot
         ax[1].imshow(empty_mask)
-        plt.tight_layout()
-        plt.savefig("debug_plots.jpg")
-        plt.show()
+        center.plot(ax[1])
     hands = remove_complementary_hands(hands, center)
     return hands
 

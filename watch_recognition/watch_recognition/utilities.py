@@ -613,8 +613,8 @@ class Polygon:
             return Polygon(appr_poly[:, ::-1])
         return Polygon(np.array([]).reshape(-1, 2))
 
-    def to_binary_mask(self, shape: Tuple[int, int]) -> np.ndarray:
-        mask = np.zeros(shape)
+    def to_binary_mask(self, width: int, height: int) -> np.ndarray:
+        mask = np.zeros((height, width))
         cv2.fillPoly(mask, [self.coords.astype(int)], 1)
         return mask.astype(bool)
 
@@ -657,6 +657,36 @@ class Polygon:
 
     def rename(self, new_name: str) -> "Polygon":
         return dataclasses.replace(self, name=new_name)
+
+    def plot(
+        self,
+        ax=None,
+        color: str = "red",
+        linewidth: int = 1,
+        draw_name_label: bool = True,
+        **kwargs,
+    ):
+        if ax is None:
+            ax = plt.gca()
+        rect = patches.Polygon(
+            self.coords,
+            edgecolor=color,
+            facecolor="none",
+            linewidth=linewidth,
+            **kwargs,
+        )
+
+        # Add the patch to the Axes
+        ax.add_patch(rect)
+        if self.name and draw_name_label:
+            ax.text(
+                np.min(self.coords[:, 0]),
+                np.min(self.coords[:, 1]),
+                self.name,
+                bbox={"facecolor": color, "alpha": 0.4},
+                clip_box=ax.clipbox,
+                clip_on=True,
+            )
 
 
 def mean_line(lines: List[Line], weighted=True) -> Line:
