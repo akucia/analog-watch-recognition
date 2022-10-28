@@ -19,9 +19,10 @@ from tensorflow_serving.apis.predict_pb2 import PredictResponse
 
 from watch_recognition.models import points_to_time
 from watch_recognition.targets_encoding import (
+    _fit_lines_to_points,
     decode_single_point_from_heatmap,
-    fit_lines_to_hands_mask,
     line_selector,
+    segment_hands_mask,
 )
 from watch_recognition.utilities import BBox, Line, Point, Polygon
 from watch_recognition.visualization import draw_masks
@@ -607,6 +608,7 @@ def read_time(
     points: List[Point],
     image_shape: Tuple[int, int],
     debug: bool = False,
+    debug_image=None,
 ) -> Optional[Tuple[float, float]]:
     detected_center_points = [p for p in points if p.name == "Center"]
     if detected_center_points:
@@ -622,15 +624,41 @@ def read_time(
     mask = polygon.to_binary_mask(image_shape[0], image_shape[1])
 
     # TODO this might be faster if image shape is smaller
-    all_hands_lines = fit_lines_to_hands_mask(mask, center=center, debug=debug)
-    valid_lines, other_lines = line_selector(all_hands_lines, center=center)
+    segmented_hands = segment_hands_mask(mask, center=center, debug=debug)
+    points_per_hand = []
+    for mask in segmented_hands:
+        points = mask_to_point_list(mask)
+        points_per_hand.append(points)
+    # TODO fitting lines as main blob axis with sklearn.measure might work better
+    #  https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_regionprops.html#sphx-glr-auto-examples-segmentation-plot-regionprops-py
+    hands = _fit_lines_to_points(points_per_hand, center)
+    valid_lines, other_lines = line_selector(hands, center=center)
+    if debug:
+        fig, axarr = plt.subplots(1, 1)
+        axarr.imshow(draw_masks(np.array(debug_image), segmented_hands))
+        for hand in valid_lines:
+            hand.plot(ax=axarr, color="green")
+            hand.end.plot(ax=axarr)
+        for hand in other_lines:
+            hand.plot(ax=axarr, color="red")
+        center.plot(ax=axarr, color="magenta")
+        top.plot(ax=axarr, color="yellow")
 
     if valid_lines:
         pred_minute, pred_hour = valid_lines
         minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
         hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
-        return points_to_time(center, hour_kp, minute_kp, top)
+        return points_to_time(center, hour_kp, minute_kp, top, debug=False)
     return None
+
+
+def mask_to_point_list(mask):
+    points = []
+    for i, row in enumerate(mask):
+        for j, value in enumerate(row):
+            if value > 0:
+                points.append(Point(j, i))
+    return points
 
 
 class TimePredictor:
@@ -674,6 +702,8 @@ class TimePredictor:
 
     def predict_and_plot(self, img):
         plt.figure()
+        plt.tight_layout()
+        plt.axis("off")
         fig, axarr = plt.subplots(1, 1)
         bboxes = self.detector.predict_and_plot(img, ax=axarr)
         plt.show()
@@ -681,6 +711,7 @@ class TimePredictor:
             with img.crop(box=bbox.as_coordinates_tuple) as crop:
                 plt.figure()
                 fig, axarr = plt.subplots(1, 2)
+                axarr[0].axis("off")
                 points = self.kp_predictor.predict_and_plot(
                     crop,
                     ax=axarr[0],
@@ -694,7 +725,9 @@ class TimePredictor:
                 fig.suptitle(predicted_time, fontsize=16)
                 plt.show()
             plt.figure()
-            read_time(hands_polygon, points, crop.size, debug=True)
+            plt.tight_layout()
+            plt.axis("off")
+            read_time(hands_polygon, points, crop.size, debug=True, debug_image=crop)
             plt.show()
 
 

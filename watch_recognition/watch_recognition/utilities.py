@@ -11,7 +11,14 @@ from matplotlib import patches
 from matplotlib import pyplot as plt
 from scipy import odr
 from skimage import measure
-from skimage.measure import approximate_polygon, find_contours, label, regionprops
+from skimage.measure import (
+    LineModelND,
+    approximate_polygon,
+    find_contours,
+    label,
+    ransac,
+    regionprops,
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -429,7 +436,9 @@ class Line:
     score: float = 0
 
     @classmethod
-    def from_multiple_points(cls, points: List[Point]) -> "Line":
+    def from_multiple_points(
+        cls, points: List[Point], use_ransac: bool = False
+    ) -> "Line":
         if len(points) < 2:
             raise ValueError(f"Need at least 2 points to fit a lint, got {len(points)}")
         x_coords = [p.x for p in points]
@@ -438,19 +447,27 @@ class Line:
         x_max = max(x_coords)
         y_min = min(y_coords)
         y_max = max(y_coords)
-        # vertical line
-        if np.std(x_coords) < 2:
-            x_const = float(np.mean(x_coords))
-            return Line(Point(x_const, y_min), Point(x_const, y_max))
+        if use_ransac:
+            data = np.column_stack([x_coords, y_coords])
+            model_robust, inliers = ransac(
+                data, LineModelND, min_samples=2, residual_threshold=1, max_trials=1000
+            )
+            line_x = [x_min, x_max]
+            line_y_min, line_y_max = model_robust.predict_y(line_x)
+            start = Point(x_min, line_y_min)
+            end = Point(x_max, line_y_max)
+        else:
+            # vertical line
+            if np.std(x_coords) < 2:
+                x_const = float(np.mean(x_coords))
+                return Line(Point(x_const, y_min), Point(x_const, y_max))
 
-        # other cases
-        poly1d = cls._fit_line(x_coords, y_coords)
-        start = Point(x_min, poly1d(x_min))
-        end = Point(x_max, poly1d(x_max))
+            # other cases
+            poly1d = cls._fit_line(x_coords, y_coords)
+            start = Point(x_min, poly1d(x_min))
+            end = Point(x_max, poly1d(x_max))
         window = BBox(x_min, y_min, x_max, y_max, "")
-        l1 = Line(start, end)
-        l2 = l1.clip(window)
-        return l2
+        return Line(start, end).clip(window)
 
     @property
     def poly1d(self) -> np.poly1d:

@@ -2,9 +2,6 @@ from typing import Tuple
 
 import numpy as np
 import segmentation_models as sm
-
-sm.set_framework("tf.keras")
-
 import tensorflow as tf
 from matplotlib import pyplot as plt
 from segmentation_models.base import Loss
@@ -12,6 +9,8 @@ from segmentation_models.base.functional import average, get_reduce_axes
 from segmentation_models.losses import SMOOTH
 
 from watch_recognition.utilities import Point
+
+sm.set_framework("tf.keras")
 
 
 def hour_diff(y_true, y_pred):
@@ -145,32 +144,64 @@ class IouLoss2(Loss):
         )
 
 
+def unit_vector(vector):
+    """Returns the unit vector of the vector."""
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1, v2):
+    """Returns the angle in radians between vectors 'v1' and 'v2'::
+
+    >>> angle_between((1, 0, 0), (0, 1, 0))
+    1.5707963267948966
+    >>> angle_between((1, 0, 0), (1, 0, 0))
+    0.0
+    >>> angle_between((1, 0, 0), (-1, 0, 0))
+    3.141592653589793
+    https://stackoverflow.com/a/13849249
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
 def points_to_time(
     center: Point, hour: Point, minute: Point, top: Point, debug: bool = False
 ) -> Tuple[float, float]:
+    # TODO unittests
+
+    assert hour.name == "Hour", hour.name
+    assert minute.name == "Minute", minute.name
+    hour = hour.translate(-center.x, -center.y)
+    minute = minute.translate(-center.x, -center.y)
+    top = top.translate(-center.x, -center.y)
+    center = center.translate(-center.x, -center.y)
     if debug:
+        fig, ax = plt.subplots(1, 1)
         top.plot(color="green")
         hour.plot(color="red")
         center.plot(color="k")
         minute.plot(color="orange")
-        plt.gca().invert_yaxis()
-        plt.legend()
-    assert hour.name == "Hour", hour.name
-    assert minute.name == "Minute", minute.name
-    hour = hour.as_array - center.as_array
-    minute = minute.as_array - center.as_array
-    top = top.as_array - center.as_array
-    hour_deg = np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(hour[0], hour[1]))
+        ax.invert_yaxis()
+        ax.legend()
+    hour = hour.as_array
+    minute = minute.as_array
+    top = top.as_array
+    hour_deg = np.rad2deg(angle_between(top, hour))
+    # TODO verify how to handle negative angles
+    if hour[0] < top[0]:
+        hour_deg = 360 - hour_deg
+
     read_hour = hour_deg / 360 * 12
     read_hour = np.floor(read_hour).astype(int)
     read_hour = read_hour % 12
     if read_hour == 0:
         read_hour = 12
-    read_minute = (
-        np.rad2deg(np.arctan2(top[0], top[1]) - np.arctan2(minute[0], minute[1]))
-        / 360
-        * 60
-    )
+    minute_deg = np.rad2deg(angle_between(top, minute))
+    # TODO verify how to handle negative angles
+    if minute[0] < top[0]:
+        minute_deg = 360 - minute_deg
+    read_minute = minute_deg / 360 * 60
     read_minute = np.floor(read_minute).astype(int)
     read_minute = read_minute % 60
     return read_hour, read_minute
@@ -242,7 +273,7 @@ def get_segmentation_model(
     return model
 
 
-### deeplab v3
+# deeplab v3
 # https://keras.io/examples/vision/deeplabv3_plus/#building-the-deeplabv3-model
 
 

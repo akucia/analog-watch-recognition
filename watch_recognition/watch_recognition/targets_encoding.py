@@ -538,7 +538,7 @@ def vonmises_kde(data, kappa, n_bins=100):
     return bins, kde
 
 
-def fit_lines_to_hands_mask(
+def segment_hands_mask(
     mask: np.ndarray,
     center: Point,
     use_largest_region: bool = True,
@@ -546,7 +546,8 @@ def fit_lines_to_hands_mask(
     min_peak_height: float = 0.01,
     min_prominence: float = 5e-4,
     min_peak_width: float = 3,
-) -> List[Line]:
+) -> List[np.ndarray]:
+    # TODO separate mask logic from line fitting logic
     assert len(mask.shape) == 2, f"mask must have 2D shape, got {mask.shape}"
     if use_largest_region:
         label_image = label(mask)
@@ -614,20 +615,6 @@ def fit_lines_to_hands_mask(
         peak_to_points[peak_idx].extend(np.array(points)[points_ids])
         peak_to_angles[peak_idx].extend(np.array(angles)[points_ids])
 
-    fitted_hands = [
-        Line.from_multiple_points(points) for points in peak_to_points.values()
-    ]
-    hands = []
-    for hand in fitted_hands:
-        if hand.end.distance(center) < hand.start.distance(center):
-            new_hand = Line(hand.end, hand.start)
-        else:
-            new_hand = hand
-        hands.append(new_hand)
-    hands = [
-        dataclasses.replace(hand, score=width)
-        for hand, width in zip(hands, results_half)
-    ]
     if debug:
         fig, ax = plt.subplots(1, 2, figsize=(15, 7))
         ax = ax.ravel()
@@ -658,11 +645,39 @@ def fit_lines_to_hands_mask(
             for p in peak_points:
                 color = (np.array(colors[i]) * 255).astype("uint8")
                 empty_mask = p.draw(empty_mask, color=color)
-            hands[i].plot(ax=ax[1], color="white", lw=2)
         # right plot
         ax[1].imshow(empty_mask)
         center.plot(ax[1])
-    hands = remove_complementary_hands(hands, center)
+
+    points_per_peak = peak_to_points.values()
+    peak_masks = []
+    for points in points_per_peak:
+        peak_mask = np.zeros((*mask.shape, 1)).astype(bool)
+        for p in points:
+            peak_mask = p.draw(peak_mask, color=None)
+        peak_masks.append(peak_mask.squeeze())
+    return peak_masks
+
+
+def _fit_lines_to_points(all_points, center):
+    total_num_points = sum(len(points) for points in all_points)
+    scores = []
+    for points in all_points:
+        scores.append(len(points) / total_num_points)
+    fitted_hands = [
+        Line.from_multiple_points(points, use_ransac=True) for points in all_points
+    ]
+    hands = []
+    for hand in fitted_hands:
+        if hand.end.distance(center) < hand.start.distance(center):
+            new_hand = Line(hand.end, hand.start)
+        else:
+            new_hand = hand
+        hands.append(new_hand)
+    hands = [
+        dataclasses.replace(hand, score=score) for hand, score in zip(hands, scores)
+    ]
+    # hands = remove_complementary_hands(hands, center)
     return hands
 
 
@@ -704,8 +719,11 @@ def line_selector(
     # nothing to do
     if not all_hands_lines:
         return tuple(), []
-
-    sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
+    # TODO sorting based on score and length
+    # TODO perfect candidate for decision tree
+    sorted_lines = sorted(
+        all_hands_lines, key=lambda l: (1 - l.score) * l.length, reverse=False
+    )
     # if there's just one line: count it as both hour and minute hand
     if len(all_hands_lines) == 1:
         selected_lines = [sorted_lines[0], sorted_lines[0]]

@@ -12,6 +12,7 @@ from watch_recognition.predictors import (
     KPHeatmapPredictorV2GRPC,
     RetinaNetDetectorGRPC,
     TimePredictor,
+    read_time,
 )
 
 model_host = "localhost:8500"
@@ -93,24 +94,35 @@ def debug():
     if file:
         demo_on_file(file)
     with Image.open(file) as img:
-        fig, ax = plt.subplots()
         plt.tight_layout()
         plt.axis("off")
-        time_predictor.detector.predict_and_plot(img, ax=ax)
+        fig, axarr = plt.subplots(1, 1)
+        bboxes = time_predictor.detector.predict_and_plot(img, ax=axarr)
+
         st.pyplot(fig)
-        # todo show crops and stages of every prediction
-        bboxes = time_predictor.detector.predict(img)
         for i, bbox in enumerate(bboxes):
-            st.markdown(f"### result {i}")
             with img.crop(box=bbox.as_coordinates_tuple) as crop:
+                plt.tight_layout()
+                plt.axis("off")
                 fig, axarr = plt.subplots(1, 2)
-                fig.tight_layout()
-                for ax in axarr:
-                    ax.axis("off")
-                time_predictor.kp_predictor.predict_and_plot(crop, ax=axarr[0])
-                axarr[0].legend()
-                time_predictor.hand_predictor.predict_mask_and_draw(crop, ax=axarr[1])
+                points = time_predictor.kp_predictor.predict_and_plot(
+                    crop,
+                    ax=axarr[0],
+                )
+                hands_polygon = time_predictor.hand_predictor.predict_and_plot(
+                    crop,
+                    ax=axarr[1],
+                )
+                time = read_time(hands_polygon, points, crop.size)
+                if time:
+                    predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
+                else:
+                    predicted_time = "??:??"
+                fig.suptitle(predicted_time, fontsize=10)
                 st.pyplot(fig)
+            fig = plt.figure()
+            read_time(hands_polygon, points, crop.size, debug=True, debug_image=crop)
+            st.pyplot(fig)
 
 
 def main():
