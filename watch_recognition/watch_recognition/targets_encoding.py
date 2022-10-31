@@ -1,5 +1,4 @@
 import dataclasses
-from collections import defaultdict
 from itertools import combinations
 from typing import List, Optional, Tuple
 
@@ -127,15 +126,25 @@ def _encode_multiple_points_to_lines(int_points, center, mask_size, blur):
     return mask
 
 
-def _encode_multiple_points_to_mask(extent, int_points, mask_size, with_perimeter):
+def _encode_multiple_points_to_mask(
+    radius: int,
+    int_points: List[Tuple[int, int]],
+    mask_size: Tuple[int, int],
+    with_perimeter: bool,
+) -> np.ndarray:
     mask = np.zeros(mask_size, dtype=np.float32)
     for int_point in int_points:
-        mask += _encode_point_to_mask(extent, int_point, mask_size, with_perimeter)
+        mask += _encode_point_to_mask(radius, int_point, mask_size, with_perimeter)
     masks_clipped = np.clip(mask, 0, 1)
     return masks_clipped
 
 
-def _encode_point_to_mask(radius, int_point, mask_size, with_perimeter: bool = False):
+def _encode_point_to_mask(
+    radius: int,
+    int_point: Tuple[int, int],
+    mask_size: Tuple[int, int],
+    with_perimeter: bool = False,
+) -> np.ndarray:
     mask = np.zeros(mask_size, dtype=np.float32)
     coords = tuple(int_point)
     rr, cc = disk(coords, radius)
@@ -543,9 +552,6 @@ def segment_hands_mask(
     center: Point,
     use_largest_region: bool = True,
     debug: bool = False,
-    min_peak_height: float = 0.01,
-    min_prominence: float = 5e-4,
-    min_peak_width: float = 3,
 ) -> List[np.ndarray]:
     # TODO separate mask logic from line fitting logic
     assert len(mask.shape) == 2, f"mask must have 2D shape, got {mask.shape}"
@@ -577,85 +583,103 @@ def segment_hands_mask(
                     vectors.append(line1.unit_vector)
     if len(points) < 50:
         return []
+    points = np.array(points)
     vectors = np.array(vectors)
-    angles = np.rad2deg(np.arctan2(vectors[:, 1], vectors[:, 0]))
-    angles = np.where(angles < 0, angles + 180, angles)
-    X = angles.copy()[:, np.newaxis]
-    # TODO there's a problem with linked boundaries here
-    step = 0.5
-    X_plot = np.arange(0, 180, step)[:, np.newaxis]  # KDE requires 2D inputs
+    angles_original = np.arctan2(vectors[:, 1], vectors[:, 0])
 
-    kernel = "gaussian"
-    lw = 2
+    sorting_indices = np.argsort(angles_original)
+    X = angles_original[sorting_indices]
+    points = points[sorting_indices]
+    angles = X + np.pi
+    angles = np.pad(np.expand_dims(angles, axis=1), [[0, 0], [0, 1]])
     # TODO the KDE stuff should be extracted and tested separately
-    kde = KernelDensity(kernel=kernel, bandwidth=1.5).fit(X)
-    log_dens = kde.score_samples(X_plot)
-    exp_dens = np.exp(log_dens)
+    kde = KernelDensity(
+        kernel="gaussian",
+        bandwidth=0.05,
+        metric="haversine",
+    ).fit(angles)
+    angles_space = np.linspace(np.min(angles[:, 0]), np.max(angles[:, 0]), 500)
+    angles_space = angles_space.reshape(-1, 1)
+    angles_space = np.pad(angles_space, [[0, 0], [0, 1]])
+    log_dens = kde.score_samples(angles_space)
+    dens = np.exp(log_dens)
 
-    peaks, properties = find_peaks(
-        exp_dens,
-        height=min_peak_height,
-        width=min_peak_width,
-        distance=5,
-        prominence=min_prominence,
+    min_prominence = 0.25
+    # TODO - the width should be evaluated at the base of the peak
+    #  height o 1.0 provides width of the base of the entire plot :/
+    peak_idxs, peak_properties = find_peaks(
+        dens, prominence=min_prominence, height=0.5, threshold=None
     )
-    results_half = peak_widths(exp_dens, peaks, rel_height=0.5)[0]
-    colors = distinctipy.get_colors(len(peaks), n_attempts=1)
-    peak_to_points = defaultdict(list)
-    peak_to_angles = defaultdict(list)
-    for i, (peak_idx, peak_w) in enumerate(zip(peaks, results_half)):
-        peak_position = X_plot[peak_idx, 0]
-        left_peak_border = max(peak_position - peak_w / 2, X_plot[0, 0])
-        right_peak_border = min(peak_position + peak_w / 2, X_plot[-1, 0])
-        points_ids_left = angles >= left_peak_border
-        points_ids_right = angles <= right_peak_border
-        points_ids = points_ids_left & points_ids_right
-        points_ids = points_ids.squeeze()
+    results = peak_widths(dens, peak_idxs, rel_height=0.50)
+    widths = results[0]
 
-        peak_to_points[peak_idx].extend(np.array(points)[points_ids])
-        peak_to_angles[peak_idx].extend(np.array(angles)[points_ids])
+    colors = distinctipy.get_colors(len(peak_idxs), n_attempts=1)
+    peak_to_color = {peak_idx: color for peak_idx, color in zip(peak_idxs, colors)}
+
+    peak_to_points = dict()
+    for peak_idx, width in zip(peak_idxs, widths):
+        peak_left_idx = peak_idx - int(width / 2)
+        peak_right_idx = peak_idx + int(width / 2)
+
+        # print(peak_left_idx, peak_idx, peak_right_idx)
+        min_angle = angles_space[peak_left_idx, 0]
+        max_angle = angles_space[peak_right_idx, 0]
+        # print(f"bounds [{min_angle}, {max_angle}]")
+        selected_indices = np.nonzero(
+            (min_angle <= angles[:, 0]) & (angles[:, 0] <= max_angle)
+        )
+
+        peak_to_points[peak_idx] = points[selected_indices].flatten().tolist()
 
     if debug:
         fig, ax = plt.subplots(1, 2, figsize=(15, 7))
         ax = ax.ravel()
-        # left plot
+        segmented_mask = np.zeros((*mask.shape, 3)).astype("uint8")
+
+        # left plot - estimated distribution
         ax[0].plot(
-            X_plot[:, 0],
-            exp_dens,
-            lw=lw,
+            angles_space[:, 0],
+            dens,
+            lw=2,
             linestyle="-",
+            color="black",
         )
-        ax[0].axhline(min_peak_height, color="red")
-        Y = -0.005 - 0.01 * np.random.random(X.shape[0])
-        ax[0].plot(X[:, 0], Y, "+k")
+        # left plot - scattered points below plot
+        Y = -0.005 - np.random.random(angles.shape[0])
+        ax[0].plot(angles[:, 0], Y, "+k")
 
-        empty_mask = np.zeros((*mask.shape, 3)).astype("uint8")
-        for i, (peak_idx, peak_points) in enumerate(peak_to_points.items()):
-            left_peak_border = np.min(peak_to_angles[peak_idx])
-            right_peak_border = np.max(peak_to_angles[peak_idx])
-            left_peak_border_idx = np.argwhere(X_plot[:, 0] <= left_peak_border)[-1][0]
-            right_peak_border_idx = np.argwhere(X_plot[:, 0] >= right_peak_border)[0][0]
+        for peak_idx, width in zip(peak_idxs, widths):
+            peak_left_idx = peak_idx - int(width / 2)
+            peak_right_idx = peak_idx + int(width / 2)
 
+            # print(peak_left_idx, peak_idx, peak_right_idx)
+
+            # left plot - estimated distribution
+            ax[0].scatter(angles_space[peak_idx, 0], dens[peak_idx], marker="X")
             ax[0].fill_between(
-                X_plot[left_peak_border_idx:right_peak_border_idx, 0],
-                exp_dens[left_peak_border_idx:right_peak_border_idx],
-                facecolor=colors[i],
+                angles_space[peak_left_idx:peak_right_idx, 0],
+                dens[peak_left_idx:peak_right_idx],
                 alpha=0.5,
+                facecolor=peak_to_color[peak_idx],
             )
-            for p in peak_points:
-                color = (np.array(colors[i]) * 255).astype("uint8")
-                empty_mask = p.draw(empty_mask, color=color)
-        # right plot
-        ax[1].imshow(empty_mask)
+
+            ax[0].set_xlabel("Angle [rad]")
+
+            color = (np.array(peak_to_color[peak_idx]) * 255).astype("uint8")
+            for p in peak_to_points[peak_idx]:
+                segmented_mask = p.draw(segmented_mask, color=color)
+
+        # right plot - segmented mask
+        ax[1].imshow(segmented_mask)
         center.plot(ax[1])
 
-    points_per_peak = peak_to_points.values()
     peak_masks = []
-    for points in points_per_peak:
+    for peak_idx in peak_idxs:
         peak_mask = np.zeros((*mask.shape, 1)).astype(bool)
-        for p in points:
+        for p in peak_to_points[peak_idx]:
             peak_mask = p.draw(peak_mask, color=None)
         peak_masks.append(peak_mask.squeeze())
+
     return peak_masks
 
 

@@ -243,6 +243,7 @@ class KPRegressionPredictor(KPPredictor):
         return center, top
 
 
+# TODO Rename to Polygon predictor
 class HandPredictor(ABC):
     def __init__(self, confidence_threshold: float):
         self.confidence_threshold = confidence_threshold
@@ -321,6 +322,7 @@ class HandPredictor(ABC):
             valid_lines = [line.translate(bbox.left, bbox.top) for line in valid_lines]
             other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
             polygon = polygon.translate(bbox.left, bbox.top)
+            # TODO upgrade outputs
             return valid_lines, other_lines, polygon
             # return polygon
 
@@ -701,15 +703,10 @@ class TimePredictor:
         return bboxes
 
     def predict_and_plot(self, img):
-        plt.figure()
-        plt.tight_layout()
-        plt.axis("off")
         fig, axarr = plt.subplots(1, 1)
         bboxes = self.detector.predict_and_plot(img, ax=axarr)
-        plt.show()
         for i, bbox in enumerate(bboxes):
             with img.crop(box=bbox.as_coordinates_tuple) as crop:
-                plt.figure()
                 fig, axarr = plt.subplots(1, 2)
                 axarr[0].axis("off")
                 points = self.kp_predictor.predict_and_plot(
@@ -721,14 +718,11 @@ class TimePredictor:
                     ax=axarr[1],
                 )
                 time = read_time(hands_polygon, points, crop.size)
-                predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
-                fig.suptitle(predicted_time, fontsize=16)
-                plt.show()
-            plt.figure()
-            plt.tight_layout()
-            plt.axis("off")
+                if time is not None:
+                    predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
+                    fig.suptitle(predicted_time, fontsize=16)
+
             read_time(hands_polygon, points, crop.size, debug=True, debug_image=crop)
-            plt.show()
 
 
 def _get_image_shape(image: Union[ImageType, np.ndarray]):
