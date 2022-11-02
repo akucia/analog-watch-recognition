@@ -133,9 +133,9 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: 60061d15e562037a1eb0f68abd048aa4.dir
-      size: 450726
-      nfiles: 43
+      md5: 36abae3ff69ae221118982a99f5c35f3.dir
+      size: 451393
+      nfiles: 41
     - path: scripts/update-metrics-table-and-graph.py
       md5: b6166e699fc2111731ce9ebed407e806
       size: 2108
@@ -159,14 +159,19 @@ stages:
       md5: ff7da7da2e73b2777c9b3d610cab10ff
       size: 1161602
     - path: watch_recognition/watch_recognition/train/heatmap_regression_task.py
-      md5: e207cb8a105dddf9c60f93b25e87c4a5
-      size: 6826
+      md5: 3e544470f8f96bcbdd95742e043d1332
+      size: 7095
     params:
       params.yaml:
         keypoint:
           epochs: 100
           batch-size: 32
           confidence-threshold: 0.5
+          label_to_cls:
+            Top: 0
+            Center: 1
+            Crown: 2
+          disk_radius: 2
         seed: 42
     outs:
     - path: example_predictions/keypoint/test-image-2.jpg
@@ -302,15 +307,15 @@ stages:
       size: 35973303
       nfiles: 5
     - path: watch_recognition/watch_recognition/eval/end_to_end_eval.py
-      md5: 44b6048e60a21933f13c9b801b7b5792
-      size: 7809
+      md5: df4025d8de194493f03befaf840674d6
+      size: 7880
     outs:
     - path: metrics/end_2_end_eval.csv
-      md5: f040fb57eb98f53cc344638371864dd0
-      size: 18230
+      md5: b624711d99f0167076d2ede6b96fd2a8
+      size: 19417
     - path: metrics/end_2_end_summary.json
-      md5: ae7fa01d1ba69960ecf2b37372c52442
-      size: 264
+      md5: 7ab3254b08d92ab3c992ad74d3e3dd28
+      size: 266
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
       0.5

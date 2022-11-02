@@ -447,6 +447,16 @@ class Line:
         x_max = max(x_coords)
         y_min = min(y_coords)
         y_max = max(y_coords)
+        # vertical line
+        # TODO < 2 is still pretty broad, maybe it should be less than 1e-3?
+        if np.std(x_coords) < 2:
+            x_const = float(np.mean(x_coords))
+            return Line(Point(x_const, y_min), Point(x_const, y_max))
+        # horizontal line
+        if np.std(y_coords) < 2:
+            y_const = float(np.mean(y_coords))
+            return Line(Point(x_min, y_const), Point(x_max, y_const))
+
         if use_ransac:
             data = np.column_stack([x_coords, y_coords])
             model_robust, inliers = ransac(
@@ -457,10 +467,6 @@ class Line:
             start = Point(x_min, line_y_min)
             end = Point(x_max, line_y_max)
         else:
-            # vertical line
-            if np.std(x_coords) < 2:
-                x_const = float(np.mean(x_coords))
-                return Line(Point(x_const, y_min), Point(x_const, y_max))
 
             # other cases
             poly1d = cls._fit_line(x_coords, y_coords)

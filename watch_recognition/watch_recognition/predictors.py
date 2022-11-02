@@ -717,12 +717,12 @@ class TimePredictor:
                     crop,
                     ax=axarr[1],
                 )
-                time = read_time(hands_polygon, points, crop.size)
+                time = read_time(
+                    hands_polygon, points, crop.size, debug=True, debug_image=crop
+                )
                 if time is not None:
                     predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
                     fig.suptitle(predicted_time, fontsize=16)
-
-            read_time(hands_polygon, points, crop.size, debug=True, debug_image=crop)
 
 
 def _get_image_shape(image: Union[ImageType, np.ndarray]):

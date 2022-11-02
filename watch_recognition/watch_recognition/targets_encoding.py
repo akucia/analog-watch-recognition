@@ -547,6 +547,14 @@ def vonmises_kde(data, kappa, n_bins=100):
     return bins, kde
 
 
+@dataclasses.dataclass()
+class Peak:
+    position: int
+    prominence: float
+    left_base: int
+    right_base: int
+
+
 def segment_hands_mask(
     mask: np.ndarray,
     center: Point,
@@ -554,6 +562,7 @@ def segment_hands_mask(
     debug: bool = False,
 ) -> List[np.ndarray]:
     # TODO separate mask logic from line fitting logic
+    region_bbox = None
     assert len(mask.shape) == 2, f"mask must have 2D shape, got {mask.shape}"
     if use_largest_region:
         label_image = label(mask)
@@ -605,29 +614,46 @@ def segment_hands_mask(
     dens = np.exp(log_dens)
 
     min_prominence = 0.25
-    # TODO - the width should be evaluated at the base of the peak
-    #  height o 1.0 provides width of the base of the entire plot :/
+
+    # TODO height and width is a potential hiperparameter, which can reject false positives for
+    #  detected hands
     peak_idxs, peak_properties = find_peaks(
-        dens, prominence=min_prominence, height=0.5, threshold=None
+        dens,
+        prominence=min_prominence,
     )
-    results = peak_widths(dens, peak_idxs, rel_height=0.50)
+    peaks = []
+
+    results = peak_widths(dens, peak_idxs, rel_height=0.75)
     widths = results[0]
+    for i, peak_position in enumerate(peak_idxs):
+        width = widths[i]
+        peak_left_idx = max(0, peak_position - int(width / 2))
+        peak_right_idx = min(peak_position + int(width / 2), len(angles_space) - 1)
+        peak = Peak(
+            position=peak_position,
+            prominence=peak_properties["prominences"][i],
+            left_base=peak_left_idx,
+            right_base=peak_right_idx,
+        )
+        # TODO add points to peak structure?
+        peaks.append(peak)
 
     colors = distinctipy.get_colors(len(peak_idxs), n_attempts=1)
     peak_to_color = {peak_idx: color for peak_idx, color in zip(peak_idxs, colors)}
 
     peak_to_points = dict()
-    for peak_idx, width in zip(peak_idxs, widths):
-        peak_left_idx = peak_idx - int(width / 2)
-        peak_right_idx = peak_idx + int(width / 2)
+    for peak in peaks:
+        peak_idx = peak.position
+        peak_left_idx = peak.left_base
+        peak_right_idx = peak.right_base
+        # peak_left_idx = peak_idx - int(width / 2)
+        # peak_right_idx = peak_idx + int(width / 2)
 
         # print(peak_left_idx, peak_idx, peak_right_idx)
         min_angle = angles_space[peak_left_idx, 0]
         max_angle = angles_space[peak_right_idx, 0]
         # print(f"bounds [{min_angle}, {max_angle}]")
-        selected_indices = np.nonzero(
-            (min_angle <= angles[:, 0]) & (angles[:, 0] <= max_angle)
-        )
+        selected_indices = (min_angle <= angles[:, 0]) & (angles[:, 0] <= max_angle)
 
         peak_to_points[peak_idx] = points[selected_indices].flatten().tolist()
 
@@ -648,14 +674,14 @@ def segment_hands_mask(
         Y = -0.005 - np.random.random(angles.shape[0])
         ax[0].plot(angles[:, 0], Y, "+k")
 
-        for peak_idx, width in zip(peak_idxs, widths):
-            peak_left_idx = peak_idx - int(width / 2)
-            peak_right_idx = peak_idx + int(width / 2)
-
-            # print(peak_left_idx, peak_idx, peak_right_idx)
+        for peak in peaks:
+            peak_idx = peak.position
+            peak_left_idx = peak.left_base
+            peak_right_idx = peak.right_base
 
             # left plot - estimated distribution
-            ax[0].scatter(angles_space[peak_idx, 0], dens[peak_idx], marker="X")
+            angle = angles_space[peak_idx, 0]
+            ax[0].scatter(angle, dens[peak_idx], marker="X")
             ax[0].fill_between(
                 angles_space[peak_left_idx:peak_right_idx, 0],
                 dens[peak_left_idx:peak_right_idx],
@@ -675,11 +701,12 @@ def segment_hands_mask(
 
     peak_masks = []
     for peak_idx in peak_idxs:
-        peak_mask = np.zeros((*mask.shape, 1)).astype(bool)
-        for p in peak_to_points[peak_idx]:
-            peak_mask = p.draw(peak_mask, color=None)
-        peak_masks.append(peak_mask.squeeze())
-
+        if len(peak_to_points[peak_idx]):
+            peak_mask = np.zeros((*mask.shape, 1)).astype(bool)
+            for p in peak_to_points[peak_idx]:
+                peak_mask = p.draw(peak_mask, color=None)
+            peak_masks.append(peak_mask.squeeze())
+    # TODO why play with masks, I could return lines here because I know the angle
     return peak_masks
 
 
@@ -689,7 +716,9 @@ def _fit_lines_to_points(all_points, center):
     for points in all_points:
         scores.append(len(points) / total_num_points)
     fitted_hands = [
-        Line.from_multiple_points(points, use_ransac=True) for points in all_points
+        Line.from_multiple_points(points, use_ransac=True)
+        for points in all_points
+        if len(points) > 1
     ]
     hands = []
     for hand in fitted_hands:

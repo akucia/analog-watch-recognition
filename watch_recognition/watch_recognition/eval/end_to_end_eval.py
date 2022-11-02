@@ -73,7 +73,7 @@ def main(concurrent: bool = False):
             tasks = [task for task in tasks if task["image"].startswith(split)]
         example_ids = [task["id"] for task in tasks]
         if concurrent:
-            with futures.ThreadPoolExecutor(os.cpu_count() // 3 or 1) as executor:
+            with futures.ThreadPoolExecutor(os.cpu_count() // 4 or 1) as executor:
                 task_futures = []
                 try:
                     for example_id in example_ids:
@@ -130,6 +130,7 @@ def _evaluate_on_single_image(
     targets, img_path = load_example_with_transcription(example_id, source_path)
     valid_targets = [target for target in targets if target.name != "??:??"]
     with Image.open(img_path) as img:
+        img = img.convert("RGB")
         predictions = time_predictor.predict(img)
         predictions = [
             bbox.scale(1 / img.width, 1 / img.height) for bbox in predictions
