@@ -1,4 +1,5 @@
 import dataclasses
+from collections import defaultdict
 from itertools import combinations
 from typing import List, Optional, Tuple
 
@@ -12,7 +13,6 @@ from scipy.optimize import minimize
 from scipy.signal import find_peaks, peak_widths
 from skimage.draw import circle_perimeter, disk, line
 from skimage.filters import gaussian
-from skimage.measure import label, regionprops
 from sklearn.metrics import euclidean_distances
 from sklearn.neighbors import KernelDensity
 from tensorflow.python.keras.utils.np_utils import to_categorical
@@ -22,7 +22,7 @@ from watch_recognition.data_preprocessing import (
     keypoint_to_sin_cos_angle,
     keypoints_to_angle,
 )
-from watch_recognition.utilities import BBox, Line, Point
+from watch_recognition.utilities import Line, Point
 
 
 def set_shapes(img, target, img_shape=(224, 224, 3), target_shape=(28, 28, 4)):
@@ -558,53 +558,30 @@ class Peak:
 def segment_hands_mask(
     mask: np.ndarray,
     center: Point,
-    use_largest_region: bool = True,
     debug: bool = False,
 ) -> List[np.ndarray]:
     # TODO separate mask logic from line fitting logic
-    region_bbox = None
     assert len(mask.shape) == 2, f"mask must have 2D shape, got {mask.shape}"
-    if use_largest_region:
-        label_image = label(mask)
-        # select the largest object to filter out small false positives
-        regions = sorted(regionprops(label_image), key=lambda r: r.area, reverse=True)
-        if not regions:
-            return []
-        region = regions[0]
-        (
-            ymin,
-            xmin,
-            ymax,
-            xmax,
-        ) = region.bbox
-        region_bbox = BBox(xmin, ymin, xmax, ymax, name="")
-        mask = label_image == region.label
-        if not region_bbox.contains(center):
-            return []
+
     vectors = []
     points = []
     for i, row in enumerate(mask):
         for j, value in enumerate(row):
             if value > 0:
                 line1 = Line(center, Point(j, i))
-                points.append(Point(j, i))
                 if line1.length:
+                    points.append(line1.end)
                     vectors.append(line1.unit_vector)
-    if len(points) < 50:
-        return []
-    points = np.array(points)
     vectors = np.array(vectors)
     angles_original = np.arctan2(vectors[:, 1], vectors[:, 0])
 
     sorting_indices = np.argsort(angles_original)
-    X = angles_original[sorting_indices]
-    points = points[sorting_indices]
-    angles = X + np.pi
+    angles = angles_original[sorting_indices]
     angles = np.pad(np.expand_dims(angles, axis=1), [[0, 0], [0, 1]])
     # TODO the KDE stuff should be extracted and tested separately
     kde = KernelDensity(
         kernel="gaussian",
-        bandwidth=0.05,
+        bandwidth=0.025,
         metric="haversine",
     ).fit(angles)
     angles_space = np.linspace(np.min(angles[:, 0]), np.max(angles[:, 0]), 500)
@@ -612,18 +589,17 @@ def segment_hands_mask(
     angles_space = np.pad(angles_space, [[0, 0], [0, 1]])
     log_dens = kde.score_samples(angles_space)
     dens = np.exp(log_dens)
-
-    min_prominence = 0.25
+    dens = dens / dens.sum()
+    min_prominence = 0.001
 
     # TODO height and width is a potential hiperparameter, which can reject false positives for
     #  detected hands
     peak_idxs, peak_properties = find_peaks(
-        dens,
-        prominence=min_prominence,
+        dens, prominence=min_prominence, height=5 * min_prominence
     )
     peaks = []
 
-    results = peak_widths(dens, peak_idxs, rel_height=0.75)
+    results = peak_widths(dens, peak_idxs, rel_height=0.8)
     widths = results[0]
     for i, peak_position in enumerate(peak_idxs):
         width = widths[i]
@@ -635,27 +611,24 @@ def segment_hands_mask(
             left_base=peak_left_idx,
             right_base=peak_right_idx,
         )
-        # TODO add points to peak structure?
         peaks.append(peak)
 
     colors = distinctipy.get_colors(len(peak_idxs), n_attempts=1)
     peak_to_color = {peak_idx: color for peak_idx, color in zip(peak_idxs, colors)}
 
-    peak_to_points = dict()
+    peak_to_points = defaultdict(list)
     for peak in peaks:
         peak_idx = peak.position
         peak_left_idx = peak.left_base
         peak_right_idx = peak.right_base
-        # peak_left_idx = peak_idx - int(width / 2)
-        # peak_right_idx = peak_idx + int(width / 2)
-
-        # print(peak_left_idx, peak_idx, peak_right_idx)
         min_angle = angles_space[peak_left_idx, 0]
         max_angle = angles_space[peak_right_idx, 0]
-        # print(f"bounds [{min_angle}, {max_angle}]")
-        selected_indices = (min_angle <= angles[:, 0]) & (angles[:, 0] <= max_angle)
 
-        peak_to_points[peak_idx] = points[selected_indices].flatten().tolist()
+        for p in points:
+            vector = Line(center, p).unit_vector
+            angle = np.arctan2(vector[1], vector[0])
+            if min_angle < angle < max_angle:
+                peak_to_points[peak_idx].append(p)
 
     if debug:
         fig, ax = plt.subplots(1, 2, figsize=(15, 7))
@@ -671,7 +644,7 @@ def segment_hands_mask(
             color="black",
         )
         # left plot - scattered points below plot
-        Y = -0.005 - np.random.random(angles.shape[0])
+        Y = -0.005 - 0.001 * np.random.random(angles.shape[0])
         ax[0].plot(angles[:, 0], Y, "+k")
 
         for peak in peaks:

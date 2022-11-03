@@ -144,6 +144,7 @@ def _evaluate_on_single_image(
             if (pred is not None and pred.name != "??:??")
             else None
         )
+        # TODO total_angle_diff
         record = {
             "example_id": example_id,
             "image_path": str(img_path),

@@ -1,4 +1,5 @@
 import os
+from functools import partial
 from pathlib import Path
 from typing import Tuple
 
@@ -6,6 +7,7 @@ import click
 import numpy as np
 import segmentation_models as sm
 import tensorflow as tf
+import yaml
 from dvclive.keras import DvcLiveCallback
 from PIL import Image
 from segmentation_models.metrics import IOUScore
@@ -26,14 +28,17 @@ os.environ["SM_FRAMEWORK"] = "tf.keras"
 
 
 def encode_kps_to_mask(
-    kps: np.ndarray, n_labels: int, mask_size: Tuple[int, int]
+    kps: np.ndarray,
+    n_labels: int,
+    mask_size: Tuple[int, int],
+    disk_radius: int = 5,
 ) -> np.ndarray:
     mask = np.zeros((*mask_size, n_labels))
     for kp in kps:
         x_y = np.floor(kp[:2])
         cls = int(kp[2])
         mask[:, :, cls] = _encode_point_to_mask(
-            radius=5,
+            radius=disk_radius,
             int_point=x_y,
             mask_size=mask_size,
         )
@@ -44,7 +49,6 @@ def encode_kps_to_mask(
 @click.option("--epochs", default=1, type=int)
 @click.option("--batch-size", default=32, type=int)
 @click.option("--image-size", default=96, type=int)
-@click.option("--max-images", default=None, type=int)
 @click.option("--seed", default=None, type=int)
 @click.option("--confidence-threshold", default=0.5, type=float)
 @click.option("--verbosity", default=1, type=int)
@@ -58,7 +62,6 @@ def main(
     epochs: int,
     batch_size: int,
     image_size: int,
-    max_images: int,
     seed: int,
     confidence_threshold: float,
     verbosity: int,
@@ -66,11 +69,13 @@ def main(
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
-    label_to_cls = {
-        "Top": 0,
-        "Center": 1,
-        "Crown": 2,
-    }  # TODO this should be in params.yaml
+    with open("params.yaml", "r") as f:
+        params = yaml.safe_load(f)
+
+    max_images = params["max_images"]
+    label_to_cls = params["keypoint"]["label_to_cls"]
+    point_disk_radius = params["keypoint"]["disk_radius"]
+
     dataset_path = Path("datasets/watch-faces-local.json")
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
@@ -79,8 +84,14 @@ def main(
     bbox_labels = ["WatchFace"]
     checkpoint_path = Path("checkpoints/keypoint/checkpoint")
     model_save_path = Path("models/keypoint/")
-
     crop_size = image_size
+
+    _encode_keypoints = partial(
+        encode_kps_to_mask,
+        n_labels=len(label_to_cls),
+        mask_size=crop_size,
+        disk_radius=point_disk_radius,
+    )
     dataset_train = list(
         load_label_studio_kp_detection_dataset(
             dataset_path,
@@ -91,14 +102,7 @@ def main(
             split="train",
         )
     )
-    X = []
-    y = []
-    for img, kps in dataset_train:
-        X.append(img)
-        y.append(encode_kps_to_mask(kps, len(label_to_cls), crop_size))
-
-    X = np.array(X)
-    y = np.array(y)
+    X, y = _prepare_inputs_and_targets(_encode_keypoints, dataset_train)
     print(X.shape, y.shape)
 
     dataset_val = list(
@@ -111,14 +115,7 @@ def main(
             split="val",
         )
     )
-    X_val = []
-    y_val = []
-    for img, kps in dataset_val:
-        X_val.append(img)
-        y_val.append(encode_kps_to_mask(kps, len(label_to_cls), crop_size))
-
-    X_val = np.array(X_val)
-    y_val = np.array(y_val)
+    X_val, y_val = _prepare_inputs_and_targets(_encode_keypoints, dataset_val)
     print(X_val.shape, y_val.shape)
 
     train_model = get_segmentation_model(
@@ -215,6 +212,17 @@ def main(
     save_tf_serving_warmup_request(
         np.expand_dims(example_image_np, axis=0), model_save_path, dtype="uint8"
     )
+
+
+def _prepare_inputs_and_targets(_encode_keypoints, dataset_train):
+    X = []
+    y = []
+    for img, kps in dataset_train:
+        X.append(img)
+        y.append(_encode_keypoints(kps))
+    X = np.array(X)
+    y = np.array(y)
+    return X, y
 
 
 if __name__ == "__main__":

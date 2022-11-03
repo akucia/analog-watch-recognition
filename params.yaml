@@ -1,4 +1,5 @@
 seed: 42
+max_images: null
 
 detector:
   epochs: 100
@@ -9,8 +10,15 @@ keypoint:
   epochs: 100
   batch-size: 32
   confidence-threshold: 0.5
+  label_to_cls:
+    Top: 0
+    Center: 1
+    Crown: 2
+  disk_radius: 5
+
 
 segmentation:
   epochs: 100
   batch-size: 32
   confidence-threshold: 0.5
+
