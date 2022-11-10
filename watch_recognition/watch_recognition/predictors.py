@@ -121,6 +121,7 @@ class KPHeatmapPredictorV2(ABC):
         return predicted
 
     def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None):
+        image_width, image_height = _get_image_shape(image)
         ax = ax or plt.gca()
         colors = distinctipy.get_colors(len(self.class_to_label_name))
         points = self.predict(image)
@@ -131,7 +132,7 @@ class KPHeatmapPredictorV2(ABC):
             mask = predicted[:, :, cls]
             mask = cv2.resize(
                 mask.astype("uint8"),
-                (image.width, image.height),
+                (image_width, image_height),
                 interpolation=cv2.INTER_NEAREST,
             ).astype("bool")
             masks.append(mask)
