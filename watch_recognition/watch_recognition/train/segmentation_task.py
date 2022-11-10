@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow.python.keras.backend as K
+import yaml
 from dvclive.keras import DvcLiveCallback
 from PIL import Image
 from segmentation_models.metrics import IOUScore
@@ -46,7 +47,7 @@ def encode_polygon_to_mask(
 ) -> np.ndarray:
     mask = np.zeros((*mask_size, n_labels))
     for polygon in polygons:
-        poly_mask = polygon.to_binary_mask(shape=mask_size)
+        poly_mask = polygon.to_binary_mask(width=mask_size[1], height=mask_size[0])
         cls = int(polygon.name)
         mask[:, :, cls] += poly_mask
     return (mask > 0).astype(np.float32)
@@ -75,7 +76,6 @@ def visualize_dataset(dataset: tf.data.Dataset):
 @click.option("--epochs", default=1, type=int)
 @click.option("--batch-size", default=32, type=int)
 @click.option("--image-size", default=96, type=int)
-@click.option("--max-images", default=None, type=int)
 @click.option("--seed", default=None, type=int)
 @click.option("--confidence-threshold", default=0.5, type=float)
 @click.option("--verbosity", default=1, type=int)
@@ -89,7 +89,6 @@ def main(
     epochs: int,
     batch_size: int,
     image_size: int,
-    max_images: int,
     seed: int,
     confidence_threshold: float,
     verbosity: int,
@@ -97,14 +96,17 @@ def main(
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
-    label_to_cls = {"Hands": 0}
-    # TODO this should be in params.yaml
+    with open("params.yaml", "r") as f:
+        params = yaml.safe_load(f)
+
+    max_images = params["max_images"]
+    label_to_cls = params["segmentation"]["label_to_cls"]
     dataset_path = Path("datasets/watch-faces-local.json")
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
     image_size = (image_size, image_size)
     # TODO new data loader - augment before cropping
-    bbox_labels = ["WatchFace"]
+    bbox_labels = params["segmentation"]["bbox_labels"]
     checkpoint_path = Path("checkpoints/segmentation/checkpoint")
     model_save_path = Path("models/segmentation/")
     model_save_path.mkdir(exist_ok=True, parents=True)
