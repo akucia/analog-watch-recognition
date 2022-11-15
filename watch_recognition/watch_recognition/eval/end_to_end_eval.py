@@ -158,7 +158,7 @@ def _evaluate_on_single_image(
 
 
 def load_example_with_transcription(
-    example_id: str, source: Path
+    example_id: int, source: Path
 ) -> Tuple[List[BBox], Path]:
     with source.open("r") as f:
         tasks = json.load(f)
@@ -193,11 +193,18 @@ def _load_single_example_with_transcription(task):
         if isinstance(transcriptions, str):
             image_transcriptions.append(transcriptions)
         elif isinstance(transcriptions, list):
-            image_transcriptions.extend(transcriptions)
+            for entry in transcriptions:
+                if isinstance(entry, str):
+                    image_transcriptions.append(entry)
+                else:
+                    raise ValueError(
+                        f"unknown type of transcriptions, expected list elemetns to be "
+                        f"of type str, got {type(entry)} on task id {task['id']}"
+                    )
         else:
             raise ValueError(
                 f"unknown type of transcriptions, expected list or str, "
-                f"got {type(transcriptions)}"
+                f"got {type(transcriptions)} on task id {task['id']}"
             )
     if len(image_bboxes) > len(image_transcriptions):
         print(f"missing transcription on task id: {task['id']}, please fix it!")

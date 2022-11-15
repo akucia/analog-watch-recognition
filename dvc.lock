@@ -294,33 +294,33 @@ stages:
       size: 35968875
       nfiles: 5
   eval-end-2-end:
-    cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py
+    cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --concurrent
     deps:
     - path: datasets/watch-faces-local.json
-      md5: ff7da7da2e73b2777c9b3d610cab10ff
-      size: 1161602
+      md5: a10dde9037f31f93790d50ff16aef755
+      size: 1073773
     - path: models/detector
-      md5: ac45f8f7bf58e101223826ad8cac9329.dir
+      md5: fb80603d2ff1c3bf1692cfa915524273.dir
       size: 432253678
       nfiles: 5
     - path: models/keypoint
-      md5: 4883aa0423b570a75c987fe12917892e.dir
+      md5: 4cb4c1482c46bea41381c0495b98e9d8.dir
       size: 35988675
       nfiles: 6
     - path: models/segmentation
-      md5: 3092355bb88b2e4bdb656c57bd1729dd.dir
-      size: 35973303
+      md5: c6ab3e2bff221acd5e439922ed7c97ef.dir
+      size: 35968875
       nfiles: 5
     - path: watch_recognition/watch_recognition/eval/end_to_end_eval.py
-      md5: df4025d8de194493f03befaf840674d6
-      size: 7880
+      md5: 50cac6175d475ede07a6a75d528df756
+      size: 8272
     outs:
     - path: metrics/end_2_end_eval.csv
-      md5: b624711d99f0167076d2ede6b96fd2a8
-      size: 19417
+      md5: d0a65d28b1171f99f9ffed5814d1399d
+      size: 19882
     - path: metrics/end_2_end_summary.json
-      md5: 7ab3254b08d92ab3c992ad74d3e3dd28
-      size: 266
+      md5: c7975e2b71b63094b5cbbe2ac55bed91
+      size: 263
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
       0.5

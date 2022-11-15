@@ -577,6 +577,7 @@ def segment_hands_mask(
 
     sorting_indices = np.argsort(angles_original)
     angles = angles_original[sorting_indices]
+    # angles = np.concatenate([angles, angles[:100]])
     angles = np.pad(np.expand_dims(angles, axis=1), [[0, 0], [0, 1]])
     # TODO the KDE stuff should be extracted and tested separately
     kde = KernelDensity(
@@ -584,7 +585,9 @@ def segment_hands_mask(
         bandwidth=0.025,
         metric="haversine",
     ).fit(angles)
-    angles_space = np.linspace(np.min(angles[:, 0]), np.max(angles[:, 0]), 500)
+    # overlap space to handle cases where the peak is exactly at +-PI
+    angles_space = np.linspace(-np.pi, np.pi, 360)
+    # angles_space = np.linspace(-np.pi, np.pi + (np.pi * 0.1), 500)
     angles_space = angles_space.reshape(-1, 1)
     angles_space = np.pad(angles_space, [[0, 0], [0, 1]])
     log_dens = kde.score_samples(angles_space)
@@ -603,8 +606,11 @@ def segment_hands_mask(
     widths = results[0]
     for i, peak_position in enumerate(peak_idxs):
         width = widths[i]
+        # TODO handle the case when the peak is at the end of the array and indices are negative
         peak_left_idx = max(0, peak_position - int(width / 2))
         peak_right_idx = min(peak_position + int(width / 2), len(angles_space) - 1)
+        # peak_left_idx = peak_position - int(width / 2)
+        # peak_right_idx = peak_position + int(width / 2)
         peak = Peak(
             position=peak_position,
             prominence=peak_properties["prominences"][i],
@@ -618,9 +624,10 @@ def segment_hands_mask(
 
     peak_to_points = defaultdict(list)
     for peak in peaks:
-        peak_idx = peak.position
         peak_left_idx = peak.left_base
         peak_right_idx = peak.right_base
+        # if peak_right_idx > len(angles_space):
+        #     peak_right_idx = peak_right_idx - len(angles_space)
         min_angle = angles_space[peak_left_idx, 0]
         max_angle = angles_space[peak_right_idx, 0]
 
@@ -628,7 +635,7 @@ def segment_hands_mask(
             vector = Line(center, p).unit_vector
             angle = np.arctan2(vector[1], vector[0])
             if min_angle < angle < max_angle:
-                peak_to_points[peak_idx].append(p)
+                peak_to_points[peak.position].append(p)
 
     if debug:
         fig, ax = plt.subplots(1, 2, figsize=(15, 7))
