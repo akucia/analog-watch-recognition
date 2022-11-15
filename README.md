@@ -37,21 +37,23 @@ flowchart TD
 # Metrics
 | Path                           | train.1-min_acc   | train.10-min_acc   | train.60-min_acc   | val.1-min_acc   | val.10-min_acc   | val.60-min_acc   |
 |--------------------------------|-------------------|--------------------|--------------------|-----------------|------------------|------------------|
-| metrics/end_2_end_summary.json | 0.105             | 0.154              | 0.267              | 0.065           | 0.078            | 0.143            |
+| metrics/end_2_end_summary.json | 0.247             | 0.328              | 0.482              | 0.143           | 0.208            | 0.325            |
 
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.MeanAveragePrecision   | eval.Recall   | eval.box_loss   | eval.classification_loss   | eval.loss   | eval.regularization_loss   | step   | train.box_loss   | train.classification_loss   | train.loss   | train.regularization_loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|-----------------|------------------|-------------------|--------------|-----------------------------|---------------|-----------------|----------------------------|-------------|----------------------------|--------|------------------|-----------------------------|--------------|-----------------------------|
-| metrics/detector.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | 0.341                       | 0.555         | 3.218           | 2.475                      | 5.693       | 0.0                        | 99     | 0.62             | 0.211                       | 0.83         | 0.0                         |
-| metrics/detector/coco_train.json | 0.865          | 0.753               | 0.865          | -1.0           | 0.844           | 0.899            | 0.899             | 221          | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
-| metrics/detector/coco_val.json   | 0.731          | 0.434               | 0.471          | -1.0           | 0.528           | 0.621            | 0.621             | 36           | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
+| metrics/detector.json            | -              | -                   | -              | -              | -               | -                | -                 | -            | 0.417                       | 0.625         | 2.761           | 2.803                      | 5.564       | 0.0                        | 99     | 0.407            | 0.084                       | 0.491        | 0.0                         |
+| metrics/detector/coco_train.json | 0.894          | 0.787               | 0.894          | -1.0           | 0.871           | 0.909            | 0.912             | 221          | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
+| metrics/detector/coco_val.json   | 0.7            | 0.441               | 0.505          | -1.0           | 0.562           | 0.631            | 0.645             | 36           | -                           | -             | -               | -                          | -           | -                          | -      | -                | -                           | -            | -                           |
 
-| Path                  | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
-|-----------------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/keypoint.json | 0.461            | 0.531       | 99     | 0.911             | 0.088        |
+| Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
+|----------------------------------|----------------|---------------------|----------------|----------------|---------------------|----------------|--------------|------------------|-------------|--------|-------------------|--------------|
+| metrics/keypoint.json            | -              | -                   | -              | -              | -                   | -              | -            | 0.451            | 0.541       | 99     | 0.894             | 0.1          |
+| metrics/keypoint/coco_train.json | 0.721          | 0.58                | 0.51           | 0.886          | 0.77                | 0.708          | 221          | -                | -           | -      | -                 | -            |
+| metrics/keypoint/coco_val.json   | 0.473          | 0.252               | 0.145          | 0.724          | 0.497               | 0.414          | 36           | -                | -           | -      | -                 | -            |
 
 | Path                      | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |---------------------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/segmentation.json | 0.603            | 0.249       | 99     | 0.818             | 0.1          |
+| metrics/segmentation.json | 0.53             | 0.31        | 99     | 0.849             | 0.082        |
 
 ## End 2 end metrics definitions
 Final metric for the entire system is 'x-min accuracy' which is the fraction of system predictions accurate within x minutes. Example:  
