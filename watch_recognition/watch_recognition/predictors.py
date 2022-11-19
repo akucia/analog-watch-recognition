@@ -20,7 +20,7 @@ from tensorflow_serving.apis.predict_pb2 import PredictResponse
 from watch_recognition.models import points_to_time
 from watch_recognition.targets_encoding import (
     _fit_lines_to_points,
-    decode_single_point_from_heatmap,
+    extract_points_from_map,
     line_selector,
     segment_hands_mask,
 )
@@ -165,19 +165,22 @@ class KPHeatmapPredictorV2(ABC):
         """Decodes predictions for every channel for output heatmap
         Returns keypoints in pixel coordinates of the BBox crop
         """
-
         points = []
         for cls, name in self.class_to_label_name.items():
-            maybe_point = decode_single_point_from_heatmap(
-                predicted[:, :, cls], threshold=self.confidence_threshold
+            # TODO if keypoint detector is improved this might be simplified to back to
+            #   decode_single_point_from_heatmap
+            map_points = extract_points_from_map(
+                predicted[:, :, cls], detection_threshold=self.confidence_threshold
             )
-            if maybe_point is not None:
-                maybe_point = maybe_point.rename(name)
-                maybe_point = maybe_point.scale(
+            map_points = sorted(map_points, key=lambda p: p.score, reverse=True)
+
+            if map_points:
+                point = map_points[0]
+                point = point.rename(name).scale(
                     crop_image_width / predicted.shape[1],
                     crop_image_height / predicted.shape[0],
                 )
-                points.append(maybe_point)
+                points.append(point)
         return points
 
 
@@ -612,6 +615,7 @@ def read_time(
     image_shape: Tuple[int, int],
     debug: bool = False,
     debug_image=None,
+    hands_mask=None,
 ) -> Optional[Tuple[float, float]]:
     detected_center_points = [p for p in points if p.name == "Center"]
     if detected_center_points:
@@ -624,7 +628,10 @@ def read_time(
         top = sorted(detected_top_points, key=lambda p: p.score, reverse=True)[0]
     else:
         return None
-    mask = polygon.to_binary_mask(image_shape[0], image_shape[1])
+    if hands_mask is not None:
+        mask = hands_mask
+    else:
+        mask = polygon.to_binary_mask(image_shape[0], image_shape[1])
 
     # TODO this might be faster if image shape is smaller
     segmented_hands = segment_hands_mask(mask, center=center, debug=debug)
@@ -708,7 +715,7 @@ class TimePredictor:
         bboxes = self.detector.predict_and_plot(img, ax=axarr)
         for i, bbox in enumerate(bboxes):
             with img.crop(box=bbox.as_coordinates_tuple) as crop:
-                fig, axarr = plt.subplots(1, 2)
+                fig, axarr = plt.subplots(1, 3)
                 axarr[0].axis("off")
                 points = self.kp_predictor.predict_and_plot(
                     crop,
@@ -718,6 +725,8 @@ class TimePredictor:
                     crop,
                     ax=axarr[1],
                 )
+                self.hand_predictor.predict_mask_and_draw(crop, ax=axarr[2])
+
                 time = read_time(
                     hands_polygon, points, crop.size, debug=True, debug_image=crop
                 )

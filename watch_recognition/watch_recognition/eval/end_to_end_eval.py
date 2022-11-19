@@ -5,7 +5,7 @@ from concurrent import futures
 from concurrent.futures import as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import click
 import pandas as pd
@@ -20,7 +20,7 @@ from watch_recognition.predictors import (
 )
 from watch_recognition.utilities import BBox, iou_bbox_matching
 
-SPLITS = ["train", "val"]
+DEFAULT_SPLITS = ["train", "val"]
 
 
 def str_to_hours_and_minutes(time_str: str) -> Tuple[int, int]:
@@ -42,7 +42,8 @@ def total_minutes_diff(t1: str, t2: str) -> int:
 
 @click.command()
 @click.option("--concurrent", is_flag=True)
-def main(concurrent: bool = False):
+@click.option("--split", type=click.Choice(DEFAULT_SPLITS), default=None)
+def main(concurrent: bool = False, split: Optional[str] = None):
     t0 = time.perf_counter()
     time_predictor = TimePredictor(
         detector=RetinanetDetectorLocal(
@@ -65,12 +66,16 @@ def main(concurrent: bool = False):
     source = Path("datasets/watch-faces-local.json")
 
     records = []
-    for split in SPLITS:
+    if split is not None:
+        splits = [split]
+    else:
+        splits = DEFAULT_SPLITS
+    print(f"Evaluating on splits: {splits}")
+    for split in splits:
         print(f"evaluating {split}")
         with source.open("r") as f:
             tasks = json.load(f)
-        if split is not None:
-            tasks = [task for task in tasks if task["image"].startswith(split)]
+        tasks = [task for task in tasks if task["image"].startswith(split)]
         example_ids = [task["id"] for task in tasks]
         if concurrent:
             with futures.ThreadPoolExecutor(os.cpu_count() // 4 or 1) as executor:
@@ -108,7 +113,7 @@ def main(concurrent: bool = False):
     df = df.sort_values("image_path")
     df.to_csv("metrics/end_2_end_eval.csv", index=False)
     summary_metrics = {}
-    for split in SPLITS:
+    for split in splits:
         split_df = df[df["split"] == split]
         one_minute_acc = (split_df["total_minutes_diff"] <= 1).sum() / len(split_df)
         ten_minutes_acc = (split_df["total_minutes_diff"] <= 10).sum() / len(split_df)
