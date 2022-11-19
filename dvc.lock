@@ -133,8 +133,8 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: b4544cf514515757df2f3466e87efe29.dir
-      size: 452389
+      md5: 6be44f2cfa9bd114ba159ac2056cead9.dir
+      size: 452387
       nfiles: 43
     - path: scripts/update-metrics-table-and-graph.py
       md5: b6166e699fc2111731ce9ebed407e806
