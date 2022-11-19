@@ -4,8 +4,8 @@ stages:
     cmd: python scripts/download-images.py datasets/watch-faces.json --concurrent
     deps:
     - path: datasets/watch-faces.json
-      md5: 03f5acfea84131c1ba3f3db1b2e50de9
-      size: 1081827
+      md5: a87313f71a45c4ff9895467a7a5d1be9
+      size: 1070654
     - path: scripts/download-images.py
       md5: a037cfab1a482a356f1d7d62804041d3
       size: 3961
@@ -23,8 +23,8 @@ stages:
       size: 17988385
       nfiles: 38
     - path: datasets/watch-faces-local.json
-      md5: 33feee9a10c6644e3cd160c742ae224d
-      size: 1074858
+      md5: 0022d0bec933a773c938f15513f1665d
+      size: 1063685
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
       100  --batch-size 16  --seed 42
@@ -312,14 +312,14 @@ stages:
       size: 35968875
       nfiles: 5
     - path: watch_recognition/watch_recognition/eval/end_to_end_eval.py
-      md5: 50cac6175d475ede07a6a75d528df756
-      size: 8272
+      md5: 3d343f13a1456468891d3e27d51de142
+      size: 8497
     outs:
     - path: metrics/end_2_end_eval.csv
-      md5: d0a65d28b1171f99f9ffed5814d1399d
-      size: 19882
+      md5: daa0c531c1ca8c5bdd55712c58bb4553
+      size: 19880
     - path: metrics/end_2_end_summary.json
-      md5: c7975e2b71b63094b5cbbe2ac55bed91
+      md5: 21d950fde7b9a446204a5739411bd3da
       size: 263
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
