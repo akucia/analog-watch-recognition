@@ -19,3 +19,6 @@ generate-detector-checkpoint:
 
 generate-keypoint-checkpoint:
 	python watch_recognition/watch_recognition/train/heatmap_regression_task.py --epochs 50 --batch-size 4 --confidence-threshold 0.5 --seed 42
+
+dev-install
+    pip install -r dev-requirements.txt && pip install -e ./watch_recognition

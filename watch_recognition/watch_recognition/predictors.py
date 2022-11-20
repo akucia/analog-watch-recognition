@@ -690,6 +690,7 @@ class TimePredictor:
         bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
         for box in bboxes:
             with image.crop(box=box.as_coordinates_tuple) as crop:
+                crop.thumbnail((256, 256), BICUBIC)
                 points = self.kp_predictor.predict(crop)
                 hands_polygon = self.hand_predictor.predict(crop)
 
@@ -715,6 +716,7 @@ class TimePredictor:
         bboxes = self.detector.predict_and_plot(img, ax=axarr)
         for i, bbox in enumerate(bboxes):
             with img.crop(box=bbox.as_coordinates_tuple) as crop:
+                crop.thumbnail((256, 256), BICUBIC)
                 fig, axarr = plt.subplots(1, 3)
                 axarr[0].axis("off")
                 points = self.kp_predictor.predict_and_plot(

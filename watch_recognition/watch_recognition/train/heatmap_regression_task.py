@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import Tuple
 
 import click
+import keras_cv
 import numpy as np
 import segmentation_models as sm
 import tensorflow as tf
 import yaml
 from dvclive.keras import DvcLiveCallback
+from matplotlib import pyplot as plt
 from PIL import Image
 from segmentation_models.metrics import IOUScore
 from tensorflow.python.keras.callbacks import ReduceLROnPlateau
@@ -22,7 +24,10 @@ from watch_recognition.targets_encoding import (
     _encode_point_to_mask,
     decode_single_point_from_heatmap,
 )
-from watch_recognition.visualization import visualize_keypoints
+from watch_recognition.visualization import (
+    visualize_keypoints,
+    visualize_segmentation_dataset,
+)
 
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 
@@ -43,6 +48,10 @@ def encode_kps_to_mask(
             mask_size=mask_size,
         )
     return mask
+
+
+def unpackage_dict(inputs):
+    return inputs["images"], inputs["segmentation_masks"]
 
 
 @click.command()
@@ -77,14 +86,33 @@ def main(
     point_disk_radius = params["keypoint"]["disk_radius"]
 
     dataset_path = Path("datasets/watch-faces-local.json")
+
+    debug_data_path = Path("debug/keypoint")
+    debug_data_path.mkdir(exist_ok=True, parents=True)
+
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     num_classes = len(label_to_cls)
     image_size = (image_size, image_size)
-    # TODO new data loader - augment before cropping
+    # TODO augment crops
+    # TODO idea for 2nd improvement augment bboxes before cropping to introduce jitter
     bbox_labels = ["WatchFace"]
     checkpoint_path = Path("checkpoints/keypoint/checkpoint")
     model_save_path = Path("models/keypoint/")
     crop_size = image_size
+    augmentation_layers = [
+        keras_cv.layers.ChannelShuffle(groups=3),
+        keras_cv.layers.RandomHue(0.5, [0.0, 255.0]),
+        keras_cv.layers.AutoContrast(value_range=[0.0, 255.0]),
+        keras_cv.layers.GridMask(),
+        keras_cv.layers.RandomColorJitter([0.0, 255.0], 0.5, 0.5, 0.5, 0.5),
+        keras_cv.layers.preprocessing.RandomFlip(),
+    ]
+    pipeline = keras_cv.layers.RandomAugmentationPipeline(
+        layers=augmentation_layers, augmentations_per_image=2
+    )
+
+    def augment_fn(sample):
+        return pipeline(sample)
 
     _encode_keypoints = partial(
         encode_kps_to_mask,
@@ -105,6 +133,20 @@ def main(
     X, y = _prepare_inputs_and_targets(_encode_keypoints, dataset_train)
     print(X.shape, y.shape)
 
+    train_dataset = (
+        tf.data.Dataset.from_tensor_slices({"images": X, "segmentation_masks": y})
+        .map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
+        .shuffle(8 * batch_size)
+        .batch(batch_size)
+    )
+
+    visualize_segmentation_dataset(train_dataset)
+    plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
+
+    train_dataset = train_dataset.map(
+        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
+
     dataset_val = list(
         load_label_studio_kp_detection_dataset(
             dataset_path,
@@ -117,6 +159,20 @@ def main(
     )
     X_val, y_val = _prepare_inputs_and_targets(_encode_keypoints, dataset_val)
     print(X_val.shape, y_val.shape)
+
+    val_dataset = (
+        tf.data.Dataset.from_tensor_slices(
+            {"images": X_val, "segmentation_masks": y_val}
+        )
+        .shuffle(8 * batch_size)
+        .batch(batch_size)
+    )
+
+    visualize_segmentation_dataset(val_dataset)
+    plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
+    val_dataset = val_dataset.map(
+        unpackage_dict, num_parallel_calls=tf.data.AUTOTUNE
+    ).prefetch(tf.data.AUTOTUNE)
 
     train_model = get_segmentation_model(
         image_size=image_size,
@@ -156,10 +212,9 @@ def main(
     #     )
     # -- train model
     train_model.fit(
-        X,
-        y,
+        train_dataset,
         epochs=epochs,
-        validation_data=(X_val, y_val),
+        validation_data=val_dataset,
         callbacks=callbacks_list,
         verbose=verbosity,
         batch_size=batch_size,

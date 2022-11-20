@@ -133,8 +133,8 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: 6be44f2cfa9bd114ba159ac2056cead9.dir
-      size: 452387
+      md5: 9c037edfe53d6d3103901759c15957f0.dir
+      size: 453345
       nfiles: 43
     - path: scripts/update-metrics-table-and-graph.py
       md5: b6166e699fc2111731ce9ebed407e806
@@ -156,11 +156,11 @@ stages:
       size: 17988385
       nfiles: 38
     - path: datasets/watch-faces-local.json
-      md5: 33feee9a10c6644e3cd160c742ae224d
-      size: 1074858
+      md5: 0022d0bec933a773c938f15513f1665d
+      size: 1063685
     - path: watch_recognition/watch_recognition/train/heatmap_regression_task.py
-      md5: 3e544470f8f96bcbdd95742e043d1332
-      size: 7095
+      md5: e68e4f6ef260cea287079a8e531c0f9f
+      size: 8954
     params:
       params.yaml:
         keypoint:
@@ -175,19 +175,23 @@ stages:
         max_images:
         seed: 42
     outs:
+    - path: debug/keypoint/
+      md5: 852e9ea0f0bfb047735bfc281e5dfa7d.dir
+      size: 354659
+      nfiles: 2
     - path: example_predictions/keypoint/test-image-2.jpg
-      md5: 7b06814a38b8c528f5fd81ba1147b841
-      size: 66289
+      md5: 36769d967a883c4d355eec0acaff0252
+      size: 54073
     - path: metrics/keypoint.json
-      md5: 1e5026f4e122ac41f4d40bb06cfb6e74
+      md5: c44a14d4215a3c7d08b889eeaee24c7e
       size: 214
     - path: metrics/keypoint/scalars/
-      md5: 9685f8932bb974010f6f0b0bbd554c5c.dir
-      size: 14974
+      md5: 9afff42f6a8fb2a3b5f34fab352a3a65.dir
+      size: 14966
       nfiles: 4
     - path: models/keypoint/
-      md5: 4cb4c1482c46bea41381c0495b98e9d8.dir
-      size: 35988675
+      md5: ad2edc5b034b7d687430962c4e16d3c9.dir
+      size: 35984244
       nfiles: 6
   eval-keypoint:
     cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py
@@ -198,49 +202,49 @@ stages:
       size: 432253678
       nfiles: 5
     - path: models/keypoint/
-      md5: 4cb4c1482c46bea41381c0495b98e9d8.dir
-      size: 35988675
+      md5: ad2edc5b034b7d687430962c4e16d3c9.dir
+      size: 35984244
       nfiles: 6
     - path: watch_recognition/watch_recognition/eval/keypoint_detection_eval.py
       md5: 7aee96c16f50bc522e62bc9138f49247
       size: 6302
     outs:
     - path: example_predictions/keypoint/train_0.jpg
-      md5: fc9958ca84684939c5ce7ad170fd900d
-      size: 67904
+      md5: 7ef0ccd4e0936d83733dc566a082ac35
+      size: 55722
     - path: example_predictions/keypoint/train_1.jpg
-      md5: 66d39204194ffa82a68e2b7c52418378
-      size: 63761
+      md5: 2a49206f8455b24bd26caac36a44053a
+      size: 52588
     - path: example_predictions/keypoint/train_2.jpg
-      md5: 8862b7ba812f0ec0dde872711bdb543c
-      size: 68960
+      md5: 1365dfc9c366a0ec3decc33591e55ec8
+      size: 56527
     - path: example_predictions/keypoint/train_3.jpg
-      md5: 726a4bd06f8e77c21d3a91f103e1be64
-      size: 56521
+      md5: cab124852de5920ff6cadb2fac2b2430
+      size: 46794
     - path: example_predictions/keypoint/train_4.jpg
-      md5: da91b6405146a6aa28e15f3575ce4e0d
-      size: 48643
+      md5: b9129eeb65ef3d923509c1ff463eb6ff
+      size: 39486
     - path: example_predictions/keypoint/val_0.jpg
-      md5: d21e9082307647737c835ea47cb64588
-      size: 64158
+      md5: b09dc267022f1d966f81c8403902e355
+      size: 53275
     - path: example_predictions/keypoint/val_1.jpg
-      md5: 6d8c035dfba80ac6fceb46bf352c6c77
-      size: 74383
+      md5: 8a77d183c0048568dddb1baaf4d9e346
+      size: 60980
     - path: example_predictions/keypoint/val_2.jpg
-      md5: 34b00e4b3b616e20cd84f2eb9692fe07
-      size: 59489
+      md5: 1fd2b02182eeb6952bf74de7860333bb
+      size: 48373
     - path: example_predictions/keypoint/val_3.jpg
-      md5: d5d6d3c2ebe410dc9edaad9eced52e16
-      size: 70759
+      md5: 043435304fb79e4831eb62af73ab9c2b
+      size: 57590
     - path: example_predictions/keypoint/val_4.jpg
-      md5: 04b8c505dbc293cd585df50caf4abe13
-      size: 62057
+      md5: d60a8ed3c63cec2986c58eed72620ac2
+      size: 51527
     - path: metrics/keypoint/coco_train.json
-      md5: 82616dbdd73aaa0246a9a1a003fcbd8e
+      md5: 6677f8e5300fb631df7d544923be3498
       size: 261
     - path: metrics/keypoint/coco_val.json
-      md5: d8c7ae0e908d7acfa314c61c7279ec72
-      size: 261
+      md5: d1b073b7dd4fcbeb72d2b641ec26df4b
+      size: 262
   train-segmentation:
     cmd: python watch_recognition/watch_recognition/train/segmentation_task.py --epochs
       100 --batch-size 32 --confidence-threshold 0.5 --seed 42
@@ -294,33 +298,33 @@ stages:
       size: 35968875
       nfiles: 5
   eval-end-2-end:
-    cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --concurrent
+    cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently
     deps:
     - path: datasets/watch-faces-local.json
-      md5: a10dde9037f31f93790d50ff16aef755
-      size: 1073773
+      md5: 0022d0bec933a773c938f15513f1665d
+      size: 1063685
     - path: models/detector
       md5: fb80603d2ff1c3bf1692cfa915524273.dir
       size: 432253678
       nfiles: 5
     - path: models/keypoint
-      md5: 4cb4c1482c46bea41381c0495b98e9d8.dir
-      size: 35988675
+      md5: ad2edc5b034b7d687430962c4e16d3c9.dir
+      size: 35984244
       nfiles: 6
     - path: models/segmentation
       md5: c6ab3e2bff221acd5e439922ed7c97ef.dir
       size: 35968875
       nfiles: 5
     - path: watch_recognition/watch_recognition/eval/end_to_end_eval.py
-      md5: 3d343f13a1456468891d3e27d51de142
-      size: 8497
+      md5: b8ad67be0dbc2d4f1d3bedc02aa835e5
+      size: 8563
     outs:
     - path: metrics/end_2_end_eval.csv
-      md5: daa0c531c1ca8c5bdd55712c58bb4553
-      size: 19880
+      md5: 30d499e9f43fa55704bfae6aca168f78
+      size: 19859
     - path: metrics/end_2_end_summary.json
-      md5: 21d950fde7b9a446204a5739411bd3da
-      size: 263
+      md5: d83ea06e100e2b3d77bcb95e588abd10
+      size: 262
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
       0.5

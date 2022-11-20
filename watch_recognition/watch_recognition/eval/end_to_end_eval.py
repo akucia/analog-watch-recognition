@@ -41,9 +41,9 @@ def total_minutes_diff(t1: str, t2: str) -> int:
 
 
 @click.command()
-@click.option("--concurrent", is_flag=True)
+@click.option("--run-concurrently", is_flag=True)
 @click.option("--split", type=click.Choice(DEFAULT_SPLITS), default=None)
-def main(concurrent: bool = False, split: Optional[str] = None):
+def main(run_concurrently: bool = False, split: Optional[str] = None):
     t0 = time.perf_counter()
     time_predictor = TimePredictor(
         detector=RetinanetDetectorLocal(
@@ -65,19 +65,21 @@ def main(concurrent: bool = False, split: Optional[str] = None):
     )
     source = Path("datasets/watch-faces-local.json")
 
-    records = []
     if split is not None:
         splits = [split]
     else:
         splits = DEFAULT_SPLITS
     print(f"Evaluating on splits: {splits}")
+
+    records = []
     for split in splits:
         print(f"evaluating {split}")
         with source.open("r") as f:
             tasks = json.load(f)
         tasks = [task for task in tasks if task["image"].startswith(split)]
         example_ids = [task["id"] for task in tasks]
-        if concurrent:
+        if run_concurrently:
+            print("running eval concurrently")
             with futures.ThreadPoolExecutor(os.cpu_count() // 4 or 1) as executor:
                 task_futures = []
                 try:

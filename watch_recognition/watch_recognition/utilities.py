@@ -457,7 +457,7 @@ class Line:
             y_const = float(np.mean(y_coords))
             return Line(Point(x_min, y_const), Point(x_max, y_const))
 
-        if use_ransac:
+        if use_ransac and len(points) > 2:
             data = np.column_stack([x_coords, y_coords])
             model_robust, inliers = ransac(
                 data, LineModelND, min_samples=2, residual_threshold=1, max_trials=1000

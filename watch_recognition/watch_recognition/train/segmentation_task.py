@@ -21,7 +21,10 @@ from watch_recognition.label_studio_adapters import (
 from watch_recognition.models import get_segmentation_model
 from watch_recognition.serving import save_tf_serving_warmup_request
 from watch_recognition.utilities import Polygon
-from watch_recognition.visualization import visualize_masks
+from watch_recognition.visualization import (
+    visualize_masks,
+    visualize_segmentation_dataset,
+)
 
 os.environ["SM_FRAMEWORK"] = "tf.keras"
 
@@ -55,21 +58,6 @@ def encode_polygon_to_mask(
 
 def unpackage_dict(inputs):
     return inputs["images"], inputs["segmentation_masks"]
-
-
-def visualize_dataset(dataset: tf.data.Dataset):
-    example = next(iter(dataset))
-    images, all_masks = example["images"], example["segmentation_masks"]
-    images, all_masks = images.numpy(), all_masks.numpy()
-    plt.figure(figsize=(10, 10))
-    plt.tight_layout()
-    plt.axis("off")
-    max_imgs = min(9, len(images))
-    for i in range(max_imgs):
-        ax = plt.subplot(9 // 3, 9 // 3, i + 1)
-        image = images[i]
-        masks = all_masks[i].squeeze() > 0
-        visualize_masks(image, [masks], ax=ax)
 
 
 @click.command()
@@ -186,10 +174,10 @@ def main(
     val_dataset = val_dataset.shuffle(8 * batch_size)
     val_dataset = val_dataset.batch(batch_size)
 
-    visualize_dataset(train_dataset)
+    visualize_segmentation_dataset(train_dataset)
     plt.savefig(debug_data_path / "train_dataset_sample.jpg", bbox_inches="tight")
 
-    visualize_dataset(val_dataset)
+    visualize_segmentation_dataset(val_dataset)
     plt.savefig(debug_data_path / "val_dataset_sample.jpg", bbox_inches="tight")
 
     train_dataset = train_dataset.map(
