@@ -1,0 +1,21 @@
+version: '3'
+services:
+  tf-serving:
+    image: tensorflow/serving:2.8.2
+    entrypoint:
+      - tensorflow_model_server
+      - --port=8500
+      - --rest_api_port=8501
+      - --model_config_file=/serving-models.conf
+      - --file_system_poll_wait_seconds=10
+
+    ports:
+      - "8500:8500"
+      - "8501:8501"
+    volumes:
+      - ./models/detector:/models/detector/1
+      - ./models/segmentation:/models/segmentation/1
+      - ./models/keypoint:/models/keypoint/1
+      - ./serving-monitoring.conf:/serving-monitoring.conf
+      - ./serving-models.conf:/serving-models.conf
+

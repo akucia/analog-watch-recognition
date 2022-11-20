@@ -8,7 +8,7 @@ from segmentation_models.base import Loss
 from segmentation_models.base.functional import average, get_reduce_axes
 from segmentation_models.losses import SMOOTH
 
-from watch_recognition.utilities import Point
+from watch_recognition.utilities import Line, Point
 
 sm.set_framework("tf.keras")
 
@@ -172,6 +172,25 @@ def points_to_time(
 
     assert hour.name == "Hour", hour.name
     assert minute.name == "Minute", minute.name
+
+    if debug:
+        fig, ax = plt.subplots(1, 1)
+        top.plot(color="green")
+        hour.plot(color="red")
+        center.plot(color="k")
+        minute.plot(color="orange")
+        ax.invert_yaxis()
+        ax.legend()
+
+    up = center.translate(0, -10)
+    line_up = Line(center, up)
+    line_top = Line(center, top)
+    rot_angle = np.rad2deg(line_up.angle_between(line_top))
+
+    top = top.rotate_around_origin_point(center, rot_angle)
+    minute = minute.rotate_around_origin_point(center, rot_angle)
+    hour = hour.rotate_around_origin_point(center, rot_angle)
+
     hour = hour.translate(-center.x, -center.y)
     minute = minute.translate(-center.x, -center.y)
     top = top.translate(-center.x, -center.y)

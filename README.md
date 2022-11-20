@@ -37,7 +37,7 @@ flowchart TD
 # Metrics
 | Path                           | train.1-min_acc   | train.10-min_acc   | train.60-min_acc   | val.1-min_acc   | val.10-min_acc   | val.60-min_acc   |
 |--------------------------------|-------------------|--------------------|--------------------|-----------------|------------------|------------------|
-| metrics/end_2_end_summary.json | 0.239             | 0.352              | 0.51               | 0.13            | 0.182            | 0.312            |
+| metrics/end_2_end_summary.json | 0.271             | 0.405              | 0.567              | 0.13            | 0.182            | 0.312            |
 
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.MeanAveragePrecision   | eval.Recall   | eval.box_loss   | eval.classification_loss   | eval.loss   | eval.regularization_loss   | step   | train.box_loss   | train.classification_loss   | train.loss   | train.regularization_loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|-----------------|------------------|-------------------|--------------|-----------------------------|---------------|-----------------|----------------------------|-------------|----------------------------|--------|------------------|-----------------------------|--------------|-----------------------------|

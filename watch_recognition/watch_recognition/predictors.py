@@ -658,7 +658,7 @@ def read_time(
         pred_minute, pred_hour = valid_lines
         minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
         hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
-        return points_to_time(center, hour_kp, minute_kp, top, debug=False)
+        return points_to_time(center, hour_kp, minute_kp, top, debug=debug)
     return None
 
 
