@@ -626,15 +626,20 @@ class Polygon:
             raise ValueError(
                 f"argument mask must be of type {np.bool}, got {mask.dtype}"
             )
+        labeled_mask = measure.label(mask)
+        regions = sorted(regionprops(labeled_mask), key=lambda r: r.area, reverse=True)
+        if not regions:
+            return Polygon(np.array([]).reshape(-1, 2))
+        region = regions[0]
+        contours = measure.find_contours(
+            labeled_mask == region.label, fully_connected="high"
+        )
+        if not contours:
+            return Polygon(np.array([]).reshape(-1, 2))
 
-        labels = measure.label(mask)
-        contour = measure.find_contours(labels == 1, 0.5)
-        if contour:
-            appr_poly = approximate_polygon(
-                contour[0], tolerance=simplification_tolerance
-            )
-            return Polygon(appr_poly[:, ::-1])
-        return Polygon(np.array([]).reshape(-1, 2))
+        contour = sorted(contours, key=lambda c: len(c))[0]
+        appr_poly = approximate_polygon(contour, tolerance=simplification_tolerance)
+        return Polygon(appr_poly[:, ::-1])
 
     def to_binary_mask(self, width: int, height: int) -> np.ndarray:
         mask = np.zeros((height, width))

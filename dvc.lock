@@ -133,8 +133,8 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: 63f31d04194e85a6c06fce45d6618c0b.dir
-      size: 453321
+      md5: 7879d839b75bf16a0f02b9c564654c28.dir
+      size: 453317
       nfiles: 43
     - path: scripts/update-metrics-table-and-graph.py
       md5: b6166e699fc2111731ce9ebed407e806
@@ -320,11 +320,11 @@ stages:
       size: 8563
     outs:
     - path: metrics/end_2_end_eval.csv
-      md5: e5b39c3871e621077ef0ee4a3213147d
-      size: 19834
+      md5: 87c8860ad80534bb64636cee56ed6bda
+      size: 19831
     - path: metrics/end_2_end_summary.json
-      md5: a741fa3c2eb21389c232dd0adae95eb6
-      size: 263
+      md5: 60ac0387248e4ac8ea44b3f3d1009b6a
+      size: 262
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
       0.5
