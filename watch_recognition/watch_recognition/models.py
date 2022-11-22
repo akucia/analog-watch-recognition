@@ -292,6 +292,32 @@ def get_segmentation_model(
     return model
 
 
+def get_regression_model(
+    image_size: Tuple[int, int] = (224, 224),
+    num_keypoints: int = 4,
+) -> tf.keras.Model:
+    model = tf.keras.applications.EfficientNetB0(
+        weights="imagenet",
+        input_shape=(*image_size, 3),
+        include_top=False,
+    )
+    inputs = tf.keras.Input(
+        shape=(*image_size, 3),
+    )
+
+    x = model(inputs)
+    x = tf.keras.layers.GlobalAveragePooling2D(name="avg_pool")(x)
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(512, activation="relu")(x)
+    x = tf.keras.layers.Dense(512, activation="relu")(x)
+    x = tf.keras.layers.Dense(512, activation="relu")(x)
+
+    output = tf.keras.layers.Dense(num_keypoints * 2, activation="sigmoid")(x)
+    model = tf.keras.models.Model(inputs=inputs, outputs=output)
+
+    return model
+
+
 # deeplab v3
 # https://keras.io/examples/vision/deeplabv3_plus/#building-the-deeplabv3-model
 

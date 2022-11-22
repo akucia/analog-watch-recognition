@@ -140,8 +140,8 @@ stages:
       md5: b6166e699fc2111731ce9ebed407e806
       size: 2108
   train-keypoint:
-    cmd: python watch_recognition/watch_recognition/train/heatmap_regression_task.py
-      --epochs 100 --batch-size 32 --confidence-threshold 0.5 --seed 42
+    cmd: python watch_recognition/watch_recognition/train/kp_regression_task.py --epochs
+      100 --batch-size 32 --confidence-threshold 0.5 --seed 42
     deps:
     - path: datasets/test
       md5: 6904a01888485f56672750554a7bb1e0.dir
@@ -158,9 +158,9 @@ stages:
     - path: datasets/watch-faces-local.json
       md5: 0022d0bec933a773c938f15513f1665d
       size: 1063685
-    - path: watch_recognition/watch_recognition/train/heatmap_regression_task.py
-      md5: e68e4f6ef260cea287079a8e531c0f9f
-      size: 8954
+    - path: watch_recognition/watch_recognition/train/kp_regression_task.py
+      md5: 9ea58be366a5d3fd3d247d7636bc12d3
+      size: 8551
     params:
       params.yaml:
         keypoint:
@@ -171,27 +171,28 @@ stages:
             Top: 0
             Center: 1
             Crown: 2
-          disk_radius: 5
+          bbox_labels:
+          - WatchFace
         max_images:
         seed: 42
     outs:
     - path: debug/keypoint/
-      md5: 852e9ea0f0bfb047735bfc281e5dfa7d.dir
-      size: 354659
+      md5: 3cc57e15468542cbf3b45329108e4ed2.dir
+      size: 359109
       nfiles: 2
     - path: example_predictions/keypoint/test-image-2.jpg
-      md5: 36769d967a883c4d355eec0acaff0252
-      size: 54073
+      md5: b4a6cde6a35a0ab63115e07bb51717af
+      size: 54106
     - path: metrics/keypoint.json
-      md5: c44a14d4215a3c7d08b889eeaee24c7e
-      size: 214
+      md5: 255f52f413aeb3e1a0709041eb371bd1
+      size: 203
     - path: metrics/keypoint/scalars/
-      md5: 9afff42f6a8fb2a3b5f34fab352a3a65.dir
-      size: 14966
+      md5: 4d572c53ac6d41fd37698139b2765621.dir
+      size: 15230
       nfiles: 4
     - path: models/keypoint/
-      md5: ad2edc5b034b7d687430962c4e16d3c9.dir
-      size: 35984244
+      md5: 3de09b05230eb4cd506aa664a0333549.dir
+      size: 27925051
       nfiles: 6
   eval-keypoint:
     cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py

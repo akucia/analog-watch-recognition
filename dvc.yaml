@@ -92,7 +92,7 @@ stages:
       - example_predictions/detector/val_2.jpg
   train-keypoint:
     cmd: >-
-      python watch_recognition/watch_recognition/train/heatmap_regression_task.py
+      python watch_recognition/watch_recognition/train/kp_regression_task.py
       --epochs ${keypoint.epochs}
       --batch-size ${keypoint.batch-size}
       --confidence-threshold ${keypoint.confidence-threshold}
@@ -106,7 +106,7 @@ stages:
       - datasets/test
       - datasets/val
       - datasets/watch-faces-local.json
-      - watch_recognition/watch_recognition/train/heatmap_regression_task.py
+      - watch_recognition/watch_recognition/train/kp_regression_task.py
     metrics:
       - metrics/keypoint.json:
           cache: false

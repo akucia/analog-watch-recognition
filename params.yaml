@@ -14,7 +14,8 @@ keypoint:
     Top: 0
     Center: 1
     Crown: 2
-  disk_radius: 5
+  bbox_labels:
+    - WatchFace
 
 
 segmentation:

@@ -16,6 +16,5 @@ services:
       - ./models/detector:/models/detector/1
       - ./models/segmentation:/models/segmentation/1
       - ./models/keypoint:/models/keypoint/1
-      - ./serving-monitoring.conf:/serving-monitoring.conf
-      - ./serving-models.conf:/serving-models.conf
+      - ./configs/serving-models.conf:/serving-models.conf
 

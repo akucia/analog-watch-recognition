@@ -175,18 +175,6 @@ def kp_angle_fn(image, keypoints):
     return aug_img, aug_kp
 
 
-def encode_kp_coordinates(image, kps):
-    # TODO check if X and Y are in correct places
-    # center
-    kps_c_x = kps[0, 0] / image.shape[0]
-    kps_c_y = kps[0, 1] / image.shape[1]
-    # top
-    kps_t_x = kps[1, 0] / image.shape[0]
-    kps_t_y = kps[1, 1] / image.shape[1]
-    kps = tf.stack((kps_c_x, kps_c_y, kps_t_x))
-    return image, kps
-
-
 def mask_aug_fn(image, mask, image_size):
     data = {
         "image": image,
@@ -374,27 +362,24 @@ def view_image_and_kp(ds, max_examples: int = 5):
 
 
 def view_images_and_kp_prediction(ds, model, n_kp=2, max_examples: int = 5):
-
     batch = next(iter(ds))  # extract 1 batch from the dataset
     image, kps = batch[0], batch[1]
+    image = image.numpy()
+    kps = kps.numpy()
     preds = model.predict(image)
 
-    zero_column = np.zeros(len(preds)).reshape(-1, 1) + 0.25
-    preds = np.hstack((preds, zero_column))
-    preds = preds.reshape(-1, n_kp, 2)
-    image = image.numpy()
-
-    kps = kps.numpy().reshape(-1, 3)
-    kps = np.hstack((kps, zero_column))
-    kps = kps.reshape(-1, n_kp, 2)
-
+    preds = preds.reshape(len(image), n_kp, 2)
+    kps = kps.reshape(len(image), n_kp, 2)[:, :, :2]
     kps[:, :, 0] *= image[0].shape[0]
     kps[:, :, 1] *= image[0].shape[1]
 
     preds[:, :, 0] *= image[0].shape[0]
     preds[:, :, 1] *= image[0].shape[1]
-    n_examples = min(len(kps), max_examples)
+    n_examples = min(len(image), max_examples)
     fig, axarr = plt.subplots(n_examples, 2, figsize=(15, 15))
+    if image.shape[0] == 1:
+        axarr = np.array(axarr)
+        axarr = np.expand_dims(axarr, axis=0)
     for i in range(n_examples):
         ax = axarr[i][0]
         img = image[i]
@@ -403,8 +388,8 @@ def view_images_and_kp_prediction(ds, model, n_kp=2, max_examples: int = 5):
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title("Image")
-        ax.scatter(*kp[0, :2])
-        ax.scatter(*kp[1, :2])
+        for j in range(n_kp):
+            ax.scatter(*kp[j, :2], linewidths=10)
 
         ax = axarr[i][1]
         pred_kp = preds[i]
@@ -413,8 +398,8 @@ def view_images_and_kp_prediction(ds, model, n_kp=2, max_examples: int = 5):
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title("Image")
-        ax.scatter(*pred_kp[0, :2])
-        ax.scatter(*pred_kp[1, :2])
+        for j in range(n_kp):
+            ax.scatter(*pred_kp[j, :2], linewidths=10)
 
 
 def get_watch_angle_dataset(
@@ -540,42 +525,6 @@ def get_watch_keypoints_heatmap_dataset(
 
     dataset = dataset.map(encode_kp, num_parallel_calls=AUTOTUNE).map(
         set_shape_f, num_parallel_calls=AUTOTUNE
-    )
-    if shuffle:
-        dataset = dataset.shuffle(8 * batch_size)
-    if batch_size > 0:
-        dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(AUTOTUNE)
-
-    return dataset
-
-
-def get_watch_keypoints_coordinates_dataset(
-    X,
-    y,
-    augment: bool = True,
-    noise: bool = False,
-    batch_size=32,
-    image_size=None,
-    shuffle=True,
-) -> tf.data.Dataset:
-    set_shape_f = partial(set_shapes, img_shape=(*image_size, 3), target_shape=(2, 4))
-    dataset = tf.data.Dataset.from_tensor_slices((X, y))
-    AUTOTUNE = tf.data.experimental.AUTOTUNE
-    if augment:
-        augmentation_fn = partial(augment_kp_data, image_size=image_size[0])
-        dataset = dataset.map(
-            augmentation_fn,
-            num_parallel_calls=AUTOTUNE,
-        )
-    if noise:
-        noise_fn = partial(add_noise_to_kp_coordinates, sigma=2)
-        dataset = dataset.map(
-            noise_fn,
-            num_parallel_calls=AUTOTUNE,
-        )
-    dataset = dataset.map(set_shape_f, num_parallel_calls=AUTOTUNE).map(
-        encode_kp_coordinates, num_parallel_calls=AUTOTUNE
     )
     if shuffle:
         dataset = dataset.shuffle(8 * batch_size)

@@ -67,6 +67,22 @@ def visualize_detections(
     return ax
 
 
+def visualize_kp_dataset(dataset: tf.data.Dataset):
+    example = next(iter(dataset))
+    images, all_kps = example["images"], example["keypoints"]
+    images, all_kps = images.numpy(), all_kps.numpy()
+    plt.figure(figsize=(10, 10))
+    plt.tight_layout()
+    max_imgs = min(9, len(images))
+    for i in range(max_imgs):
+        ax = plt.subplot(9 // 3, 9 // 3, i + 1)
+        ax.set_axis_off()
+        image = images[i]
+        ax.imshow(image)
+        for kp in all_kps[i].reshape(-1, 2):
+            Point(*kp).scale(image.shape[1], image.shape[0]).plot(ax=ax)
+
+
 def visualize_segmentation_dataset(dataset: tf.data.Dataset):
     example = next(iter(dataset))
     images, all_masks = example["images"], example["segmentation_masks"]

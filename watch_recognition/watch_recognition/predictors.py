@@ -24,7 +24,7 @@ from watch_recognition.targets_encoding import (
     line_selector,
     segment_hands_mask,
 )
-from watch_recognition.utilities import BBox, Line, Point, Polygon
+from watch_recognition.utilities import BBox, Point, Polygon
 from watch_recognition.visualization import draw_masks
 
 
@@ -302,33 +302,14 @@ class HandPredictor(ABC):
         polygon.plot(ax=ax)
         return polygon
 
-    def predict_from_image_and_bbox(
-        self,
-        image: ImageType,
-        bbox: BBox,
-        center_point: Point,
-        threshold: float = 0.5,
-        debug: bool = False,
-    ) -> Tuple[Tuple[Line, Line], List[Line], Polygon]:
+    def predict_from_image_and_bbox(self, image: ImageType, bbox: BBox) -> Polygon:
         """Runs predictions on full image using bbox to crop area of interest before
         running the model.
         Returns keypoints in pixel coordinates of the image
         """
         with image.crop(box=bbox.as_coordinates_tuple) as crop:
-            if crop.width * crop.height < 1:
-                return [], [], None
-            center_point_inside_bbox = center_point.translate(-bbox.left, -bbox.top)
-            # TODO predictions decoding should be moved to a separate class
-            valid_lines, other_lines, polygon = self.predict(
-                crop, center_point_inside_bbox, debug=debug
-            )
-
-            valid_lines = [line.translate(bbox.left, bbox.top) for line in valid_lines]
-            other_lines = [line.translate(bbox.left, bbox.top) for line in other_lines]
-            polygon = polygon.translate(bbox.left, bbox.top)
-            # TODO upgrade outputs
-            return valid_lines, other_lines, polygon
-            # return polygon
+            polygon = self.predict(crop)
+            return polygon.translate(bbox.left, bbox.top)
 
 
 class HandPredictorLocal(HandPredictor):
