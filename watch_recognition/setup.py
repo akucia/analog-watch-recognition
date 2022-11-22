@@ -20,7 +20,7 @@ setuptools.setup(
         "tqdm~=4.62.1",
         "matplotlib~=3.4.3",
         "scikit-image~=0.18.2",
-        "Pillow~=9.0.1",
+        "Pillow~=9.2.0",
         "scikit-learn~=0.24.1",
         "pycocotools==2.0.4",
         "click",
