@@ -12,7 +12,7 @@ setuptools.setup(
     python_requires=">=3.7",
     install_requires=[
         "numpy",
-        "tensorflow~=2.10.0",
+        "tensorflow~=2.9.0",
         "tensorflow-serving-api~=2.10.0",
         "keras-cv>=0.3.1",
         "pandas>=1.0.0",
@@ -20,7 +20,7 @@ setuptools.setup(
         "tqdm~=4.62.1",
         "matplotlib~=3.4.3",
         "scikit-image~=0.18.2",
-        "Pillow~=9.0.1",
+        "Pillow~=9.2.0",
         "scikit-learn~=0.24.1",
         "pycocotools==2.0.4",
         "click",

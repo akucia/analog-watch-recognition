@@ -14,11 +14,11 @@ from label_studio_sdk import Client
 from PIL import Image
 from tqdm import tqdm
 
-from watch_recognition.models import points_to_time
 from watch_recognition.predictors import (
     HandPredictorGRPC,
     KPHeatmapPredictorV2GRPC,
     RetinaNetDetectorGRPC,
+    read_time,
 )
 
 storage_client = storage.Client()
@@ -154,36 +154,17 @@ def main(
             for box in tqdm(bboxes, leave=False):
                 points = kp_predictor.predict_from_image_and_bbox(pil_img, box)
                 keypoints.extend(points)
-                pred_center = [p for p in points if p.name == "Center"]
-
-                if pred_center:
-                    pred_center = pred_center[0]
-                else:
-                    # if there's no center available - skip the bbox
-                    continue
-
-                pred_top = [p for p in points if p.name == "Top"]
-                if pred_top:
-                    pred_top = pred_top[0]
-                else:
-                    continue
-                (
-                    minute_and_hour,
-                    other,
-                    polygon,
-                ) = hand_predictor.predict_from_image_and_bbox(
-                    pil_img, box, pred_center, debug=False
-                )
+                polygon = hand_predictor.predict_from_image_and_bbox(pil_img, box)
                 polygons.append(polygon)
-                if minute_and_hour:
-                    pred_minute, pred_hour = minute_and_hour
-                    minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
-                    hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
-                    read_hour, read_minute = points_to_time(
-                        pred_center, hour_kp, minute_kp, pred_top
-                    )
-
-                    predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
+                decoded_time = read_time(
+                    polygon,
+                    points,
+                    (int(box.width), int(box.height)),
+                    debug=False,
+                    debug_image=None,
+                )
+                if decoded_time is not None:
+                    predicted_time = f"{decoded_time[0]:02.0f}:{decoded_time[1]:02.0f}"
                     transcriptions.append(predicted_time)
                 else:
                     transcriptions.append("??:??")

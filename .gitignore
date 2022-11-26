@@ -319,3 +319,5 @@ runs.json
 !/models/keypoint/
 !/models/segmentation/
 /example_predictions
+
+analog-watch-recognition.code-workspace
