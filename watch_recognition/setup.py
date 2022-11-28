@@ -13,7 +13,7 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "tensorflow~=2.9.0",
-        "tensorflow-serving-api~=2.10.0",
+        "tensorflow-serving-api~=2.9.0",
         "keras-cv>=0.3.1",
         "pandas>=1.0.0",
         "albumentations~=1.0.3",

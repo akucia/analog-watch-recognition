@@ -86,7 +86,6 @@ stages:
       - example_predictions/detector/train_0.jpg
       - example_predictions/detector/train_1.jpg
       - example_predictions/detector/train_2.jpg
-      - example_predictions/detector/train_3.jpg
       - example_predictions/detector/val_0.jpg
       - example_predictions/detector/val_1.jpg
       - example_predictions/detector/val_2.jpg

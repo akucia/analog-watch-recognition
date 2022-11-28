@@ -18,7 +18,7 @@ keypoint:
 
 
 segmentation:
-  epochs: 100
+  epochs: 150
   batch-size: 32
   confidence-threshold: 0.5
   label_to_cls:
