@@ -617,6 +617,7 @@ class Polygon:
     coords: np.ndarray
     # name should be changed to label, and support either str or int
     name: str = ""
+    score: float = 1.0
 
     @classmethod
     def from_binary_mask(
@@ -650,13 +651,13 @@ class Polygon:
         coords = self.coords.copy()
         coords[:, 0] *= x
         coords[:, 1] *= y
-        return Polygon(coords=coords, name=self.name)
+        return Polygon(coords=coords, name=self.name, score=self.score)
 
     def translate(self, x: float, y: float) -> "Polygon":
         coords = self.coords.copy()
         coords[:, 0] += x
         coords[:, 1] += y
-        return Polygon(coords=coords, name=self.name)
+        return Polygon(coords=coords, name=self.name, score=self.score)
 
     @property
     def is_empty(self) -> bool:

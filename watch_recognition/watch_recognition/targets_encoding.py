@@ -572,7 +572,9 @@ def segment_hands_mask(
                 if line1.length:
                     points.append(line1.end)
                     vectors.append(line1.unit_vector)
-    vectors = np.array(vectors)
+    if not vectors:
+        return []
+    vectors = np.array(vectors).reshape(-1, 2)
     angles_original = np.arctan2(vectors[:, 1], vectors[:, 0])
 
     sorting_indices = np.argsort(angles_original)

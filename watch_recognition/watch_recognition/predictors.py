@@ -267,8 +267,17 @@ class HandPredictor(ABC):
         image_np = np.expand_dims(np.array(image), 0)
         predicted = self._batch_predict(image_np)[0].squeeze()
 
+        weights = predicted.flatten() > self.confidence_threshold
+        if weights.sum() > 0:
+            mean_score = np.average(
+                predicted.flatten(),
+                weights=weights,
+            )
+        else:
+            mean_score = 0.0
         predicted = predicted > self.confidence_threshold
         polygon = Polygon.from_binary_mask(predicted)
+        polygon = dataclasses.replace(polygon, score=float(mean_score))
 
         scale_x = image_width / predicted.shape[0]
         scale_y = image_height / predicted.shape[1]
