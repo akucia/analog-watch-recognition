@@ -78,7 +78,7 @@ def visualize_segmentation_dataset(dataset: tf.data.Dataset):
         ax = plt.subplot(9 // 3, 9 // 3, i + 1)
         ax.set_axis_off()
         image = images[i]
-        masks = all_masks[i].squeeze() > 0
+        masks = all_masks[i] > 0
         masks = np.split(masks, masks.shape[-1], axis=-1)
         masks = [mask.squeeze() for mask in masks]
         visualize_masks(image, masks, ax=ax)
