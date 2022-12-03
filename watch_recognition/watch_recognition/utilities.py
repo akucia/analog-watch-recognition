@@ -312,6 +312,7 @@ class BBox:
             "y": self.y_min * 100,
             "width": self.width * 100,
             "height": self.height * 100,
+            "score": self.score,
         }
 
     @classmethod
@@ -670,6 +671,7 @@ class Polygon:
             # label studio requires coordinates from 0-100 (aka percentage of the image)
             # upper left corner coordinates
             "points": (self.coords * 100).tolist(),
+            "score": self.score,
         }
 
     @classmethod
