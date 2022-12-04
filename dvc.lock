@@ -259,8 +259,8 @@ stages:
       size: 19774777
       nfiles: 40
     - path: datasets/watch-faces-local.json
-      md5: e79bba76820001ad159be82633d6d1b9
-      size: 1573490
+      md5: b70283f3027b17d5c33f72fe0685e3a5
+      size: 1573168
     - path: watch_recognition/watch_recognition/train/segmentation_task.py
       md5: 42b023a3e7c4eb48cfc62a9bf4833087
       size: 9266
@@ -277,21 +277,21 @@ stages:
           - WatchFace
     outs:
     - path: debug/segmentation/
-      md5: 1126ed38e98ed951f930ef7176568063.dir
-      size: 759519
+      md5: 24afd9340454a064d6cd761ab4fa8b2e.dir
+      size: 739943
       nfiles: 4
     - path: example_predictions/segmentation/test-image-2.jpg
-      md5: ffa130f85dd32a6221fdac1faae2f9ab
-      size: 64294
+      md5: d48bcde1db01d8b52cf9a13bfac8b799
+      size: 64501
     - path: metrics/segmentation.json
-      md5: 02a5adae8ff8fa55169e74e870e41d65
-      size: 213
+      md5: d168877a43dee0ebb3991df79d951171
+      size: 216
     - path: metrics/segmentation/scalars/
-      md5: bc3d71e4610e729cea3db2f694fa8056.dir
-      size: 22616
+      md5: d1072d7a2400a9da186a9353ee4f8e0f.dir
+      size: 22600
       nfiles: 4
     - path: models/segmentation/
-      md5: 226fea3a2fa41377d37c4bab8ddc4ee7.dir
+      md5: e603288dbbd9abdd9725e917d2b4ff50.dir
       size: 35949358
       nfiles: 5
   eval-end-2-end:
