@@ -57,9 +57,9 @@ def score_image(img_path) -> Dict[str, Any]:
 def main(data_dir, run_concurrently, output_path, num_samples, clean_save_dir):
     source_dir = Path(data_dir)
     output_path = Path(output_path) / "train"
-    output_path.mkdir(parents=True, exist_ok=True)
-    if clean_save_dir:
+    if clean_save_dir and output_path.exists():
         rmtree(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     image_paths = list(source_dir.rglob("*.jp*g"))
     records = []
