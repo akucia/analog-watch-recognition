@@ -86,6 +86,7 @@ def load(
             label_mapping=label_to_cls,
             split=split,
             max_num_images=max_images,
+            skip_images_without_annotations=False,
         ),
         output_signature=(
             tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8, name="image"),

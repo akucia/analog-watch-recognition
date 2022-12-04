@@ -104,7 +104,9 @@ def main(run_concurrently: bool = False, split: Optional[str] = None):
                             print(f"waiting for {future} to complete...")
                     raise
         else:
-            for example_id in tqdm(example_ids):
+            pbar = tqdm(example_ids)
+            for example_id in pbar:
+                pbar.set_description(f"evaluating {example_id}")
                 evaluation_records = _evaluate_on_single_image(
                     example_id,
                     time_predictor,

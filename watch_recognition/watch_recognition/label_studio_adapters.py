@@ -130,12 +130,14 @@ def load_label_studio_bbox_detection_dataset(
     image_size: Optional[Tuple[int, int]] = (400, 400),
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
+    skip_images_without_annotations: bool = True,
 ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     dataset_gen = _load_label_studio_bbox_detection_dataset(
         source=source,
         label_mapping=label_mapping,
         max_num_images=max_num_images,
         split=split,
+        skip_empty=skip_images_without_annotations,
     )
     for (image_path, image_bboxes, class_labels) in dataset_gen:
         image_np = load_image(str(image_path), image_size=image_size).astype("uint8")
