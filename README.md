@@ -37,7 +37,7 @@ flowchart TD
 # Metrics
 | Path                           | val.1-min_acc   | val.10-min_acc   | val.60-min_acc   |
 |--------------------------------|-----------------|------------------|------------------|
-| metrics/end_2_end_summary.json | 0.216           | 0.328            | 0.379            |
+| metrics/end_2_end_summary.json | 0.224           | 0.345            | 0.414            |
 
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AP @IoU=0.95   | AR @maxDets=1   | AR @maxDets=10   | AR @maxDets=100   | Num Images   | eval.MeanAveragePrecision   | eval.Recall   | eval.box_loss   | eval.classification_loss   | eval.loss   | eval.regularization_loss   | step   | train.box_loss   | train.classification_loss   | train.loss   | train.regularization_loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|-----------------|------------------|-------------------|--------------|-----------------------------|---------------|-----------------|----------------------------|-------------|----------------------------|--------|------------------|-----------------------------|--------------|-----------------------------|
@@ -47,9 +47,9 @@ flowchart TD
 
 | Path                             | AP @IoU=0.50   | AP @IoU=0.50:0.95   | AP @IoU=0.75   | AR @IoU=0.50   | AR @IoU=0.50:0.95   | AR @IoU=0.75   | Num Images   | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |----------------------------------|----------------|---------------------|----------------|----------------|---------------------|----------------|--------------|------------------|-------------|--------|-------------------|--------------|
-| metrics/keypoint.json            | -              | -                   | -              | -              | -                   | -              | -            | 0.501            | 0.5         | 99     | 0.746             | 0.263        |
-| metrics/keypoint/coco_train.json | 0.682          | 0.492               | 0.375          | 0.865          | 0.71                | 0.615          | 347          | -                | -           | -      | -                 | -            |
-| metrics/keypoint/coco_val.json   | 0.51           | 0.279               | 0.182          | 0.767          | 0.547               | 0.467          | 38           | -                | -           | -      | -                 | -            |
+| metrics/keypoint.json            | -              | -                   | -              | -              | -                   | -              | -            | 0.512            | 0.489       | 99     | 0.771             | 0.234        |
+| metrics/keypoint/coco_train.json | 0.697          | 0.557               | 0.472          | 0.876          | 0.765               | 0.698          | 347          | -                | -           | -      | -                 | -            |
+| metrics/keypoint/coco_val.json   | 0.424          | 0.261               | 0.174          | 0.7            | 0.527               | 0.433          | 38           | -                | -           | -      | -                 | -            |
 
 | Path                      | eval.iou_score   | eval.loss   | step   | train.iou_score   | train.loss   |
 |---------------------------|------------------|-------------|--------|-------------------|--------------|
