@@ -20,6 +20,7 @@ from watch_recognition.predictors import (
     RetinaNetDetectorGRPC,
     read_time,
 )
+from watch_recognition.utilities import BBox
 
 storage_client = storage.Client()
 
@@ -147,7 +148,11 @@ def main(
             pil_img = pil_img.convert("RGB")
             bboxes = detector.predict(pil_img)
 
-            bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
+            b_box = BBox(0, 0, pil_img.width, pil_img.height)
+            bboxes = [
+                dataclasses.replace(bbox, name="WatchFace").intersection(b_box)
+                for bbox in bboxes
+            ]
             polygons = []
             keypoints = []
             transcriptions = []

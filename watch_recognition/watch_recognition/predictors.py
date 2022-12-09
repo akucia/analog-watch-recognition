@@ -60,10 +60,10 @@ class KPPredictor(ABC):
             predicted = self.model.predict(image_np)[0]
             center, top = self._decode_keypoints(image, predicted)
         if correction_angle:
-            center = center.rotate_around_origin_point(
+            center = center.rotate_around_point(
                 Point(image.width / 2, image.height / 2), angle=correction_angle
             )
-            top = top.rotate_around_origin_point(
+            top = top.rotate_around_point(
                 Point(image.width / 2, image.height / 2), angle=correction_angle
             )
         return [center, top]
@@ -633,21 +633,25 @@ def read_time(
     #  https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_regionprops.html#sphx-glr-auto-examples-segmentation-plot-regionprops-py
     hands = _fit_lines_to_points(points_per_hand, center)
     valid_lines, other_lines = line_selector(hands, center=center)
-    if debug:
-        fig, axarr = plt.subplots(1, 1)
-        axarr.imshow(draw_masks(np.array(debug_image), segmented_hands))
-        for hand in valid_lines:
-            hand.plot(ax=axarr, color="green")
-            hand.end.plot(ax=axarr)
-        for hand in other_lines:
-            hand.plot(ax=axarr, color="red")
-        center.plot(ax=axarr, color="magenta")
-        top.plot(ax=axarr, color="yellow")
 
     if valid_lines:
         pred_minute, pred_hour = valid_lines
         minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
         hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
+        if debug:
+            fig, axarr = plt.subplots(1, 1)
+            axarr.imshow(draw_masks(np.array(debug_image), segmented_hands))
+
+            pred_minute.plot(ax=axarr, color="green")
+            minute_kp.plot(ax=axarr)
+
+            pred_hour.plot(ax=axarr, color="green", lw=3)
+            hour_kp.plot(ax=axarr, marker="d")
+
+            for hand in other_lines:
+                hand.plot(ax=axarr, color="red")
+            center.plot(ax=axarr, color="magenta")
+            top.plot(ax=axarr, color="yellow")
         return points_to_time(center, hour_kp, minute_kp, top, debug=debug)
     return None
 

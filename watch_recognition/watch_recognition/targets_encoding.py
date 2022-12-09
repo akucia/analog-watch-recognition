@@ -604,6 +604,10 @@ def segment_hands_mask(
     )
     peaks = []
 
+    peak_heights = peak_properties["peak_heights"]
+    top_peaks = np.argsort(peak_heights)[-2:]
+    peak_idxs = peak_idxs[top_peaks]
+
     results = peak_widths(dens, peak_idxs, rel_height=0.8)
     widths = results[0]
     for i, peak_position in enumerate(peak_idxs):
@@ -756,9 +760,7 @@ def line_selector(
         return tuple(), []
     # TODO sorting based on score and length
     # TODO perfect candidate for decision tree
-    sorted_lines = sorted(
-        all_hands_lines, key=lambda l: (1 - l.score) * l.length, reverse=False
-    )
+    sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
     # if there's just one line: count it as both hour and minute hand
     if len(all_hands_lines) == 1:
         selected_lines = [sorted_lines[0], sorted_lines[0]]

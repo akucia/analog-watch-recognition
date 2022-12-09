@@ -177,7 +177,7 @@ def load_keypoints_data_as_kp(
             for i in range(4):
                 points[i, :2] = np.array(
                     Point(*points[i, :2])
-                    .rotate_around_origin_point(image_center_point, angle)
+                    .rotate_around_point(image_center_point, angle)
                     .as_coordinates_tuple
                 )
 

@@ -30,20 +30,10 @@ class TestPoints_to_time(unittest.TestCase):
 
         with self.subTest("Test 12:00 rotated"):
             center = Point(0, 0).rename("Center")
-            top = (
-                center.translate(0, 1)
-                .rename("Top")
-                .rotate_around_origin_point(center, 90)
-            )
-            hour = (
-                center.translate(0, 1)
-                .rename("Hour")
-                .rotate_around_origin_point(center, 90)
-            )
+            top = center.translate(0, 1).rename("Top").rotate_around_point(center, 90)
+            hour = center.translate(0, 1).rename("Hour").rotate_around_point(center, 90)
             minute = (
-                center.translate(0, 1)
-                .rename("Minute")
-                .rotate_around_origin_point(center, 90)
+                center.translate(0, 1).rename("Minute").rotate_around_point(center, 90)
             )
             hour, minute = points_to_time(
                 center=center, hour=hour, top=top, minute=minute

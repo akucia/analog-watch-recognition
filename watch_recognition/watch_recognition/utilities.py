@@ -44,10 +44,16 @@ class Point:
         )
         return float(np.sqrt((diff**2).sum()))
 
-    def rotate_around_origin_point(self, origin: "Point", angle: float) -> "Point":
+    def rotate_around_point(self, origin: "Point", angle: float) -> "Point":
+
         theta = np.radians(angle)
         c, s = np.cos(theta), np.sin(theta)
-        R = np.array(((c, -s), (s, c)))
+        R = np.array(
+            [
+                [c, -s],
+                [s, c],
+            ]
+        )
         point = np.array([self.as_coordinates_tuple]).T
         origin = np.array([origin.as_coordinates_tuple]).T
         rotated = (R @ (point - origin) + origin).flatten()

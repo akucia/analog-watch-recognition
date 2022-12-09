@@ -16,7 +16,7 @@ def load_label_studio_polygon_detection_dataset(
     crop_size: Optional[Tuple[int, int]] = (96, 96),
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
-) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+) -> Iterator[Tuple[np.ndarray, List[Polygon]]]:
     with source.open("r") as f:
         tasks = json.load(f)
     if split is not None:

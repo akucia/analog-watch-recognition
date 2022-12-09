@@ -51,9 +51,9 @@ def main(data_dir, output_path, bucket_name, clean_save_dir):
     data_dir = Path(data_dir)
     output_path = Path(output_path)
 
-    output_path.mkdir(exist_ok=True)
-    if clean_save_dir:
+    if clean_save_dir and output_path.exists():
         rmtree(output_path)
+    output_path.mkdir(exist_ok=True)
 
     ls = Client(
         url=getenv("LABEL_STUDIO_URL"),
