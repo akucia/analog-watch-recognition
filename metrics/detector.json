@@ -1,17 +1,17 @@
 {
-    "step": 99,
+    "step": 7,
     "train": {
-        "loss": 0.5417559742927551,
-        "classification_loss": 0.1465245634317398,
+        "loss": 5.318084716796875,
+        "classification_loss": 2.2635436058044434,
         "regularization_loss": 0.0,
-        "box_loss": 0.3952314257621765
+        "box_loss": 3.0545411109924316
     },
     "eval": {
-        "MeanAveragePrecision": 0.4274035394191742,
-        "Recall": 0.6270491480827332,
-        "loss": 3.108128309249878,
-        "classification_loss": 1.261068344116211,
-        "box_loss": 1.8470598459243774,
+        "MeanAveragePrecision": 0.09445752203464508,
+        "Recall": 0.1909836083650589,
+        "loss": 7.778172016143799,
+        "classification_loss": 3.269740581512451,
+        "box_loss": 4.508431911468506,
         "regularization_loss": 0.0
     }
 }

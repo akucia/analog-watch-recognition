@@ -3,7 +3,7 @@ max_images: null
 
 detector:
   epochs: 100
-  batch-size: 16
+  batch-size: 20
   confidence-threshold: 0.5
 
 keypoint:
