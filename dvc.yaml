@@ -29,10 +29,10 @@ stages:
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/object_detection_task.py
     metrics:
-      - metrics/detector.json:
+      - metrics/detector/metrics.json:
           cache: false
     plots:
-      - metrics/detector/scalars:
+      - metrics/detector/plots:
           cache: false
       - example_predictions/detector/test-image.jpg:
           persist: true
@@ -107,10 +107,10 @@ stages:
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/heatmap_regression_task.py
     metrics:
-      - metrics/keypoint.json:
+      - metrics/keypoint/metrics.json:
           cache: false
     plots:
-      - metrics/keypoint/scalars/:
+      - metrics/keypoint/plots/:
           cache: false
       - example_predictions/keypoint/test-image-2.jpg:
           persist: true
@@ -158,10 +158,10 @@ stages:
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/segmentation_task.py
     metrics:
-      - metrics/segmentation.json:
+      - metrics/segmentation/metrics.json:
           cache: false
     plots:
-      - metrics/segmentation/scalars/:
+      - metrics/segmentation/plots/:
           cache: false
       - example_predictions/segmentation/test-image-2.jpg:
           persist: true

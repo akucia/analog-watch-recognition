@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.python.keras.backend as K
 import yaml
-from dvclive.keras import DvcLiveCallback
+from dvclive.keras import DVCLiveCallback
 from PIL import Image
 from segmentation_models.metrics import IOUScore
 from tensorflow.python.keras.callbacks import ReduceLROnPlateau
@@ -207,7 +207,7 @@ def main(
     if fine_tune_from_checkpoint and checkpoint_path.exists():
         train_model.load_weights(checkpoint_path)
     callbacks_list = [
-        DvcLiveCallback(path="metrics/segmentation"),
+        DVCLiveCallback(dir="metrics/segmentation"),
         ReduceLROnPlateau(patience=15, verbose=1, factor=0.5),
     ]
     # if not fine_tune_from_checkpoint:

@@ -12,9 +12,9 @@ setuptools.setup(
     python_requires=">=3.7",
     install_requires=[
         "numpy",
-        "tensorflow~=2.9.0",
-        "tensorflow-serving-api~=2.9.0",
-        "keras-cv>=0.3.1",
+        "tensorflow~=2.10.0",
+        "tensorflow-serving-api~=2.10.0",
+        "keras-cv~=0.4.0",
         "pandas>=1.0.0",
         "albumentations~=1.0.3",
         "tqdm~=4.62.1",
@@ -31,6 +31,6 @@ setuptools.setup(
         "google-api-python-client>=2.58.0",
         "more-itertools~=8.14.0",
         "opencv-python",
-        "dvclive",
+        "dvclive==1.3.2",
     ],
 )

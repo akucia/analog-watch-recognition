@@ -10,7 +10,7 @@ import keras_cv
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from dvclive.keras import DvcLiveCallback
+from dvclive.keras import DVCLiveCallback
 from keras_cv import bounding_box
 from PIL import Image
 from tensorflow import keras
@@ -26,7 +26,7 @@ from watch_recognition.visualization import visualize_detections
 def visualize_dataset(dataset: tf.data.Dataset, bounding_box_format: str, ax=None):
     color = tf.constant(((255.0, 0, 255.0),))
     example = next(iter(dataset))
-    images, boxes = example["images"], example["bounding_boxes"]
+    images, boxes, classes = example["images"], example["boxes"], example["classes"]
     boxes = keras_cv.bounding_box.convert_format(
         boxes, source=bounding_box_format, target="rel_yxyx", images=images
     )
@@ -62,8 +62,8 @@ def convert_format_and_resize_image(bounding_box_format, img_size):
         )
 
         labels = tf.cast(labels, tf.float32)
-        bounding_boxes = tf.concat([boxes, labels], axis=-1)
-        return {"images": image, "bounding_boxes": bounding_boxes}
+        # bounding_boxes = tf.concat([boxes, labels], axis=-1)
+        return {"images": image, "boxes": boxes, "classes": labels}
 
     return apply
 
@@ -117,7 +117,7 @@ def load(
 
 
 def unpackage_dict(inputs):
-    return inputs["images"], inputs["bounding_boxes"]
+    return inputs["images"], inputs["boxes"], inputs["classes"]
 
 
 @click.command()
@@ -219,25 +219,12 @@ def main(
     train_model = keras_cv.models.RetinaNet(
         classes=num_classes,
         bounding_box_format="xywh",
-        backbone="resnet50",
-        backbone_weights="imagenet",
-        include_rescaling=True,
-        evaluate_train_time_metrics=False,
     )
     if fine_tune_from_checkpoint and checkpoint_path.exists():
         train_model.load_weights(checkpoint_path)
+
     metrics = [
-        keras_cv.metrics.COCOMeanAveragePrecision(
-            class_ids=[0],
-            bounding_box_format="xywh",
-            name="MeanAveragePrecision",
-        ),
-        keras_cv.metrics.COCORecall(
-            class_ids=[0],
-            bounding_box_format="xywh",
-            max_detections=100,
-            name="Recall",
-        ),
+        
     ]
 
     optimizer = tf.optimizers.Adam(learning_rate=3e-4)
@@ -248,12 +235,13 @@ def main(
         ),
         box_loss=keras_cv.losses.SmoothL1Loss(l1_cutoff=1.0, reduction="none"),
         optimizer=optimizer,
-        metrics=metrics,
+        # metrics=metrics,
     )
 
     callbacks_list = [
-        DvcLiveCallback(path=metrics_path),
+        DVCLiveCallback(dir=metrics_path),
         ReduceLROnPlateau(patience=20, verbose=1),
+        keras_cv.callbacks.PyCOCOCallback(validation_data=val_dataset, bounding_box_format="xywh")
         # callbacks_lib.EarlyStopping(patience=50),
     ]
 
