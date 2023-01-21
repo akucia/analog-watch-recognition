@@ -11,7 +11,7 @@ from pycocotools.cocoeval import COCOeval
 from tqdm import tqdm
 
 from watch_recognition.label_studio_adapters import (
-    load_label_studio_bbox_detection_dataset,
+    load_label_studio_bbox_detection_dataset_with_images,
 )
 from watch_recognition.predictors import RetinanetDetector, RetinanetDetectorLocal
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
@@ -67,7 +67,7 @@ def main():
         print(f"evaluating {split}")
 
         for i, (image, bbox, cls) in enumerate(
-            load_label_studio_bbox_detection_dataset(
+            load_label_studio_bbox_detection_dataset_with_images(
                 dataset_path,
                 label_mapping=label_to_cls,
                 max_num_images=5,

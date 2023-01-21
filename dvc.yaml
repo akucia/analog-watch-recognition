@@ -12,7 +12,34 @@ stages:
     - datasets/val:
        persist: true
     - datasets/watch-faces-local.json
-# TODO stage for generating detection dataset from label-studio dataset?
+  generate-detection-dataset:
+    cmd: >-
+      python watch_recognition/watch_recognition/datasets/tf_records.py 
+      datasets/watch-faces-local.json 
+      datasets/tf-records/object-detection/watch-faces/ 
+      --num-shards=5 
+      --run-concurrently
+    deps:
+      - datasets/train
+      - datasets/test
+      - datasets/val
+      - datasets/watch-faces-local.json
+    outs:
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00002-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00003-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00004-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00005-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00002-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00003-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00004-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00005-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00002-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00003-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00004-of-00005.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00005-of-00005.tfrecord
   train-detector:
     cmd: >- 
       python watch_recognition/watch_recognition/train/object_detection_task.py 
@@ -37,7 +64,6 @@ stages:
       - example_predictions/detector/test-image.jpg:
           persist: true
     outs:
-
       - debug/detector/:
           persist: true
       - models/detector/:

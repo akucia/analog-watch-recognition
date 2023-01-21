@@ -369,3 +369,67 @@ stages:
     - path: example_predictions/segmentation/val_4.jpg
       md5: 33d3e534de1ad6eef76464d8e2c184d2
       size: 59440
+  generate-detection-dataset:
+    cmd: python watch_recognition/watch_recognition/datasets/tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=5  --run-concurrently
+    deps:
+    - path: datasets/test
+      md5: 0aeb029db40e49068d63308665810b57.dir
+      size: 18701099
+      nfiles: 54
+    - path: datasets/train
+      md5: 9c414afa46808b376366ae8e0ff3c786.dir
+      size: 170152358
+      nfiles: 481
+    - path: datasets/val
+      md5: 1ab506f4b22a797ed4afeaf195c51466.dir
+      size: 19774777
+      nfiles: 40
+    - path: datasets/watch-faces-local.json
+      md5: ddb1e52cb640b1af3e8ba6c7c85c943a
+      size: 1744824
+    outs:
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00005.tfrecord
+      md5: b20e7ad6545ae743d97f691601a916f5
+      size: 3168814
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00002-of-00005.tfrecord
+      md5: 257a94227b46f7bab87a28130f11058f
+      size: 1525434
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00003-of-00005.tfrecord
+      md5: 6c47e0a7d6fccc3151caa5a566ed0ae7
+      size: 3267429
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00004-of-00005.tfrecord
+      md5: bd9178842aadb64fd0d694662a5bff9e
+      size: 8012449
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00005-of-00005.tfrecord
+      md5: 146d4f8003b4cc22dec398979e60e56e
+      size: 2752997
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00005.tfrecord
+      md5: f448652522ea3198c7796c671a645829
+      size: 36900078
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00002-of-00005.tfrecord
+      md5: 822721589a026fb65a31f6be92b1ef1b
+      size: 24731137
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00003-of-00005.tfrecord
+      md5: e36f8bfe138679fedb47f2bcc4961711
+      size: 35278470
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00004-of-00005.tfrecord
+      md5: bd9229a10d96cb097e72d1da85cb53ed
+      size: 33854655
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00005-of-00005.tfrecord
+      md5: 9b02b14d5cc847c48e43d5c7c305d007
+      size: 39614424
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00005.tfrecord
+      md5: fc2ae074312437bb854b0c6b510e863e
+      size: 3898055
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00002-of-00005.tfrecord
+      md5: 9bea8bacda56828e8c5df33dd481ab94
+      size: 6049061
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00003-of-00005.tfrecord
+      md5: bcc31d75037ce6fdf2c5881dbb802d9b
+      size: 5573852
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00004-of-00005.tfrecord
+      md5: e546a2c8bfe8fd86a1d5c950834357fb
+      size: 2156004
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00005-of-00005.tfrecord
+      md5: 63877fc0f95b643abb20b4075c87a614
+      size: 2112352

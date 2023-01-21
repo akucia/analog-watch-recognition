@@ -124,7 +124,7 @@ def load_label_studio_kp_detection_dataset(
                     return
 
 
-def load_label_studio_bbox_detection_dataset(
+def load_label_studio_bbox_detection_dataset_with_images(
     source: Path,
     label_mapping: Optional[Dict[str, int]],
     image_size: Optional[Tuple[int, int]] = (400, 400),
@@ -132,26 +132,27 @@ def load_label_studio_bbox_detection_dataset(
     split: Optional[str] = "train",
     skip_images_without_annotations: bool = True,
 ) -> Iterator[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
-    dataset_gen = _load_label_studio_bbox_detection_dataset(
+    dataset_gen = load_label_studio_bbox_detection_dataset(
         source=source,
         label_mapping=label_mapping,
         max_num_images=max_num_images,
         split=split,
-        skip_empty=skip_images_without_annotations,
+        skip_images_without_annotations=skip_images_without_annotations,
     )
     for (image_path, image_bboxes, class_labels) in dataset_gen:
         image_np = load_image(str(image_path), image_size=image_size).astype("uint8")
         yield image_np, image_bboxes, class_labels
 
 
-# TODO rename and make public
-def _load_label_studio_bbox_detection_dataset(
+def load_label_studio_bbox_detection_dataset(
     source: Path,
     label_mapping: Optional[Dict[str, int]],
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
-    skip_empty: bool = True,
+    skip_images_without_annotations: bool = True,
 ) -> Iterator[Tuple[Path, np.ndarray, np.ndarray]]:
+    if split not in {"train", "val", "test"}:
+        raise ValueError(f"split: {split} has to be one of train|val|test")
     with source.open("r") as f:
         tasks = json.load(f)
     if split is not None:
@@ -161,7 +162,7 @@ def _load_label_studio_bbox_detection_dataset(
         tasks = tasks[:max_num_images]
 
     for task in tasks:
-        if "bbox" not in task and skip_empty:
+        if "bbox" not in task and skip_images_without_annotations:
             continue
         class_labels, image_bboxes = _extract_bboxes_from_task(label_mapping, task)
         image_path = source.parent / task["image"]

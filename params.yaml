@@ -5,6 +5,8 @@ detector:
   epochs: 100
   batch-size: 20
   confidence-threshold: 0.5
+  label_to_cls:
+    WatchFace: 0
 
 keypoint:
   epochs: 100
