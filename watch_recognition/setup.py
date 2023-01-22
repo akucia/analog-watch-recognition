@@ -12,8 +12,9 @@ setuptools.setup(
     python_requires=">=3.7",
     install_requires=[
         "numpy",
-        "tensorflow~=2.10.0",
-        "tensorflow-serving-api~=2.10.0",
+        "tensorflow~=2.11.0",
+        "tensorflow-serving-api~=2.11.0",
+        "tf-models-official",
         "keras-cv~=0.4.0",
         "pandas>=1.0.0",
         "albumentations~=1.0.3",

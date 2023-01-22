@@ -2,11 +2,11 @@ seed: 42
 max_images: null
 
 detector:
-  epochs: 100
-  batch-size: 20
+  train-steps: 1
+  batch-size: 8
   confidence-threshold: 0.5
   label_to_cls:
-    WatchFace: 0
+    WatchFace: 1
 
 keypoint:
   epochs: 100

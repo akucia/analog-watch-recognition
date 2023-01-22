@@ -150,7 +150,7 @@ def load_label_studio_bbox_detection_dataset(
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
     skip_images_without_annotations: bool = True,
-) -> Iterator[Tuple[Path, np.ndarray, np.ndarray]]:
+) -> Iterator[Tuple[int, Path, np.ndarray, np.ndarray]]:
     if split not in {"train", "val", "test"}:
         raise ValueError(f"split: {split} has to be one of train|val|test")
     with source.open("r") as f:
@@ -168,7 +168,7 @@ def load_label_studio_bbox_detection_dataset(
         image_path = source.parent / task["image"]
         image_bboxes = np.array(image_bboxes).reshape(-1, 4).astype("float32")
         class_labels = np.array(class_labels).reshape(-1, 1).astype("int32")
-        yield image_path, image_bboxes, class_labels
+        yield task["id"], image_path, image_bboxes, class_labels
 
 
 def _extract_bboxes_from_task(label_mapping, task):

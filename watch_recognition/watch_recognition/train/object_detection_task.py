@@ -9,13 +9,13 @@ import click
 import keras_cv
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 from dvclive.keras import DVCLiveCallback
 from keras_cv import bounding_box
 from PIL import Image
-from tensorflow import keras
 from tensorflow.python.keras.callbacks import ReduceLROnPlateau
 
+import tensorflow as tf
+from tensorflow import keras
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
@@ -26,7 +26,7 @@ from watch_recognition.visualization import visualize_detections
 def visualize_dataset(dataset: tf.data.Dataset, bounding_box_format: str, ax=None):
     color = tf.constant(((255.0, 0, 255.0),))
     example = next(iter(dataset))
-    images, boxes, classes = example["images"], example["boxes"], example["classes"]
+    images, boxes, _ = example["images"], example["boxes"], example["classes"]
     boxes = keras_cv.bounding_box.convert_format(
         boxes, source=bounding_box_format, target="rel_yxyx", images=images
     )
@@ -89,6 +89,7 @@ def load(
             skip_images_without_annotations=False,
         ),
         output_signature=(
+            tf.TensorSpec(shape=(None, 1), dtype=tf.int32, name="image/id"),
             tf.TensorSpec(shape=(None, None, 3), dtype=tf.uint8, name="image"),
             tf.TensorSpec(shape=(None, 4), dtype=tf.float32, name="objects/bbox"),
             tf.TensorSpec(shape=(None, 1), dtype=tf.int32, name="objects/label"),
@@ -223,10 +224,6 @@ def main(
     if fine_tune_from_checkpoint and checkpoint_path.exists():
         train_model.load_weights(checkpoint_path)
 
-    metrics = [
-        
-    ]
-
     optimizer = tf.optimizers.Adam(learning_rate=3e-4)
 
     train_model.compile(
@@ -241,7 +238,9 @@ def main(
     callbacks_list = [
         DVCLiveCallback(dir=metrics_path),
         ReduceLROnPlateau(patience=20, verbose=1),
-        keras_cv.callbacks.PyCOCOCallback(validation_data=val_dataset, bounding_box_format="xywh")
+        keras_cv.callbacks.PyCOCOCallback(
+            validation_data=val_dataset, bounding_box_format="xywh"
+        )
         # callbacks_lib.EarlyStopping(patience=50),
     ]
 

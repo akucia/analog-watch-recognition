@@ -26,53 +26,31 @@ stages:
       md5: ddb1e52cb640b1af3e8ba6c7c85c943a
       size: 1744824
   train-detector:
-    cmd: python watch_recognition/watch_recognition/train/object_detection_task.py  --epochs
-      1  --batch-size 20  --seed 42
+    cmd: python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
+      --train-steps 1  --batch-size 8  --seed 42
     deps:
-    - path: datasets/test
-      md5: 0aeb029db40e49068d63308665810b57.dir
-      size: 18701099
-      nfiles: 54
-    - path: datasets/train
-      md5: 9c414afa46808b376366ae8e0ff3c786.dir
-      size: 170152358
-      nfiles: 481
-    - path: datasets/val
-      md5: 1ab506f4b22a797ed4afeaf195c51466.dir
-      size: 19774777
-      nfiles: 40
-    - path: datasets/watch-faces-local.json
-      md5: ddb1e52cb640b1af3e8ba6c7c85c943a
-      size: 1744824
-    - path: watch_recognition/watch_recognition/train/object_detection_task.py
-      md5: d9041dfe06970095d1a331f9cb8c22e2
-      size: 11056
+    - path: datasets/tf-records/object-detection/watch-faces/
+      md5: ecf3e70878d57480626f6da89650be22.dir
+      size: 417774318
+      nfiles: 19
     params:
       params.yaml:
         detector:
-          epochs: 1
-          batch-size: 20
+          train-steps: 1
+          batch-size: 8
           confidence-threshold: 0.5
+          label_to_cls:
+            WatchFace: 1
         seed: 42
     outs:
     - path: debug/detector/
-      md5: f0064e0537be8585bdbe1a4f53d07a42.dir
-      size: 950728
-      nfiles: 4
-    - path: example_predictions/detector/test-image.jpg
-      md5: 753f27c86ade589ba2b889e6c2b0fe65
-      size: 142855
-    - path: metrics/detector/metrics.json
-      md5: 08def9779a8fafd2a854a5fd171c8a24
-      size: 476
-    - path: metrics/detector/plots
-      md5: 166a55f770c4f1085df8278629c5dbdb.dir
-      size: 422
-      nfiles: 10
+      md5: a25573178dd49b1d37f01c390d249712.dir
+      size: 524819
+      nfiles: 2
     - path: models/detector/
-      md5: 9b6fb65a98ec61423ed69b8822a11986.dir
-      size: 432220709
-      nfiles: 5
+      md5: d6e676aaf37ce625b2a94c9baebf0b1b.dir
+      size: 393755703
+      nfiles: 10
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
@@ -370,7 +348,8 @@ stages:
       md5: 33d3e534de1ad6eef76464d8e2c184d2
       size: 59440
   generate-detection-dataset:
-    cmd: python watch_recognition/watch_recognition/datasets/tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=5  --run-concurrently
+    cmd: python watch_recognition/watch_recognition/datasets/tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=1
+      --run-concurrently
     deps:
     - path: datasets/test
       md5: 0aeb029db40e49068d63308665810b57.dir
@@ -387,49 +366,17 @@ stages:
     - path: datasets/watch-faces-local.json
       md5: ddb1e52cb640b1af3e8ba6c7c85c943a
       size: 1744824
+    params:
+      params.yaml:
+        detector.label_to_cls:
+          WatchFace: 1
     outs:
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00005.tfrecord
-      md5: b20e7ad6545ae743d97f691601a916f5
-      size: 3168814
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00002-of-00005.tfrecord
-      md5: 257a94227b46f7bab87a28130f11058f
-      size: 1525434
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00003-of-00005.tfrecord
-      md5: 6c47e0a7d6fccc3151caa5a566ed0ae7
-      size: 3267429
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00004-of-00005.tfrecord
-      md5: bd9178842aadb64fd0d694662a5bff9e
-      size: 8012449
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00005-of-00005.tfrecord
-      md5: 146d4f8003b4cc22dec398979e60e56e
-      size: 2752997
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00005.tfrecord
-      md5: f448652522ea3198c7796c671a645829
-      size: 36900078
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00002-of-00005.tfrecord
-      md5: 822721589a026fb65a31f6be92b1ef1b
-      size: 24731137
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00003-of-00005.tfrecord
-      md5: e36f8bfe138679fedb47f2bcc4961711
-      size: 35278470
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00004-of-00005.tfrecord
-      md5: bd9229a10d96cb097e72d1da85cb53ed
-      size: 33854655
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00005-of-00005.tfrecord
-      md5: 9b02b14d5cc847c48e43d5c7c305d007
-      size: 39614424
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00005.tfrecord
-      md5: fc2ae074312437bb854b0c6b510e863e
-      size: 3898055
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00002-of-00005.tfrecord
-      md5: 9bea8bacda56828e8c5df33dd481ab94
-      size: 6049061
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00003-of-00005.tfrecord
-      md5: bcc31d75037ce6fdf2c5881dbb802d9b
-      size: 5573852
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00004-of-00005.tfrecord
-      md5: e546a2c8bfe8fd86a1d5c950834357fb
-      size: 2156004
-    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00005-of-00005.tfrecord
-      md5: 63877fc0f95b643abb20b4075c87a614
-      size: 2112352
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
+      md5: b2ea32ff0f93bf468b8a547e23a81fa4
+      size: 18726377
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
+      md5: bcfd801aa170ff3fcb6ce88e3b00a603
+      size: 170371705
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
+      md5: 26c358ff4a3c50bab2daab7d396f63f2
+      size: 19788762

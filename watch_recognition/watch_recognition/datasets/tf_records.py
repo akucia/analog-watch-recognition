@@ -122,6 +122,7 @@ def bbox_annotations_to_feature_dict(
 
 
 def create_tf_example(
+    image_id: int,
     image_path: Path,
     bboxes: np.ndarray,
     classes: np.ndarray,
@@ -139,7 +140,6 @@ def create_tf_example(
         does not exist, or is not unique across image directories.
     """
     filename = image_path.name
-    image_id = image_path.stem
 
     with tf.io.gfile.GFile(image_path, "rb") as fid:
         encoded_jpg = fid.read()
@@ -204,9 +204,10 @@ def main(
             with futures.ThreadPoolExecutor() as executor:
                 task_futures = []
                 try:
-                    for image_path, bboxes, classes in dataset_gen:
+                    for id_, image_path, bboxes, classes in dataset_gen:
                         future = executor.submit(
                             create_tf_example,
+                            id_,
                             image_path,
                             bboxes,
                             classes,
@@ -229,9 +230,9 @@ def main(
         else:
 
             pbar = tqdm(dataset_gen)
-            for idx, (image_path, bboxes, classes) in enumerate(pbar):
+            for idx, (id_, image_path, bboxes, classes) in enumerate(pbar):
                 tf_example = create_tf_example(
-                    image_path, bboxes, classes, cls_to_label
+                    id_, image_path, bboxes, classes, cls_to_label
                 )
                 writers[idx % num_shards].write(tf_example.SerializeToString())
 
