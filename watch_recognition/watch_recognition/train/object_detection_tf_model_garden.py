@@ -2,6 +2,7 @@
 Based on https://www.tensorflow.org/tfmodels/vision/object_detection
 """
 import pprint
+from pathlib import Path
 from typing import Optional
 from urllib.request import urlopen
 
@@ -94,12 +95,12 @@ def show_batch(raw_records, tf_ex_decoder, category_index, filepath):
 
 
 @click.command()
-@click.option("--train-steps", default=1)
+@click.option("--epochs", default=1)
 @click.option("--batch-size", default=8)
 @click.option("--seed", default=None, type=int)
 @click.option("--verbosity", default=1, type=int)
 def main(
-    train_steps: int,
+    epochs: int,
     batch_size: int,
     seed: Optional[int],
     verbosity: int,
@@ -107,8 +108,27 @@ def main(
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
 
-    train_data_input_path = "datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord"
-    valid_data_input_path = "datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord"
+    train_data_input_paths = list(
+        map(
+            str,
+            Path("datasets/tf-records/object-detection/watch-faces/").glob(
+                "watch-faces-train-*-of-00001.tfrecord"
+            ),
+        )
+    )
+
+    train_ds = tf.data.TFRecordDataset(train_data_input_paths)
+    num_train_examples = int(train_ds.reduce(np.int64(0), lambda x, _: x + 1).numpy())
+    valid_data_input_paths = list(
+        map(
+            str,
+            Path("datasets/tf-records/object-detection/watch-faces/").glob(
+                "watch-faces-val-*-of-00001.tfrecord"
+            ),
+        )
+    )
+
+    val_ds = tf.data.TFRecordDataset(valid_data_input_paths)
 
     model_dir = "models/detector"
     export_dir = "models/detector/exported_model/"
@@ -132,14 +152,14 @@ def main(
     )
 
     # Training Data Config
-    exp_config.task.train_data.input_path = train_data_input_path
+    exp_config.task.train_data.input_path = train_data_input_paths
     exp_config.task.train_data.dtype = "float32"
     exp_config.task.train_data.global_batch_size = batch_size
     exp_config.task.train_data.parser.aug_scale_max = 1.0
     exp_config.task.train_data.parser.aug_scale_min = 1.0
 
     # Validation Data Config
-    exp_config.task.validation_data.input_path = valid_data_input_path
+    exp_config.task.validation_data.input_path = valid_data_input_paths
     exp_config.task.validation_data.dtype = "float32"
     exp_config.task.validation_data.global_batch_size = batch_size
 
@@ -159,17 +179,14 @@ def main(
 
     print(f"device: {device}")
 
-    train_steps = 10
-    # exp_config.trainer.steps_per_loop = (
-    #     steps_per_loop = num_of_training_examples // train_batch_size
-    # )
+    steps_per_loop = num_train_examples // batch_size
+    train_steps = steps_per_loop * epochs
 
-    # exp_config.trainer.summary_interval = 100
-    # exp_config.trainer.checkpoint_interval = 100
-    # exp_config.trainer.validation_interval = 100
-    # exp_config.trainer.validation_steps = (
-    #     100  # validation_steps = num_of_validation_examples // eval_batch_size
-    # )
+    exp_config.trainer.steps_per_loop = steps_per_loop
+    exp_config.trainer.summary_interval = steps_per_loop * 1
+    exp_config.trainer.checkpoint_interval = steps_per_loop
+    exp_config.trainer.validation_interval = steps_per_loop
+    exp_config.trainer.validation_steps = -1
     exp_config.trainer.train_steps = train_steps
     exp_config.trainer.optimizer_config.warmup.linear.warmup_steps = 100
     exp_config.trainer.optimizer_config.learning_rate.type = "cosine"
@@ -241,7 +258,7 @@ def main(
         export_dir=export_dir,
     )
 
-    val_ds = tf.data.TFRecordDataset(valid_data_input_path).take(3)
+    val_ds = tf.data.TFRecordDataset(valid_data_input_paths).take(3)
     show_batch(
         val_ds,
         tf_ex_decoder,

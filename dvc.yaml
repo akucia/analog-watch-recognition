@@ -34,7 +34,7 @@ stages:
   train-detector:
     cmd: >- 
       python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
-      --train-steps ${detector.train-steps} 
+      --epochs ${detector.epochs} 
       --batch-size ${detector.batch-size} 
       --seed ${seed}
     params:
@@ -46,7 +46,7 @@ stages:
       - debug/detector/:
           persist: true
       - models/detector/:
-          persist: true
+          persist: false
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:

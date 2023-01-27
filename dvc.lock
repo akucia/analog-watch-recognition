@@ -30,9 +30,9 @@ stages:
       --train-steps 1  --batch-size 8  --seed 42
     deps:
     - path: datasets/tf-records/object-detection/watch-faces/
-      md5: ecf3e70878d57480626f6da89650be22.dir
-      size: 417774318
-      nfiles: 19
+      md5: 0f5ec9b48a72f41e61a0e5cdfeca898a.dir
+      size: 208887600
+      nfiles: 4
     params:
       params.yaml:
         detector:
@@ -48,9 +48,9 @@ stages:
       size: 524819
       nfiles: 2
     - path: models/detector/
-      md5: d6e676aaf37ce625b2a94c9baebf0b1b.dir
-      size: 393755703
-      nfiles: 10
+      md5: 75ee7e359135afd7eafcd542b35ce610.dir
+      size: 393756828
+      nfiles: 11
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
