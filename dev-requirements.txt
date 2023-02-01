@@ -1,7 +1,0 @@
-tensorflow_datasets
-dvc[gcs]
-dvc[gs]
-isort
-black
-pyflakes
-streamlit~=1.13.0

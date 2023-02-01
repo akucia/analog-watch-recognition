@@ -31,3 +31,6 @@ active-learning-select-images: select-unused-images
 
 add-sampled-images: active-learning-select-images
 	python scripts/add-images-to-label-studio-project.py --source-dir ./sampled-images --label-studio-project ${PROJECT_ID} --label-studio-host ${LABEL_STUDIO_URL} --label-studio-api-token ${LABEL_STUDIO_ACCESS_TOKEN}
+
+generate-full-requirements:
+	pip-compile -v dev-requirements.in.txt -o dev-requirements.txt
