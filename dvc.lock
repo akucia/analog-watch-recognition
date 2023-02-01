@@ -27,7 +27,7 @@ stages:
       size: 1744824
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
-      --train-steps 1  --batch-size 8  --seed 42
+      --epochs 100  --batch-size 32  --seed 42
     deps:
     - path: datasets/tf-records/object-detection/watch-faces/
       md5: 0f5ec9b48a72f41e61a0e5cdfeca898a.dir
@@ -36,8 +36,8 @@ stages:
     params:
       params.yaml:
         detector:
-          train-steps: 1
-          batch-size: 8
+          epochs: 100
+          batch-size: 32
           confidence-threshold: 0.5
           label_to_cls:
             WatchFace: 1
@@ -48,9 +48,9 @@ stages:
       size: 524819
       nfiles: 2
     - path: models/detector/
-      md5: 75ee7e359135afd7eafcd542b35ce610.dir
-      size: 393756828
-      nfiles: 11
+      md5: c4ac10282d0de69b98c3d761036bb86a.dir
+      size: 1427658959
+      nfiles: 18
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:

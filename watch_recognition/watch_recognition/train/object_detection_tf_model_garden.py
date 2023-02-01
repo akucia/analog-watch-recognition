@@ -183,9 +183,9 @@ def main(
     train_steps = steps_per_loop * epochs
 
     exp_config.trainer.steps_per_loop = steps_per_loop
-    exp_config.trainer.summary_interval = steps_per_loop * 1
-    exp_config.trainer.checkpoint_interval = steps_per_loop
-    exp_config.trainer.validation_interval = steps_per_loop
+    exp_config.trainer.summary_interval = steps_per_loop * 10
+    exp_config.trainer.checkpoint_interval = steps_per_loop * 10
+    exp_config.trainer.validation_interval = steps_per_loop * 10
     exp_config.trainer.validation_steps = -1
     exp_config.trainer.train_steps = train_steps
     exp_config.trainer.optimizer_config.warmup.linear.warmup_steps = 100
