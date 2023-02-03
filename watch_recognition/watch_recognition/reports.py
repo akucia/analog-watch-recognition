@@ -1,16 +1,14 @@
 import io
 from datetime import timedelta
-from itertools import combinations
 from typing import Tuple
 
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 
-from watch_recognition.models import IouLoss2, points_to_time
+import tensorflow as tf
+from watch_recognition.predictors import points_to_time
 from watch_recognition.targets_encoding import convert_mask_outputs_to_keypoints
-from watch_recognition.utilities import Line
 
 
 def plot_to_image(figure):
@@ -236,12 +234,11 @@ def log_scalar_metrics(epoch, logs, X, y, file_writer, model, every_n_epoch: int
         with file_writer.as_default():
             means = []
             for tag, array in zip(["Center", "Top", "Hour", "Minute"], distances):
-
                 mean = np.mean(array)
                 means.append(mean)
                 tf.summary.scalar(f"point_distance_{tag}", mean, step=epoch)
         with file_writer.as_default():
-            tf.summary.scalar(f"point_distance_mean", np.mean(means), step=epoch)
+            tf.summary.scalar("point_distance_mean", np.mean(means), step=epoch)
 
 
 def calculate_time_lost(X, predicted, y):
@@ -284,7 +281,6 @@ def calculate_distances_between_points(X, predicted, y):
     hour_distances = np.zeros(predicted.shape[0])
     scale_factor = X.shape[1] / predicted.shape[1]
     for row in range(predicted.shape[0]):
-
         center_hat, top_hat, hour_hat, minute_hat = convert_mask_outputs_to_keypoints(
             predicted[row]
         )

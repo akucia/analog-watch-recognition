@@ -5,7 +5,6 @@ from typing import List, Optional, Tuple
 
 import cv2
 import numpy as np
-import tensorflow as tf
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from numpy import mean
@@ -17,6 +16,8 @@ from sklearn.metrics import euclidean_distances
 from sklearn.neighbors import KernelDensity
 from tensorflow.python.keras.utils.np_utils import to_categorical
 
+import tensorflow as tf
+import watch_recognition.predictors
 from watch_recognition.data_preprocessing import (
     binarize,
     keypoint_to_sin_cos_angle,
@@ -386,7 +387,7 @@ def select_hand_points_with_line_fits(center, hands_points, max_distance=1):
     unused_points = [p for p in hands_points if p not in used_points]
     for point in unused_points:
         lines.append(Line(point, center))
-    best_lines = sorted(lines, key=lambda l: l.length)[:2]
+    best_lines = sorted(lines, key=lambda line: line.length)[:2]
     hands = []
     for line in best_lines:
         if line.start.distance(center) > line.end.distance(center):
@@ -724,7 +725,7 @@ def remove_complementary_hands(hands: List[Line], center) -> List[Line]:
     angles_between_hands = np.zeros((len(hands), len(hands)))
     hands_and_index = list(enumerate(hands))
     for (i, hand_a), (j, hand_b) in combinations(hands_and_index, 2):
-        angle_between = hand_a.angle_between(hand_b)
+        angle_between = watch_recognition.predictors.angle_between(hand_b)
         angles_between_hands[i][j] = angle_between
 
     angles_between_hands = np.rad2deg(angles_between_hands)
@@ -760,7 +761,7 @@ def line_selector(
         return tuple(), []
     # TODO sorting based on score and length
     # TODO perfect candidate for decision tree
-    sorted_lines = sorted(all_hands_lines, key=lambda l: l.length, reverse=False)
+    sorted_lines = sorted(all_hands_lines, key=lambda line: line.length, reverse=False)
     # if there's just one line: count it as both hour and minute hand
     if len(all_hands_lines) == 1:
         selected_lines = [sorted_lines[0], sorted_lines[0]]
@@ -792,7 +793,7 @@ def line_selector(
     # ]
     # if there are two lines: shorter is hour, longer is minutes
     minute, hour = sorted(
-        selected_lines, key=lambda l: l.end.distance(center), reverse=True
+        selected_lines, key=lambda line: line.end.distance(center), reverse=True
     )
 
     return (minute, hour), rejected_lines

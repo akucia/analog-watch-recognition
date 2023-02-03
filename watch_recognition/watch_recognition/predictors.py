@@ -7,24 +7,23 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import cv2
 import grpc
-import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 from distinctipy import distinctipy
+from matplotlib import pyplot as plt
 from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
 from tensorflow_serving.apis import predict_pb2, prediction_service_pb2_grpc
 from tensorflow_serving.apis.predict_pb2 import PredictResponse
 
-from watch_recognition.models import points_to_time
+import tensorflow as tf
 from watch_recognition.targets_encoding import (
     _fit_lines_to_points,
     extract_points_from_map,
     line_selector,
     segment_hands_mask,
 )
-from watch_recognition.utilities import BBox, Point, Polygon
+from watch_recognition.utilities import BBox, Line, Point, Polygon
 from watch_recognition.visualization import draw_masks
 
 
@@ -481,13 +480,15 @@ class RetinanetDetector(ABC):
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[BBox]:
         """Run object detection on the input image and draw the detection results"""
         image_width, image_height = _get_image_shape(image)
-        image_np = np.expand_dims(np.array(image), axis=0)
-        predictions = self._batch_predict(image_np)[0]
+        image_np = np.expand_dims(np.array(image), axis=0).astype("uint8")
+        boxes, classes, scores, num_detections = self._batch_predict(image_np)
+        num_detections = num_detections[0]
         bboxes = []
         for box, cls, score in zip(
-            predictions[:, :4], predictions[:, 4], predictions[:, 5]
+            boxes[0, :num_detections],
+            classes[0, :num_detections],
+            scores[0, :num_detections],
         ):
-
             # cast everything to float to prevent issues with JSON serialization
             # and stick to types specified by BBox class
             float_bbox = list(map(float, box))
@@ -522,11 +523,25 @@ class RetinanetDetectorLocal(RetinanetDetector):
         model_path: Path,
         class_to_label_name: Dict[int, str],
     ):
-        self.model = tf.keras.models.load_model(model_path, compile=False)
+        imported = tf.saved_model.load(model_path)
+        self.model_fn = imported.signatures["serving_default"]
         super().__init__(class_to_label_name=class_to_label_name)
 
-    def _batch_predict(self, input_images):
-        return self.model.predict(input_images, False, verbose=0)
+    def _batch_predict(
+        self, input_images
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        input_images = tf.convert_to_tensor(input_images)
+        results = self.model_fn(input_images)
+        num_detections = results["num_detections"].numpy()
+        boxes = results["detection_boxes"].numpy()
+        classes = results["detection_classes"].numpy().astype(int)
+        scores = results["detection_scores"].numpy()
+        return (
+            boxes,
+            classes,
+            scores,
+            num_detections,
+        )
 
 
 class RetinaNetDetectorGRPC(RetinanetDetector):
@@ -550,13 +565,37 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
         request = predict_pb2.PredictRequest()
         request.model_spec.name = self.model_name
         request.model_spec.signature_name = "serving_default"
-        # TODO this will require updates
-        request.inputs["image"].CopyFrom(tf.make_tensor_proto(input_images))
+        request.inputs["inputs"].CopyFrom(tf.make_tensor_proto(input_images))
         result = self.stub.Predict(request, self.timeout)
-        output = result.outputs["bboxes"]
-        value = output.float_val
-        shape = [dim.size for dim in output.tensor_shape.dim]
-        return np.array(value).reshape(shape)
+        boxes = self._decode_proto(
+            result.outputs["detection_boxes"].float_val,
+            result.outputs["detection_boxes"].tensor_shape.dim,
+        )
+        classes = self._decode_proto(
+            result.outputs["detection_classes"].int_val,
+            result.outputs["detection_classes"].tensor_shape.dim,
+        )
+        scores = self._decode_proto(
+            result.outputs["detection_scores"].float_val,
+            result.outputs["detection_scores"].tensor_shape.dim,
+        )
+        num_detections = self._decode_proto(
+            result.outputs["num_detections"].int_val,
+            result.outputs["num_detections"].tensor_shape.dim,
+        )
+        return (
+            boxes,
+            classes,
+            scores,
+            num_detections,
+        )
+
+    def _decode_proto(self, value, dim):
+        shape = [d.size for d in dim]
+        output = np.array(value).reshape(shape)
+        if len(shape) != 1:
+            output = output.reshape(shape)
+        return output
 
 
 def _hash_image(image: ImageType) -> str:
@@ -743,3 +782,105 @@ def _get_image_shape(image: Union[ImageType, np.ndarray]):
             f"image type {type(image)} is not supported, please provide PIL.Image or np.array"
         )
     return image_width, image_height
+
+
+def points_to_time(
+    center: Point, hour: Point, minute: Point, top: Point, debug: bool = False
+) -> Tuple[float, float]:
+    assert hour.name == "Hour", hour.name
+    assert minute.name == "Minute", minute.name
+    if debug:
+        fig, ax = plt.subplots(1, 1)
+        top.plot(color="green")
+        hour.plot(color="red")
+        center.plot(color="k")
+        minute.plot(color="orange")
+        ax.invert_yaxis()
+        ax.legend()
+
+    hour = hour.translate(-center.x, -center.y)
+    minute = minute.translate(-center.x, -center.y)
+    top = top.translate(-center.x, -center.y)
+    center = center.translate(-center.x, -center.y)
+    up = center.translate(0, -10)
+    line_up = Line(center, up)
+    line_top = Line(center, top)
+    if debug:
+        fig, ax = plt.subplots(1, 1)
+        top.plot(color="green")
+        hour.plot(color="red")
+        center.plot(color="k")
+        minute.plot(color="orange")
+        line_up.plot(draw_arrow=False, color="black")
+        line_top.plot(draw_arrow=False, color="green")
+        ax.invert_yaxis()
+        ax.legend()
+    rot_angle = -np.rad2deg(line_up.angle_between(line_top))
+    if top.x < 0:
+        rot_angle = -rot_angle
+    top = top.rotate_around_point(center, rot_angle)
+    minute = minute.rotate_around_point(center, rot_angle)
+    hour = hour.rotate_around_point(center, rot_angle)
+
+    if debug:
+        fig, ax = plt.subplots(1, 1)
+        top.plot(color="green")
+        hour.plot(color="red")
+        center.plot(color="k")
+        minute.plot(color="orange")
+        line_up = Line(center, up)
+        line_top = Line(center, top)
+        line_up.plot(draw_arrow=False, color="black")
+        line_top.plot(draw_arrow=False, color="green")
+
+        ax.invert_yaxis()
+        ax.legend()
+    hour = hour.as_array
+    minute = minute.as_array
+    top = top.as_array
+
+    minute_deg = np.rad2deg(angle_between(top, minute))
+    # TODO verify how to handle negative angles
+    if minute[0] < top[0]:
+        minute_deg = 360 - minute_deg
+    read_minute = minute_deg / 360 * 60
+    read_minute = np.floor(read_minute).astype(int)
+    read_minute = read_minute % 60
+
+    hour_deg = np.rad2deg(angle_between(top, hour))
+    # TODO verify how to handle negative angles
+    if hour[0] < top[0]:
+        hour_deg = 360 - hour_deg
+    # In case where the minute hand is close to 12
+    # we can assume that the hour hand will be close to the next hour
+    # to prevent incorrect hour reading we can move it back by 10 deg
+    if read_minute > 45:
+        hour_deg -= 10
+
+    read_hour = hour_deg / 360 * 12
+    read_hour = np.floor(read_hour).astype(int)
+    read_hour = read_hour % 12
+    if read_hour == 0:
+        read_hour = 12
+    return read_hour, read_minute
+
+
+def unit_vector(vector):
+    """Returns the unit vector of the vector."""
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1, v2):
+    """Returns the angle in radians between vectors 'v1' and 'v2'::
+
+    >>> angle_between((1, 0, 0), (0, 1, 0))
+    1.5707963267948966
+    >>> angle_between((1, 0, 0), (1, 0, 0))
+    0.0
+    >>> angle_between((1, 0, 0), (-1, 0, 0))
+    3.141592653589793
+    https://stackoverflow.com/a/13849249
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))

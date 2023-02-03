@@ -1,6 +1,6 @@
 import unittest
 
-from watch_recognition.models import points_to_time
+from watch_recognition.predictors import points_to_time
 from watch_recognition.utilities import Point
 
 
