@@ -1,4 +1,5 @@
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -49,9 +50,8 @@ def main():
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
     # model is trained with 0 as a valid cls but coco metrics ignore cls 0
-    cls_to_label = {0: "WatchFace"}
     detector = RetinanetDetectorLocal(
-        Path("models/detector/"), class_to_label_name=cls_to_label
+        Path("models/detector/exported_model"), class_to_label_name={1: "WatchFace"}
     )
 
     selected_coco_metrics = {
@@ -81,28 +81,28 @@ def main():
             detector.predict_and_plot(image)
             plt.axis("off")
             plt.savefig(save_file, bbox_inches="tight")
+        with tempfile.TemporaryDirectory() as tmp:
+            coco_tmp_dataset_file = tmp / f"coco-kp-{split}.json"
+            label_studio_bbox_detection_dataset_to_coco(
+                dataset_path,
+                output_file=coco_tmp_dataset_file,
+                label_mapping=label_to_cls,
+                split=split,
+            )
+            results = generate_coco_annotations_from_model(
+                detector,
+                coco_tmp_dataset_file,
+                cls_to_label={0: "WatchFace"},
+            )
+            coco_gt = COCO(coco_tmp_dataset_file)
+            metrics = {"Num Images": len(coco_gt.imgs)}
 
-        coco_tmp_dataset_file = Path(f"/tmp/coco-{split}.json")
-        label_studio_bbox_detection_dataset_to_coco(
-            dataset_path,
-            output_file=coco_tmp_dataset_file,
-            label_mapping=label_to_cls,
-            split=split,
-        )
-        results = generate_coco_annotations_from_model(
-            detector,
-            coco_tmp_dataset_file,
-            cls_to_label=cls_to_label,
-        )
-        coco_gt = COCO(coco_tmp_dataset_file)
-        metrics = {"Num Images": len(coco_gt.imgs)}
+            coco_dt = coco_gt.loadRes(results)
 
-        coco_dt = coco_gt.loadRes(results)
-
-        coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        coco_eval.summarize()
+            coco_eval = COCOeval(coco_gt, coco_dt, iouType="bbox")
+            coco_eval.evaluate()
+            coco_eval.accumulate()
+            coco_eval.summarize()
 
         for k, v in selected_coco_metrics.items():
             metrics[v] = coco_eval.stats[k]

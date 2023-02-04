@@ -4,7 +4,6 @@ Based on https://www.tensorflow.org/tfmodels/vision/object_detection
 import pprint
 from pathlib import Path
 from typing import Optional
-from urllib.request import urlopen
 
 import click
 import matplotlib.pyplot as plt
@@ -15,42 +14,11 @@ from official.vision.dataloaders.tf_example_decoder import TfExampleDecoder
 from official.vision.ops.preprocess_ops import resize_and_crop_image
 from official.vision.serving import export_saved_model_lib
 from official.vision.utils.object_detection import visualization_utils
-from PIL import Image
-from six import BytesIO
 
 import tensorflow as tf
 
 pp = pprint.PrettyPrinter(indent=4)  # Set Pretty Print Indentation
 print(tf.__version__)  # Check the version of tensorflow used
-
-
-def load_image_into_numpy_array(path):
-    """Load an image from file into a numpy array.
-
-    Puts image into numpy array to feed into tensorflow graph.
-    Note that by convention we put it into a numpy array with shape
-    (height, width, channels), where channels=3 for RGB.
-
-    Args:
-      path: the file path to the image
-
-    Returns:
-      uint8 numpy array with shape (img_height, img_width, 3)
-    """
-    image = None
-    if path.startswith("http"):
-        response = urlopen(path)
-        image_data = response.read()
-        image_data = BytesIO(image_data)
-        image = Image.open(image_data)
-    else:
-        image_data = tf.io.gfile.GFile(path, "rb").read()
-        image = Image.open(BytesIO(image_data))
-
-    (im_width, im_height) = image.size
-    return (
-        np.array(image.getdata()).reshape((1, im_height, im_width, 3)).astype(np.uint8)
-    )
 
 
 def build_inputs_for_object_detection(image, input_image_size):
@@ -161,7 +129,7 @@ def main(
     # Validation Data Config
     exp_config.task.validation_data.input_path = valid_data_input_paths
     exp_config.task.validation_data.dtype = "float32"
-    exp_config.task.validation_data.global_batch_size = batch_size
+    exp_config.task.validation_data.global_batch_size = 8
 
     logical_device_names = [
         logical_device.name for logical_device in tf.config.list_logical_devices()

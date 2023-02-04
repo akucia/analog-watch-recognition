@@ -1,4 +1,5 @@
 import json
+import tempfile
 import time
 from pathlib import Path
 
@@ -65,7 +66,7 @@ def generate_kp_coco_annotations_from_model(
 def main(kp_confidence_threshold):
     t0 = time.perf_counter()
     detector = RetinanetDetectorLocal(
-        Path("models/detector/"), class_to_label_name={0: "WatchFace"}
+        Path("models/detector/exported_model/"), class_to_label_name={1: "WatchFace"}
     )
     # TODO this should be in params.yaml
     label_to_cls = {
@@ -110,30 +111,30 @@ def main(kp_confidence_threshold):
             kp_detector.predict_and_plot(image)
             plt.axis("off")
             plt.savefig(save_file, bbox_inches="tight")
+        with tempfile.TemporaryDirectory() as tmp:
+            coco_tmp_dataset_file = tmp / f"coco-kp-{split}.json"
+            label_studio_bbox_detection_dataset_to_coco(
+                dataset_path,
+                output_file=coco_tmp_dataset_file,
+                label_mapping=label_to_cls,
+                split=split,
+            )
+            results = generate_kp_coco_annotations_from_model(
+                detector=detector,
+                kp_model=kp_detector,
+                coco_ds_file=coco_tmp_dataset_file,
+            )
+            coco_gt = COCO(coco_tmp_dataset_file)
+            metrics = {"Num Images": len(coco_gt.imgs)}
 
-        coco_tmp_dataset_file = Path(f"/tmp/coco-kp-{split}.json")
-        label_studio_bbox_detection_dataset_to_coco(
-            dataset_path,
-            output_file=coco_tmp_dataset_file,
-            label_mapping=label_to_cls,
-            split=split,
-        )
-        results = generate_kp_coco_annotations_from_model(
-            detector=detector,
-            kp_model=kp_detector,
-            coco_ds_file=coco_tmp_dataset_file,
-        )
-        coco_gt = COCO(coco_tmp_dataset_file)
-        metrics = {"Num Images": len(coco_gt.imgs)}
-
-        coco_dt = coco_gt.loadRes(results)
-        #
-        coco_eval = COCOeval(coco_gt, coco_dt, iouType="keypoints")
-        # TODO understand what sigmas are appropriate for various watch keypoints
-        coco_eval.params.kpt_oks_sigmas = np.array([0.5, 0.5, 0.5]) / 10.0
-        coco_eval.evaluate()
-        coco_eval.accumulate()
-        coco_eval.summarize()
+            coco_dt = coco_gt.loadRes(results)
+            #
+            coco_eval = COCOeval(coco_gt, coco_dt, iouType="keypoints")
+            # TODO understand what sigmas are appropriate for various watch keypoints
+            coco_eval.params.kpt_oks_sigmas = np.array([0.5, 0.5, 0.5]) / 10.0
+            coco_eval.evaluate()
+            coco_eval.accumulate()
+            coco_eval.summarize()
 
         for k, v in selected_coco_metrics.items():
             metrics[v] = coco_eval.stats[k]

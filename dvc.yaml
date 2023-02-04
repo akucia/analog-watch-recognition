@@ -51,7 +51,9 @@ stages:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
       - models/detector/
-      - watch_recognition/watch_recognition/eval/object_detection_eval.py
+      - datasets/train
+      - datasets/test
+      - datasets/val
     metrics:
       - metrics/detector/coco_train.json:
           cache: false

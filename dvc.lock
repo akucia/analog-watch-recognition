@@ -306,47 +306,47 @@ stages:
       0.5
     deps:
     - path: models/detector/
-      md5: 1fab3506112358531d4e67f67318d577.dir
-      size: 432232708
-      nfiles: 5
+      md5: c4ac10282d0de69b98c3d761036bb86a.dir
+      size: 1427658959
+      nfiles: 18
     - path: models/segmentation/
-      md5: e603288dbbd9abdd9725e917d2b4ff50.dir
-      size: 35949358
+      md5: 986e39bc0071d95599ee1918c760865c.dir
+      size: 35949342
       nfiles: 5
     - path: watch_recognition/watch_recognition/eval/segmentation_eval.py
       md5: bd04e7ffd7d9d64e4258c38f704171d9
       size: 3342
     outs:
     - path: example_predictions/segmentation/train_0.jpg
-      md5: 6a8b958272c7a526ac7cc8e817c36819
-      size: 38057
+      md5: 95e5b350ac207e3e577a162d52342736
+      size: 32390
     - path: example_predictions/segmentation/train_1.jpg
-      md5: 42a99756851e8bea3b2ec4d1b1101373
-      size: 33152
+      md5: 5aac5474b3aa20d54dff0e164799248a
+      size: 45347
     - path: example_predictions/segmentation/train_2.jpg
-      md5: 29da582aa4fc9b6baf59596f46e66265
-      size: 70663
+      md5: 806587e18fe1e996c859115c119c3d60
+      size: 33351
     - path: example_predictions/segmentation/train_3.jpg
-      md5: 9f65e08f3eb01b7efe4154af09cc38f7
-      size: 62474
+      md5: 240f88c937e53319fa7ded3cc020fd66
+      size: 37194
     - path: example_predictions/segmentation/train_4.jpg
-      md5: 743c36a60a214db5fee5c953daecb2fc
-      size: 60865
+      md5: 731db63f31e1151de671413f8a50dcb7
+      size: 42616
     - path: example_predictions/segmentation/val_0.jpg
-      md5: 1ca6d0abd458aeee64a815f278814bd2
-      size: 54061
+      md5: a8b32c9a77b262f766253bc28275a2aa
+      size: 44631
     - path: example_predictions/segmentation/val_1.jpg
-      md5: 3f4ef24a968bc46eac0df4bcc71ed9b0
-      size: 69317
+      md5: 31f47e2b4b712aaf3becf2a8c5ed6303
+      size: 56784
     - path: example_predictions/segmentation/val_2.jpg
-      md5: 440e19279165882404ca7e0b4005a0d1
-      size: 52297
+      md5: 51d856ab51eaf02d863df7af25c1bc8c
+      size: 42611
     - path: example_predictions/segmentation/val_3.jpg
-      md5: fc8d3e5df328fa4ed83d4f14a6644dfb
-      size: 64612
+      md5: 9f56190150349dd382695b641db57049
+      size: 52859
     - path: example_predictions/segmentation/val_4.jpg
-      md5: 33d3e534de1ad6eef76464d8e2c184d2
-      size: 59440
+      md5: 5160229796dbe2b20b96c4579661bf1a
+      size: 48967
   generate-detection-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=1
       --run-concurrently

@@ -47,8 +47,8 @@ def main(run_concurrently: bool = False, split: Optional[str] = None):
     t0 = time.perf_counter()
     time_predictor = TimePredictor(
         detector=RetinanetDetectorLocal(
-            Path("models/detector/"),
-            class_to_label_name={0: "WatchFace"},
+            Path("models/detector/saved_model/"),
+            class_to_label_name={1: "WatchFace"},
         ),
         kp_predictor=KPHeatmapPredictorV2Local(
             Path("models/keypoint/"),

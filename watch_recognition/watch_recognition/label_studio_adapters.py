@@ -139,7 +139,7 @@ def load_label_studio_bbox_detection_dataset_with_images(
         split=split,
         skip_images_without_annotations=skip_images_without_annotations,
     )
-    for (image_path, image_bboxes, class_labels) in dataset_gen:
+    for image_id, image_path, image_bboxes, class_labels in dataset_gen:
         image_np = load_image(str(image_path), image_size=image_size).astype("uint8")
         yield image_np, image_bboxes, class_labels
 
