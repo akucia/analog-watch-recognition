@@ -7,7 +7,6 @@ import cv2
 import keras_cv
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
 import tensorflow.python.keras.backend as K
 import yaml
 from dvclive.keras import DVCLiveCallback
@@ -15,6 +14,7 @@ from PIL import Image
 from segmentation_models.metrics import IOUScore
 from tensorflow.python.keras.callbacks import ReduceLROnPlateau
 
+import tensorflow as tf
 from watch_recognition.label_studio_adapters import (
     load_label_studio_polygon_detection_dataset,
 )
@@ -45,13 +45,13 @@ def TverskyLoss(targets, inputs, alpha=0.5, beta=0.5, smooth=1e-6):
     return 1 - Tversky
 
 
-def encode_polygon_to_mask(
+def encode_polygons_to_mask(
     polygons: List[Polygon], n_labels: int, mask_size: Tuple[int, int]
 ) -> np.ndarray:
     mask = np.zeros((*mask_size, n_labels))
     for polygon in polygons:
-        poly_mask = polygon.to_binary_mask(width=mask_size[1], height=mask_size[0])
-        cls = int(polygon.name)
+        poly_mask = polygon.to_mask(width=mask_size[1], height=mask_size[0])
+        cls = int(polygon.label)
         mask[:, :, cls] += poly_mask
     return (mask > 0).astype(np.float32)
 
@@ -117,7 +117,7 @@ def main(
     y = []
     for img, polygons in dataset_train:
         X.append(img)
-        y.append(encode_polygon_to_mask(polygons, len(label_to_cls), crop_size))
+        y.append(encode_polygons_to_mask(polygons, len(label_to_cls), crop_size))
 
     X = np.array(X)
     y = np.array(y)
@@ -161,7 +161,7 @@ def main(
     y_val = []
     for img, polygons in dataset_val:
         X_val.append(img)
-        y_val.append(encode_polygon_to_mask(polygons, len(label_to_cls), crop_size))
+        y_val.append(encode_polygons_to_mask(polygons, len(label_to_cls), crop_size))
 
     X_val = np.array(X_val)
     y_val = np.array(y_val)

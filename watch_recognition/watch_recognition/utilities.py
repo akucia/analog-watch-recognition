@@ -6,7 +6,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import matplotlib.patches as mpatches
 import numpy as np
-import tensorflow as tf
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from scipy import odr
@@ -19,6 +18,8 @@ from skimage.measure import (
     ransac,
     regionprops,
 )
+
+import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True)
@@ -45,7 +46,6 @@ class Point:
         return float(np.sqrt((diff**2).sum()))
 
     def rotate_around_point(self, origin: "Point", angle: float) -> "Point":
-
         theta = np.radians(angle)
         c, s = np.cos(theta), np.sin(theta)
         R = np.array(
@@ -349,7 +349,6 @@ class BBox:
         }
 
     def intersection(self, other: "BBox") -> "BBox":
-
         x_min = max(self.x_min, other.x_min)
         x_max = min(self.x_max, other.x_max)
         # x_min, x_max = min(x_min, x_max), max(x_min, x_max)
@@ -474,7 +473,6 @@ class Line:
             start = Point(x_min, line_y_min)
             end = Point(x_max, line_y_max)
         else:
-
             # other cases
             poly1d = cls._fit_line(x_coords, y_coords)
             start = Point(x_min, poly1d(x_min))
@@ -624,6 +622,7 @@ class Polygon:
     coords: np.ndarray
     # name should be changed to label, and support either str or int
     name: str = ""
+    label: Optional[int] = None
     score: float = 1.0
 
     @classmethod
@@ -649,22 +648,22 @@ class Polygon:
         appr_poly = approximate_polygon(contour, tolerance=simplification_tolerance)
         return Polygon(appr_poly[:, ::-1])
 
-    def to_binary_mask(self, width: int, height: int) -> np.ndarray:
+    def to_mask(self, width: int, height: int, value: int = 1) -> np.ndarray:
         mask = np.zeros((height, width))
-        cv2.fillPoly(mask, [self.coords.astype(int)], 1)
+        cv2.fillPoly(mask, [self.coords.astype(int)], value)
         return mask.astype(bool)
 
     def scale(self, x: float, y: float) -> "Polygon":
         coords = self.coords.copy()
         coords[:, 0] *= x
         coords[:, 1] *= y
-        return Polygon(coords=coords, name=self.name, score=self.score)
+        return dataclasses.replace(self, coords=coords)
 
     def translate(self, x: float, y: float) -> "Polygon":
         coords = self.coords.copy()
         coords[:, 0] += x
         coords[:, 1] += y
-        return Polygon(coords=coords, name=self.name, score=self.score)
+        return dataclasses.replace(self, coords=coords)
 
     @property
     def is_empty(self) -> bool:

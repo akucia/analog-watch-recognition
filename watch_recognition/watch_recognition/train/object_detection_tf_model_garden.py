@@ -87,11 +87,12 @@ def main(
 
     train_ds = tf.data.TFRecordDataset(train_data_input_paths)
     num_train_examples = int(train_ds.reduce(np.int64(0), lambda x, _: x + 1).numpy())
+    print(num_train_examples)
     valid_data_input_paths = list(
         map(
             str,
             Path("datasets/tf-records/object-detection/watch-faces/").glob(
-                "watch-faces-val-*-of-00001.tfrecord"
+                "watch-faces-train-*-of-00001.tfrecord"
             ),
         )
     )
@@ -150,12 +151,12 @@ def main(
     steps_per_loop = num_train_examples // batch_size
     train_steps = steps_per_loop * epochs
 
+    exp_config.trainer.train_steps = train_steps
     exp_config.trainer.steps_per_loop = steps_per_loop
     exp_config.trainer.summary_interval = steps_per_loop * 10
     exp_config.trainer.checkpoint_interval = steps_per_loop * 10
     exp_config.trainer.validation_interval = steps_per_loop * 10
     exp_config.trainer.validation_steps = -1
-    exp_config.trainer.train_steps = train_steps
     exp_config.trainer.optimizer_config.warmup.linear.warmup_steps = 100
     exp_config.trainer.optimizer_config.learning_rate.type = "cosine"
     exp_config.trainer.optimizer_config.learning_rate.cosine.decay_steps = train_steps

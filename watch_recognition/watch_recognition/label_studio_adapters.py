@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 
@@ -16,7 +17,7 @@ def load_label_studio_polygon_detection_dataset(
     crop_size: Optional[Tuple[int, int]] = (96, 96),
     max_num_images: Optional[int] = None,
     split: Optional[str] = "train",
-) -> Iterator[Tuple[np.ndarray, List[Polygon]]]:
+) -> Iterator[Tuple[str, np.ndarray, List[Polygon]]]:
     with source.open("r") as f:
         tasks = json.load(f)
     if split is not None:
@@ -39,9 +40,12 @@ def load_label_studio_polygon_detection_dataset(
             if "polygon" in task:
                 for obj in task["polygon"]:
                     poly = Polygon.from_label_studio_object(obj)
+                    poly = replace(poly, label=label_mapping[poly.name])
                     polygons.append(poly)
             rectangles_to_polygons = match_objects_to_bboxes(image_bboxes, polygons)
-            for bbox, matched_polygons in rectangles_to_polygons.items():
+            for i, (bbox, matched_polygons) in enumerate(
+                rectangles_to_polygons.items()
+            ):
                 crop_coordinates = bbox.scale(
                     img.width, img.height
                 ).convert_to_int_coordinates_tuple("floor")
@@ -54,10 +58,9 @@ def load_label_studio_polygon_detection_dataset(
                         poly.translate(-bbox.x_min, -bbox.y_min)
                         .scale(1 / bbox.width, 1 / bbox.height)
                         .scale(crop_img.width, crop_img.height)
-                        .rename(label_mapping[poly.name])
                     )
 
-                yield np.array(crop_img), crop_polygons
+                yield f"{task['id']}-{i}", np.array(crop_img), crop_polygons
                 image_count += 1
                 if image_count == max_num_images:
                     return

@@ -2,11 +2,12 @@ import hashlib
 from concurrent import futures
 from concurrent.futures import as_completed
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import click
 import numpy as np
 import yaml
+from official.vision.data.tfrecord_lib import convert_to_feature
 from PIL import Image
 from tqdm import tqdm
 
@@ -14,62 +15,6 @@ import tensorflow as tf
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
-
-
-def convert_to_feature(value, value_type=None):
-    """Converts the given python object to a tf.train.Feature.
-
-    Args:
-      value: int, float, bytes or a list of them.
-      value_type: optional, if specified, forces the feature to be of the given
-        type. Otherwise, type is inferred automatically. Can be one of
-        ['bytes', 'int64', 'float', 'bytes_list', 'int64_list', 'float_list']
-
-    Returns:
-      feature: A tf.train.Feature object.
-    """
-
-    if value_type is None:
-
-        element = value[0] if isinstance(value, list) else value
-
-        if isinstance(element, bytes):
-            value_type = "bytes"
-
-        elif isinstance(element, (int, np.integer)):
-            value_type = "int64"
-
-        elif isinstance(element, (float, np.floating)):
-            value_type = "float"
-
-        else:
-            raise ValueError("Cannot convert type {} to feature".format(type(element)))
-
-        if isinstance(value, list):
-            value_type = value_type + "_list"
-
-    if value_type == "int64":
-        return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-    elif value_type == "int64_list":
-        value = np.asarray(value).astype(np.int64).reshape(-1)
-        return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
-
-    elif value_type == "float":
-        return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
-
-    elif value_type == "float_list":
-        value = np.asarray(value).astype(np.float32).reshape(-1)
-        return tf.train.Feature(float_list=tf.train.FloatList(value=value))
-
-    elif value_type == "bytes":
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
-
-    elif value_type == "bytes_list":
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
-
-    else:
-        raise ValueError("Unknown value_type parameter - {}".format(value_type))
 
 
 def image_info_to_feature_dict(
@@ -96,6 +41,32 @@ def image_info_to_feature_dict(
 
 
 def bbox_annotations_to_feature_dict(
+    bbox_annotations, class_annotations, id_to_name_map
+):
+    """Convert COCO annotations to an encoded feature dict."""
+
+    names = [
+        id_to_name_map[name].encode("utf8")
+        for name in class_annotations.flatten().tolist()
+    ]
+    feature_dict = {
+        "image/object/bbox/xmin": convert_to_feature(bbox_annotations[:, 0].tolist()),
+        "image/object/bbox/xmax": convert_to_feature(bbox_annotations[:, 2].tolist()),
+        "image/object/bbox/ymin": convert_to_feature(bbox_annotations[:, 1].tolist()),
+        "image/object/bbox/ymax": convert_to_feature(bbox_annotations[:, 3].tolist()),
+        "image/object/class/text": convert_to_feature(names),
+        "image/object/class/label": convert_to_feature(
+            class_annotations.flatten().tolist()
+        ),
+        # "image/object/is_crowd": convert_to_feature(False),
+        # TODO area
+        # "image/object/area": convert_to_feature(data["area"], "float_list"),
+    }
+
+    return feature_dict
+
+
+def mask_annotations_to_feature_dict(
     bbox_annotations, class_annotations, id_to_name_map
 ):
     """Convert COCO annotations to an encoded feature dict."""
@@ -161,18 +132,26 @@ def create_tf_example(
     return example
 
 
+DATASET_SPLIT_OPTIONS = ["train", "val", "test"]
+
+
 @click.command()
 @click.argument("input-file", type=str)
 @click.argument("output-dir", type=str)
 @click.option("--num-shards", default=10, type=int)
 @click.option("--run-concurrently", is_flag=True)
+@click.option("--max-images", type=int)
+@click.option(
+    "--dataset-split", type=click.Choice(DATASET_SPLIT_OPTIONS, case_sensitive=True)
+)
 def main(
     input_file: str,
     output_dir: str,
     num_shards: int,
     run_concurrently: bool,
+    max_images: Optional[int] = None,
+    dataset_split: Optional[str] = None,
 ):
-
     dataset_path = Path(input_file)
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True, parents=True)
@@ -183,8 +162,11 @@ def main(
 
     cls_to_label = {v: k for k, v in label_to_cls.items()}
     output_name = "watch-faces"
-
-    for split in ("train", "val", "test"):
+    if dataset_split is None:
+        dataset_split = DATASET_SPLIT_OPTIONS
+    else:
+        dataset_split = [dataset_split]
+    for split in dataset_split:
         writers = [
             tf.io.TFRecordWriter(
                 str(
@@ -199,6 +181,7 @@ def main(
             label_mapping=label_to_cls,
             split=split,
             skip_images_without_annotations=False,
+            max_num_images=max_images,
         )
         if run_concurrently:
             with futures.ThreadPoolExecutor() as executor:
@@ -228,7 +211,6 @@ def main(
                             print(f"waiting for {future} to complete...")
                     raise
         else:
-
             pbar = tqdm(dataset_gen)
             for idx, (id_, image_path, bboxes, classes) in enumerate(pbar):
                 tf_example = create_tf_example(
@@ -236,8 +218,8 @@ def main(
                 )
                 writers[idx % num_shards].write(tf_example.SerializeToString())
 
-    for writer in writers:
-        writer.close()
+        for writer in writers:
+            writer.close()
 
 
 if __name__ == "__main__":

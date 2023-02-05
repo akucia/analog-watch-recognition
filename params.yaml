@@ -3,7 +3,7 @@ max_images: null
 
 detector:
   epochs: 100
-  batch-size: 32
+  batch-size: 1
   confidence-threshold: 0.5
   label_to_cls:
     WatchFace: 1
@@ -24,7 +24,6 @@ segmentation:
   batch-size: 32
   confidence-threshold: 0.5
   label_to_cls:
-    Hands: 0
+    Hands: 1
   bbox_labels:
     - WatchFace
-

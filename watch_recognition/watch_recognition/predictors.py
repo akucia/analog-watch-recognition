@@ -1,6 +1,7 @@
 import abc
 import dataclasses
 import hashlib
+import tempfile
 from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -366,7 +367,6 @@ class HandPredictorGRPC(HandPredictor):
 
 class TFLiteDetector:
     def __init__(self, model_path: Path):
-        self.temp_file = "/tmp/test-image.png"
         if model_path.is_dir():
             model_path /= "model.tflite"
         self.model = tf.lite.Interpreter(model_path=str(model_path))
@@ -433,12 +433,12 @@ class TFLiteDetector:
         im = image.copy()
         im.thumbnail((512, 512), Image.BICUBIC)
         # TODO skip temp file?
-        im.save(self.temp_file, "PNG")
-
-        # Load the input image and preprocess it
-        preprocessed_image, original_image = self.preprocess_image(
-            self.temp_file, (self.input_size[1], self.input_size[0])
-        )
+        with tempfile.TemporaryFile() as tmp:
+            im.save(tmp, "PNG")
+            # Load the input image and preprocess it
+            preprocessed_image, original_image = self.preprocess_image(
+                tmp, (self.input_size[1], self.input_size[0])
+            )
 
         # Run object detection on the input image
         results = self.detect_objects(self.model, preprocessed_image, threshold=0.5)
@@ -599,7 +599,7 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
 
 
 def _hash_image(image: ImageType) -> str:
-    md5hash = hashlib.md5(image.tobytes())
+    md5hash = hashlib.md5(image.tobytes(), usedforsecurity=False)
     return md5hash.hexdigest()
 
 
@@ -660,7 +660,7 @@ def read_time(
     if hands_mask is not None:
         mask = hands_mask
     else:
-        mask = polygon.to_binary_mask(image_shape[0], image_shape[1])
+        mask = polygon.to_mask(image_shape[0], image_shape[1])
 
     # TODO this might be faster if image shape is smaller
     segmented_hands = segment_hands_mask(mask, center=center, debug=debug)
@@ -787,8 +787,6 @@ def _get_image_shape(image: Union[ImageType, np.ndarray]):
 def points_to_time(
     center: Point, hour: Point, minute: Point, top: Point, debug: bool = False
 ) -> Tuple[float, float]:
-    assert hour.name == "Hour", hour.name
-    assert minute.name == "Minute", minute.name
     if debug:
         fig, ax = plt.subplots(1, 1)
         top.plot(color="green")
