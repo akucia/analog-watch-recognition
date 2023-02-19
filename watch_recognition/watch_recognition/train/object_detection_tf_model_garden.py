@@ -164,7 +164,6 @@ def main(
     )
     HEIGHT = exp_config.task.model.input_size[0]
     WIDTH = exp_config.task.model.input_size[1]
-
     export_saved_model_lib.export_inference_graph(
         input_type="image_tensor",
         batch_size=1,

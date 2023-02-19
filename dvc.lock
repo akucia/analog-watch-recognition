@@ -358,7 +358,7 @@ stages:
       size: 48967
   generate-detection-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_detection_tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=1
-      --dataset-split=train --run-concurrently --skip-images-without-annotations
+      --run-concurrently
     deps:
     - path: datasets/test
       md5: 0aeb029db40e49068d63308665810b57.dir
@@ -380,9 +380,15 @@ stages:
         detector.label_to_cls:
           WatchFace: 1
     outs:
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
+      md5: 7cab60b50a7a12edb09a4371465c1992
+      size: 18726377
     - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
-      md5: 520a5d4984b2f70a6305ed06fe58db1a
-      size: 212156
+      md5: 5d76134c5d355a5b03d6c019a983ac0a
+      size: 170371705
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
+      md5: 67324f2f2375b5455f503137fb743eb3
+      size: 19788762
   generate-watch-hands-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
       datasets/watch-faces-local.json  datasets/tf-records/segmentation/watch-hands/  --num-shards=1

@@ -18,9 +18,7 @@ stages:
       datasets/watch-faces-local.json 
       datasets/tf-records/object-detection/watch-faces/ 
       --num-shards=1
-      --dataset-split=train
       --run-concurrently
-      --skip-images-without-annotations
     params:
       - detector.label_to_cls
     deps:
@@ -29,9 +27,9 @@ stages:
       - datasets/val
       - datasets/watch-faces-local.json
     outs:
-#      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
       - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
-#      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
   generate-watch-hands-dataset:
     cmd: >-
       python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
