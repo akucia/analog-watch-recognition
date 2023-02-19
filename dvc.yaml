@@ -18,9 +18,9 @@ stages:
       datasets/watch-faces-local.json 
       datasets/tf-records/object-detection/watch-faces/ 
       --num-shards=1
-      --max-images=1
       --dataset-split=train
       --run-concurrently
+      --skip-images-without-annotations
     params:
       - detector.label_to_cls
     deps:
@@ -52,14 +52,16 @@ stages:
   train-detector:
     cmd: >- 
       python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
-      --epochs ${detector.epochs} 
-      --batch-size ${detector.batch-size} 
+      "train-configs/tf-model-garden/watch-face-detector/"
       --seed ${seed}
     params:
       - detector
       - seed
     deps:
       - datasets/tf-records/object-detection/watch-faces/
+      - train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
+      - train-configs/tf-model-garden/watch-face-detector/runtime.yaml
+      - train-configs/tf-model-garden/watch-face-detector/trainer.yaml
     outs:
       - debug/detector/:
           persist: true

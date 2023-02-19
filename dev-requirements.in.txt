@@ -2,7 +2,7 @@ tensorflow_datasets
 dvc[gcs]
 dvc[gs]
 isort
-black
+black==23.1.0
 pyflakes
 streamlit~=1.13.0
 numpy==1.23.1

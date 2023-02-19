@@ -165,6 +165,8 @@ def load_label_studio_bbox_detection_dataset(
         tasks = tasks[:max_num_images]
 
     for task in tasks:
+        if "0b3fb2479e1bb1c9.jpg" not in task["image"]:
+            continue
         if "bbox" not in task and skip_images_without_annotations:
             continue
         class_labels, image_bboxes = _extract_bboxes_from_task(label_mapping, task)

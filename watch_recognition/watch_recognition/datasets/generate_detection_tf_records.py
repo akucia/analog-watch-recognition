@@ -144,6 +144,7 @@ DATASET_SPLIT_OPTIONS = ["train", "val", "test"]
 @click.option(
     "--dataset-split", type=click.Choice(DATASET_SPLIT_OPTIONS, case_sensitive=True)
 )
+@click.option("--skip-images-without-annotations", type=bool, is_flag=True)
 def main(
     input_file: str,
     output_dir: str,
@@ -151,6 +152,7 @@ def main(
     run_concurrently: bool,
     max_images: Optional[int] = None,
     dataset_split: Optional[str] = None,
+    skip_images_without_annotations: bool = False,
 ):
     dataset_path = Path(input_file)
     output_dir = Path(output_dir)
@@ -180,7 +182,7 @@ def main(
             dataset_path,
             label_mapping=label_to_cls,
             split=split,
-            skip_images_without_annotations=False,
+            skip_images_without_annotations=skip_images_without_annotations,
             max_num_images=max_images,
         )
         if run_concurrently:

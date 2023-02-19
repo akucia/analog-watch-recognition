@@ -9,7 +9,9 @@ import click
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow_models as tfm
-from official.core import exp_factory
+from official.core.base_task import RuntimeConfig
+from official.core.base_trainer import ExperimentConfig, TrainerConfig
+from official.vision.configs.retinanet import RetinaNetTask
 from official.vision.dataloaders.tf_example_decoder import TfExampleDecoder
 from official.vision.ops.preprocess_ops import resize_and_crop_image
 from official.vision.serving import export_saved_model_lib
@@ -17,8 +19,8 @@ from official.vision.utils.object_detection import visualization_utils
 
 import tensorflow as tf
 
-pp = pprint.PrettyPrinter(indent=4)  # Set Pretty Print Indentation
-print(tf.__version__)  # Check the version of tensorflow used
+pp = pprint.PrettyPrinter(indent=4)
+print(tf.__version__)
 
 
 def build_inputs_for_object_detection(image, input_image_size):
@@ -63,74 +65,34 @@ def show_batch(raw_records, tf_ex_decoder, category_index, filepath):
 
 
 @click.command()
-@click.option("--epochs", default=1)
-@click.option("--batch-size", default=8)
+@click.argument(
+    "experiment-config-dir",
+    default="train-configs/tf-model-garden/watch-face-detector.yaml",
+    type=click.Path(exists=True),
+)
 @click.option("--seed", default=None, type=int)
-@click.option("--verbosity", default=1, type=int)
 def main(
-    epochs: int,
-    batch_size: int,
+    experiment_config_dir: str,
     seed: Optional[int],
-    verbosity: int,
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
-
-    train_data_input_paths = list(
-        map(
-            str,
-            Path("datasets/tf-records/object-detection/watch-faces/").glob(
-                "watch-faces-train-*-of-00001.tfrecord"
-            ),
-        )
-    )
-
-    train_ds = tf.data.TFRecordDataset(train_data_input_paths)
-    num_train_examples = int(train_ds.reduce(np.int64(0), lambda x, _: x + 1).numpy())
-    print(num_train_examples)
-    valid_data_input_paths = list(
-        map(
-            str,
-            Path("datasets/tf-records/object-detection/watch-faces/").glob(
-                "watch-faces-train-*-of-00001.tfrecord"
-            ),
-        )
-    )
-
-    val_ds = tf.data.TFRecordDataset(valid_data_input_paths)
+    experiment_config_dir = Path(experiment_config_dir)
 
     model_dir = "models/detector"
     export_dir = "models/detector/exported_model/"
 
-    exp_config = exp_factory.get_exp_config("retinanet_resnetfpn_coco")
-
-    num_classes = 1
-
-    HEIGHT, WIDTH = 256, 256
-    IMG_SIZE = [HEIGHT, WIDTH, 3]
-
-    # Backbone Config
-    exp_config.task.freeze_backbone = False
-    exp_config.task.annotation_file = ""
-
-    # Model Config
-    exp_config.task.model.input_size = IMG_SIZE
-    exp_config.task.model.num_classes = num_classes + 1
-    exp_config.task.model.detection_generator.tflite_post_processing.max_classes_per_detection = (
-        exp_config.task.model.num_classes
+    runtime = RuntimeConfig.from_yaml(str(experiment_config_dir / "runtime.yaml"))
+    trainer = TrainerConfig.from_yaml(str(experiment_config_dir / "trainer.yaml"))
+    retinanet_task = RetinaNetTask.from_yaml(
+        str(experiment_config_dir / "retinanet_task.yaml")
     )
 
-    # Training Data Config
-    exp_config.task.train_data.input_path = train_data_input_paths
-    exp_config.task.train_data.dtype = "float32"
-    exp_config.task.train_data.global_batch_size = batch_size
-    exp_config.task.train_data.parser.aug_scale_max = 1.0
-    exp_config.task.train_data.parser.aug_scale_min = 1.0
-
-    # Validation Data Config
-    exp_config.task.validation_data.input_path = valid_data_input_paths
-    exp_config.task.validation_data.dtype = "float32"
-    exp_config.task.validation_data.global_batch_size = 8
+    exp_config = ExperimentConfig(task=retinanet_task, trainer=trainer, runtime=runtime)
+    train_data_input_paths = exp_config.task.train_data.input_path
+    train_ds = tf.data.TFRecordDataset(train_data_input_paths)
+    num_train_examples = int(train_ds.reduce(np.int64(0), lambda x, _: x + 1).numpy())
+    print(f"Number of train examples: {num_train_examples}")
 
     logical_device_names = [
         logical_device.name for logical_device in tf.config.list_logical_devices()
@@ -147,23 +109,6 @@ def main(
         device = "CPU"
 
     print(f"device: {device}")
-
-    steps_per_loop = num_train_examples // batch_size
-    train_steps = steps_per_loop * epochs
-
-    exp_config.trainer.train_steps = train_steps
-    exp_config.trainer.steps_per_loop = steps_per_loop
-    exp_config.trainer.summary_interval = steps_per_loop * 10
-    exp_config.trainer.checkpoint_interval = steps_per_loop * 10
-    exp_config.trainer.validation_interval = steps_per_loop * 10
-    exp_config.trainer.validation_steps = -1
-    exp_config.trainer.optimizer_config.warmup.linear.warmup_steps = 100
-    exp_config.trainer.optimizer_config.learning_rate.type = "cosine"
-    exp_config.trainer.optimizer_config.learning_rate.cosine.decay_steps = train_steps
-    exp_config.trainer.optimizer_config.learning_rate.cosine.initial_learning_rate = 0.1
-    exp_config.trainer.optimizer_config.warmup.linear.warmup_learning_rate = 0.05
-
-    pp.pprint(exp_config.as_dict())
 
     if exp_config.runtime.mixed_precision_dtype == tf.float16:
         tf.keras.mixed_precision.set_global_policy("mixed_float16")
@@ -191,7 +136,7 @@ def main(
         print(f"labels.keys: {labels.keys()}")
 
     category_index = {
-        1: {"id": 1, "name": "WatchFace`"},
+        1: {"id": 1, "name": "WatchFace"},
     }
     tf_ex_decoder = TfExampleDecoder()
 
@@ -217,6 +162,8 @@ def main(
         model_dir=model_dir,
         run_post_eval=True,
     )
+    HEIGHT = exp_config.task.model.input_size[0]
+    WIDTH = exp_config.task.model.input_size[1]
 
     export_saved_model_lib.export_inference_graph(
         input_type="image_tensor",
@@ -226,7 +173,7 @@ def main(
         checkpoint_path=tf.train.latest_checkpoint(model_dir),
         export_dir=export_dir,
     )
-
+    valid_data_input_paths = exp_config.task.validation_data.input_path
     val_ds = tf.data.TFRecordDataset(valid_data_input_paths).take(3)
     show_batch(
         val_ds,
@@ -240,9 +187,7 @@ def main(
 
     input_image_size = (HEIGHT, WIDTH)
     plt.figure(figsize=(20, 20))
-    min_score_thresh = (
-        0.30  # Change minimum score for threshold to see all bounding boxes confidences
-    )
+    min_score_thresh = 0.10
 
     for i, serialized_example in enumerate(val_ds):
         plt.subplot(1, 3, i + 1)
@@ -254,7 +199,7 @@ def main(
         image = tf.cast(image, dtype=tf.uint8)
         image_np = image[0].numpy()
         result = model_fn(image)
-        visualization_utils.visualize_boxes_and_labels_on_image_array(
+        image_np = visualization_utils.visualize_boxes_and_labels_on_image_array(
             image_np,
             result["detection_boxes"][0].numpy(),
             result["detection_classes"][0].numpy().astype(int),
