@@ -30,18 +30,18 @@ stages:
       "train-configs/tf-model-garden/watch-face-detector/" --seed 42
     deps:
     - path: datasets/tf-records/object-detection/watch-faces/
-      md5: 4c9ee7817df6880f5b3e59b8e35090ea.dir
-      size: 212912
-      nfiles: 2
+      md5: 638db9b98d4f58f966bc4908d668ae81.dir
+      size: 208887600
+      nfiles: 4
     - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
-      md5: 06bf6bc9fe68885b0029ba5f53b0bd97
-      size: 4069
+      md5: bef8ead0d8e73e74442e190938610640
+      size: 4068
     - path: train-configs/tf-model-garden/watch-face-detector/runtime.yaml
-      md5: 79ea0a821caff69cc43c86bc2f084fac
-      size: 406
+      md5: 16ca08027c0ae3a7562a91f1b30e9b40
+      size: 407
     - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
-      md5: 03cef9dd109c4bc730b7766589401531
-      size: 1070
+      md5: 83c09e50bebd237de505a1b2e98ea668
+      size: 1077
     params:
       params.yaml:
         detector:
@@ -53,12 +53,12 @@ stages:
         seed: 42
     outs:
     - path: debug/detector/
-      md5: a5b920ee5478568034533ded623cfee2.dir
-      size: 246540
+      md5: 497ebd362c4a54fb8e1fa2792e396b87.dir
+      size: 557138
       nfiles: 2
     - path: models/detector/
-      md5: b2e135b93fb81b85900191d83c1eea3a.dir
-      size: 1428391554
+      md5: 9b61a0d61fd6ac7bf7e7a2fdf95efdec.dir
+      size: 1427758050
       nfiles: 18
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py

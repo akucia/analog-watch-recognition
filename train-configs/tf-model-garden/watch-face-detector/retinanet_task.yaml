@@ -93,7 +93,7 @@ train_data:
   enable_shared_tf_data_service_between_parallel_trainers: false
   enable_tf_data_service: false
   file_type: tfrecord
-  global_batch_size: 32
+  global_batch_size: 128
   input_path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
   is_training: true
   parser:
@@ -107,7 +107,7 @@ train_data:
     num_channels: 3
     skip_crowd_during_training: true
     unmatched_threshold: 0.5
-  prefetch_buffer_size: null
+  prefetch_buffer_size: 20
   seed: null
   sharding: true
   shuffle_buffer_size: 10000
