@@ -1,0 +1,52 @@
+allow_tpu_summary: false
+best_checkpoint_eval_metric: ''
+best_checkpoint_export_subdir: ''
+best_checkpoint_metric_comp: higher
+checkpoint_interval: 250
+continuous_eval_timeout: 3600
+eval_tf_function: true
+eval_tf_while_loop: false
+loss_upper_bound: 1000000.0
+max_to_keep: 5
+optimizer_config:
+  ema: null
+  learning_rate:
+    stepwise:
+      boundaries:
+      - 100
+      - 500
+      - 1250
+      name: PiecewiseConstantDecay
+      offset: 0
+      values:
+      - 0.00032
+      - 0.000064
+      - 0.000032
+      - 0.0000032
+    type: stepwise
+  optimizer:
+    sgd:
+      clipnorm: null
+      clipvalue: null
+      decay: 0.0
+      global_clipnorm: null
+      momentum: 0.9
+      name: SGD
+      nesterov: false
+    type: sgd
+  warmup:
+    linear:
+      name: linear
+      warmup_learning_rate: 0.0067
+      warmup_steps: 0
+    type: linear
+recovery_begin_steps: 0
+recovery_max_trials: 0
+steps_per_loop: 15
+summary_interval: 15
+train_steps: 1500
+train_tf_function: true
+train_tf_while_loop: true
+validation_interval: 15
+validation_steps: -1
+validation_summary_subdir: validation
