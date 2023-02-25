@@ -40,7 +40,7 @@ stages:
       md5: 16ca08027c0ae3a7562a91f1b30e9b40
       size: 407
     - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
-      md5: c0b0d352b0d4f1185ff63b0587b613c9
+      md5: e3109b5dfc2f9019f8f8ba66dba86f61
       size: 923
     params:
       params.yaml:
@@ -57,8 +57,8 @@ stages:
       size: 557138
       nfiles: 2
     - path: models/detector/
-      md5: 5494ae9b80dcb21dcb2b9979b6dfaf48.dir
-      size: 523529232
+      md5: 435667d1594a66ca8bfabd7ee0f8b582.dir
+      size: 523529234
       nfiles: 11
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py

@@ -19,8 +19,8 @@ optimizer_config:
       name: PiecewiseConstantDecay
       offset: 0
       values:
-      - 0.00032
       - 0.000064
+      - 0.00032
       - 0.000032
       - 0.0000032
     type: stepwise
