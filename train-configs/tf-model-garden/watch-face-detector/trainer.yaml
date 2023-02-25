@@ -14,8 +14,8 @@ optimizer_config:
     stepwise:
       boundaries:
       - 100
-      - 500
-      - 1250
+      - 750
+      - 1100
       name: PiecewiseConstantDecay
       offset: 0
       values:
@@ -25,15 +25,7 @@ optimizer_config:
       - 0.0000032
     type: stepwise
   optimizer:
-    sgd:
-      clipnorm: null
-      clipvalue: null
-      decay: 0.0
-      global_clipnorm: null
-      momentum: 0.9
-      name: SGD
-      nesterov: false
-    type: sgd
+    type: adam
   warmup:
     linear:
       name: linear
@@ -44,7 +36,7 @@ recovery_begin_steps: 0
 recovery_max_trials: 0
 steps_per_loop: 15
 summary_interval: 15
-train_steps: 1500
+train_steps: 1300
 train_tf_function: true
 train_tf_while_loop: true
 validation_interval: 15
