@@ -89,6 +89,16 @@ def main(
     retinanet_task = RetinaNetTask.from_yaml(
         str(experiment_config_dir / "retinanet_task.yaml")
     )
+    from official.vision.configs.common import Augmentation
+    from official.vision.configs.retinanet import Parser
+    retinanet_task.train_data.parser = Parser(
+        aug_rand_hflip=True,
+        aug_scale_min=0.8,
+        aug_scale_max=1.2,
+        aug_type=Augmentation(
+            type="randaug",
+        ),
+    )
 
     exp_config = ExperimentConfig(task=retinanet_task, trainer=trainer, runtime=runtime)
     train_data_input_paths = exp_config.task.train_data.input_path

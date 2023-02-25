@@ -97,11 +97,10 @@ train_data:
   input_path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
   is_training: true
   parser:
-    # TODO - add augmentation
     aug_rand_hflip: true
     aug_scale_max: 0.8
     aug_scale_min: 1.2
-    aug_type: null
+    aug_type: null 
     match_threshold: 0.5
     max_num_instances: 100
     num_channels: 3
