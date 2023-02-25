@@ -7,7 +7,7 @@ continuous_eval_timeout: 3600
 eval_tf_function: true
 eval_tf_while_loop: false
 loss_upper_bound: 1000000.0
-max_to_keep: 5
+max_to_keep: 1
 optimizer_config:
   ema: null
   learning_rate:
