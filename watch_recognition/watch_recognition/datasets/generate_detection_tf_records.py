@@ -51,8 +51,8 @@ def bbox_annotations_to_feature_dict(
     ]
     feature_dict = {
         "image/object/bbox/xmin": convert_to_feature(bbox_annotations[:, 0].tolist()),
-        "image/object/bbox/xmax": convert_to_feature(bbox_annotations[:, 2].tolist()),
         "image/object/bbox/ymin": convert_to_feature(bbox_annotations[:, 1].tolist()),
+        "image/object/bbox/xmax": convert_to_feature(bbox_annotations[:, 2].tolist()),
         "image/object/bbox/ymax": convert_to_feature(bbox_annotations[:, 3].tolist()),
         "image/object/class/text": convert_to_feature(names),
         "image/object/class/label": convert_to_feature(

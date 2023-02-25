@@ -494,14 +494,21 @@ class RetinanetDetector(ABC):
             float_bbox = list(map(float, box))
             # TODO integrate bbox scaling with model export - models should return
             #  outputs in normalized coordinates in corners format
-            clip_bbox = BBox(0, 0, 512, 512)
-
+            clip_bbox = BBox(0, 0, 256, 256)
+            ymin, xmin, ymax, xmax = float_bbox
             bbox = (
-                BBox.from_ltwh(
-                    *float_bbox, name=self.class_to_label_name[cls], score=float(score)
+                BBox(
+                    xmin,
+                    ymin,
+                    xmax,
+                    ymax,
+                    name=self.class_to_label_name[cls],
+                    score=float(score),
+                )
+                .scale(
+                    x=image_width / clip_bbox.width, y=image_height / clip_bbox.height
                 )
                 .intersection(clip_bbox)
-                .scale(x=image_width / 512, y=image_height / 512)
             )
             bboxes.append(bbox)
         return bboxes

@@ -98,9 +98,9 @@ train_data:
   is_training: true
   parser:
     # TODO - add augmentation
-    aug_rand_hflip: false
-    aug_scale_max: 1.0
-    aug_scale_min: 1.0
+    aug_rand_hflip: true
+    aug_scale_max: 0.8
+    aug_scale_min: 1.2
     aug_type: null
     match_threshold: 0.5
     max_num_instances: 100

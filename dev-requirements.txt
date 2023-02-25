@@ -314,7 +314,6 @@ matplotlib==3.4.3
     #   -r dev-requirements.in.txt
     #   distinctipy
     #   pycocotools
-    #   scikit-image
     #   tf-models-official
 mdurl==0.1.2
     # via markdown-it-py
@@ -386,6 +385,7 @@ packaging==23.0
     #   dvc
     #   hydra-core
     #   keras-cv
+    #   scikit-image
     #   streamlit
     #   tensorflow
     #   tensorflow-addons
@@ -537,12 +537,12 @@ ruamel-yaml-clib==0.2.7
     # via ruamel-yaml
 sacrebleu==2.3.1
     # via tf-models-official
-scikit-image==0.18.3
+scikit-image==0.19.3
     # via
     #   -r dev-requirements.in.txt
     #   albumentations
     #   efficientnet
-scikit-learn==0.24.2
+scikit-learn==1.2.1
     # via
     #   -r dev-requirements.in.txt
     #   seqeval

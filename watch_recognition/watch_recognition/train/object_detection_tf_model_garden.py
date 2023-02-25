@@ -16,8 +16,10 @@ from official.vision.dataloaders.tf_example_decoder import TfExampleDecoder
 from official.vision.ops.preprocess_ops import resize_and_crop_image
 from official.vision.serving import export_saved_model_lib
 from official.vision.utils.object_detection import visualization_utils
+from PIL import Image
 
 import tensorflow as tf
+from watch_recognition.serving import save_tf_serving_warmup_request
 
 pp = pprint.PrettyPrinter(indent=4)
 print(tf.__version__)
@@ -179,6 +181,18 @@ def main(
         tf_ex_decoder,
         category_index,
         filepath="debug/detector/val_dataset_sample.jpg",
+    )
+
+    #  -- export warmup data for tf serving
+    example_image_path = Path("example_data/test-image.jpg")
+    with Image.open(example_image_path) as img:
+        example_image_np = np.array(img)
+
+    save_tf_serving_warmup_request(
+        np.expand_dims(example_image_np, axis=0),
+        Path(export_dir),
+        dtype="uint8",
+        inputs_key="inputs",
     )
 
     imported = tf.saved_model.load(export_dir)
