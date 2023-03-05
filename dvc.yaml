@@ -30,23 +30,6 @@ stages:
       - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
       - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
       - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
-  generate-watch-hands-dataset:
-    cmd: >-
-      python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
-      datasets/watch-faces-local.json 
-      datasets/tf-records/segmentation/watch-hands/ 
-      --num-shards=1
-      --run-concurrently
-    params:
-      - segmentation.label_to_cls
-      - segmentation.bbox_labels
-    deps:
-      - datasets/test
-      - datasets/val
-      - datasets/watch-faces-local.json
-    outs:
-      - datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   train-detector:
     cmd: >- 
       python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
@@ -65,10 +48,40 @@ stages:
           persist: true
       - models/detector/:
           persist: false
+  export-detector:
+    cmd: >-
+      python watch_recognition/watch_recognition/export/export_retinanet.py
+    deps:
+      - models/detector/
+      - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
+      - train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
+      - train-configs/tf-model-garden/watch-face-detector/runtime.yaml
+      - train-configs/tf-model-garden/watch-face-detector/trainer.yaml
+    outs:
+      - exported_models/detector/lite16/assets.extra/tf_serving_warmup_requests:
+          persist: true
+      - exported_models/detector/lite16/model.tflite:
+          persist: true
+      - exported_models/detector/lite8/assets.extra/tf_serving_warmup_requests:
+          persist: true
+      - exported_models/detector/lite8/model.tflite:
+          persist: true
+      - exported_models/detector/serving/assets.extra/tf_serving_warmup_requests:
+          persist: true
+      - exported_models/detector/serving/variables/variables.data-00000-of-00001:
+          persist: true
+      - exported_models/detector/serving/variables/variables.index:
+          persist: true
+      - exported_models/detector/serving/fingerprint.pb:
+          persist: true
+      - exported_models/detector/serving/saved_model.pb:
+          persist: true
+    plots:
+      - example_predictions/detector/IMG_0040.jpg
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
-      - models/detector/
+      - exported_models/detector/serving/
       - datasets/train
       - datasets/test
       - datasets/val
@@ -166,6 +179,23 @@ stages:
       - example_predictions/keypoint/val_2.jpg
       - example_predictions/keypoint/val_3.jpg
       - example_predictions/keypoint/val_4.jpg
+  generate-watch-hands-dataset:
+    cmd: >-
+      python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
+      datasets/watch-faces-local.json 
+      datasets/tf-records/segmentation/watch-hands/ 
+      --num-shards=1
+      --run-concurrently
+    params:
+      - segmentation.label_to_cls
+      - segmentation.bbox_labels
+    deps:
+      - datasets/test
+      - datasets/val
+      - datasets/watch-faces-local.json
+    outs:
+      - datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
+      - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   train-segmentation:
     cmd: >-
       python watch_recognition/watch_recognition/train/segmentation_task.py

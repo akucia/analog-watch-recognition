@@ -35,6 +35,10 @@ appdirs==1.4.4
     # via
     #   dvc
     #   iterative-telemetry
+appnope==0.1.3
+    # via ipython
+asttokens==2.2.1
+    # via stack-data
 astunparse==1.6.3
     # via tensorflow
 async-timeout==4.0.2
@@ -48,6 +52,8 @@ attrs==22.2.0
     #   aiohttp
     #   dvc-data
     #   jsonschema
+backcall==0.2.0
+    # via ipython
 billiard==3.6.4.0
     # via celery
 black==23.1.0
@@ -94,6 +100,8 @@ colorama==0.4.6
     #   sacrebleu
 configobj==5.0.8
     # via dvc
+contourpy==1.0.7
+    # via matplotlib
 cryptography==39.0.0
     # via asyncssh
 cycler==0.11.0
@@ -103,6 +111,7 @@ cython==0.29.33
 decorator==5.1.1
     # via
     #   gcsfs
+    #   ipython
     #   validators
 dictdiffer==0.9.0
     # via dvc-data
@@ -157,6 +166,8 @@ entrypoints==0.4
     # via altair
 etils[enp,epath]==1.0.0
     # via tensorflow-datasets
+executing==1.2.0
+    # via stack-data
 filelock==3.9.0
     # via iterative-telemetry
 flatbuffers==23.1.21
@@ -165,6 +176,8 @@ flatten-dict==0.4.2
     # via dvc
 flufl-lock==7.1.1
     # via dvc
+fonttools==4.38.0
+    # via matplotlib
 frozenlist==1.3.3
     # via
     #   aiohttp
@@ -268,10 +281,16 @@ importlib-metadata==6.0.0
     # via streamlit
 importlib-resources==5.10.2
     # via etils
+ipython==8.11.0
+    # via ipython-autotime
+ipython-autotime==0.3.1
+    # via -r dev-requirements.in.txt
 isort==5.12.0
     # via -r dev-requirements.in.txt
 iterative-telemetry==0.0.6
     # via dvc
+jedi==0.18.2
+    # via ipython
 jinja2==3.1.2
     # via
     #   altair
@@ -309,12 +328,14 @@ markupsafe==2.1.2
     # via
     #   jinja2
     #   werkzeug
-matplotlib==3.4.3
+matplotlib==3.7.0
     # via
     #   -r dev-requirements.in.txt
     #   distinctipy
     #   pycocotools
     #   tf-models-official
+matplotlib-inline==0.1.6
+    # via ipython
 mdurl==0.1.2
     # via markdown-it-py
 more-itertools==8.14.0
@@ -336,6 +357,7 @@ numpy==1.23.1
     #   -r dev-requirements.in.txt
     #   albumentations
     #   altair
+    #   contourpy
     #   distinctipy
     #   etils
     #   h5py
@@ -385,6 +407,7 @@ packaging==23.0
     #   dvc
     #   hydra-core
     #   keras-cv
+    #   matplotlib
     #   scikit-image
     #   streamlit
     #   tensorflow
@@ -396,11 +419,17 @@ pandas==1.5.3
     #   distinctipy
     #   streamlit
     #   tf-models-official
+parso==0.8.3
+    # via jedi
 pathspec==0.11.0
     # via
     #   black
     #   dvc
     #   scmrepo
+pexpect==4.8.0
+    # via ipython
+pickleshare==0.7.5
+    # via ipython
 pillow==9.4.0
     # via
     #   -r dev-requirements.in.txt
@@ -416,7 +445,9 @@ portalocker==2.7.0
 promise==2.3
     # via tensorflow-datasets
 prompt-toolkit==3.0.36
-    # via click-repl
+    # via
+    #   click-repl
+    #   ipython
 protobuf==3.19.6
     # via
     #   google-api-core
@@ -434,6 +465,10 @@ psutil==5.9.4
     #   flufl-lock
     #   tensorflow-datasets
     #   tf-models-official
+ptyprocess==0.7.0
+    # via pexpect
+pure-eval==0.2.2
+    # via stack-data
 py-cpuinfo==9.0.0
     # via tf-models-official
 pyarrow==11.0.0
@@ -462,7 +497,9 @@ pyflakes==3.0.1
 pygit2==1.11.1
     # via scmrepo
 pygments==2.14.0
-    # via rich
+    # via
+    #   ipython
+    #   rich
 pygtrie==2.5.0
     # via
     #   dvc
@@ -572,6 +609,7 @@ shtab==1.5.8
     # via dvc
 six==1.16.0
     # via
+    #   asttokens
     #   astunparse
     #   click-repl
     #   configobj
@@ -590,6 +628,8 @@ smmap==5.0.0
     # via gitdb
 sqltrie==0.0.26
     # via dvc-data
+stack-data==0.6.2
+    # via ipython
 streamlit==1.13.0
     # via -r dev-requirements.in.txt
 tabulate==0.9.0
@@ -665,6 +705,10 @@ tqdm==4.64.1
     #   dvc-objects
     #   kaggle
     #   tensorflow-datasets
+traitlets==5.9.0
+    # via
+    #   ipython
+    #   matplotlib-inline
 typeguard==2.13.3
     # via tensorflow-addons
 typing-extensions==4.4.0

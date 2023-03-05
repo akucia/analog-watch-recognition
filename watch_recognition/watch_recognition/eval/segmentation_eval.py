@@ -14,12 +14,12 @@ from watch_recognition.label_studio_adapters import (
 from watch_recognition.predictors import (
     HandPredictorLocal,
     KPHeatmapPredictorV2Local,
-    RetinanetDetector,
+    RetinaNetDetector,
 )
 
 
 def generate_kp_coco_annotations_from_model(
-    detector: RetinanetDetector,
+    detector: RetinaNetDetector,
     kp_model: KPHeatmapPredictorV2Local,
     coco_ds_file,
 ):

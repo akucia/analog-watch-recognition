@@ -384,7 +384,8 @@ class BBox:
         ax=None,
         color: str = "red",
         linewidth: int = 1,
-        draw_name_label: bool = True,
+        draw_label: bool = True,
+        draw_score: bool = False,
         **kwargs,
     ):
         if ax is None:
@@ -401,11 +402,16 @@ class BBox:
 
         # Add the patch to the Axes
         ax.add_patch(rect)
-        if self.name and draw_name_label:
+        text = ""
+        if self.name:
+            text += self.name
+        if draw_score:
+            text += f"\n{self.score:.2f}"
+        if draw_label or draw_score:
             ax.text(
                 self.x_min,
                 self.y_min,
-                self.name,
+                text,
                 bbox={"facecolor": color, "alpha": 0.4},
                 clip_box=ax.clipbox,
                 clip_on=True,

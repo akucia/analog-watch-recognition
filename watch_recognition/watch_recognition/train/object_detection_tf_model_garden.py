@@ -11,15 +11,13 @@ import numpy as np
 import tensorflow_models as tfm
 from official.core.base_task import RuntimeConfig
 from official.core.base_trainer import ExperimentConfig, TrainerConfig
-from official.vision.configs.retinanet import RetinaNetTask
+from official.vision.configs.common import Augmentation
+from official.vision.configs.retinanet import Parser, RetinaNetTask
 from official.vision.dataloaders.tf_example_decoder import TfExampleDecoder
 from official.vision.ops.preprocess_ops import resize_and_crop_image
-from official.vision.serving import export_saved_model_lib
 from official.vision.utils.object_detection import visualization_utils
-from PIL import Image
 
 import tensorflow as tf
-from watch_recognition.serving import save_tf_serving_warmup_request
 
 pp = pprint.PrettyPrinter(indent=4)
 print(tf.__version__)
@@ -82,15 +80,12 @@ def main(
     experiment_config_dir = Path(experiment_config_dir)
 
     model_dir = "models/detector"
-    export_dir = "models/detector/exported_model/"
 
     runtime = RuntimeConfig.from_yaml(str(experiment_config_dir / "runtime.yaml"))
     trainer = TrainerConfig.from_yaml(str(experiment_config_dir / "trainer.yaml"))
     retinanet_task = RetinaNetTask.from_yaml(
         str(experiment_config_dir / "retinanet_task.yaml")
     )
-    from official.vision.configs.common import Augmentation
-    from official.vision.configs.retinanet import Parser
     retinanet_task.train_data.parser = Parser(
         aug_rand_hflip=True,
         aug_scale_min=0.8,
@@ -174,71 +169,6 @@ def main(
         model_dir=model_dir,
         run_post_eval=True,
     )
-    HEIGHT = exp_config.task.model.input_size[0]
-    WIDTH = exp_config.task.model.input_size[1]
-    export_saved_model_lib.export_inference_graph(
-        input_type="image_tensor",
-        batch_size=1,
-        input_image_size=[HEIGHT, WIDTH],
-        params=exp_config,
-        checkpoint_path=tf.train.latest_checkpoint(model_dir),
-        export_dir=export_dir,
-    )
-    valid_data_input_paths = exp_config.task.validation_data.input_path
-    val_ds = tf.data.TFRecordDataset(valid_data_input_paths).take(3)
-    show_batch(
-        val_ds,
-        tf_ex_decoder,
-        category_index,
-        filepath="debug/detector/val_dataset_sample.jpg",
-    )
-
-    #  -- export warmup data for tf serving
-    example_image_path = Path("example_data/test-image.jpg")
-    with Image.open(example_image_path) as img:
-        example_image_np = np.array(img)
-
-    save_tf_serving_warmup_request(
-        np.expand_dims(example_image_np, axis=0),
-        Path(export_dir),
-        dtype="uint8",
-        inputs_key="inputs",
-    )
-
-    imported = tf.saved_model.load(export_dir)
-    model_fn = imported.signatures["serving_default"]
-
-    input_image_size = (HEIGHT, WIDTH)
-    plt.figure(figsize=(20, 20))
-    min_score_thresh = 0.10
-
-    for i, serialized_example in enumerate(val_ds):
-        plt.subplot(1, 3, i + 1)
-        decoded_tensors = tf_ex_decoder.decode(serialized_example)
-        image = build_inputs_for_object_detection(
-            decoded_tensors["image"], input_image_size
-        )
-        image = tf.expand_dims(image, axis=0)
-        image = tf.cast(image, dtype=tf.uint8)
-        image_np = image[0].numpy()
-        result = model_fn(image)
-        image_np = visualization_utils.visualize_boxes_and_labels_on_image_array(
-            image_np,
-            result["detection_boxes"][0].numpy(),
-            result["detection_classes"][0].numpy().astype(int),
-            result["detection_scores"][0].numpy(),
-            category_index=category_index,
-            use_normalized_coordinates=False,
-            max_boxes_to_draw=200,
-            min_score_thresh=min_score_thresh,
-            agnostic_mode=False,
-            instance_masks=None,
-            line_thickness=4,
-        )
-        plt.imshow(image_np)
-        plt.axis("off")
-
-    plt.savefig("example_predictions/detector/val_ds.jpg")
 
 
 if __name__ == "__main__":

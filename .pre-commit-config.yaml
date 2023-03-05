@@ -16,11 +16,6 @@ repos:
       - id: isort
         args: [ "--profile", "black", "--filter-files" ]
 
-  - repo: https://github.com/kynan/nbstripout
-    rev: 0.6.1
-    hooks:
-      - id: nbstripout
-
   - repo: https://github.com/ambv/black
     rev: 23.1.0
     hooks:
@@ -33,7 +28,7 @@ repos:
     -   id: flake8
 
   - repo: https://github.com/iterative/dvc
-    rev: 2.43.2
+    rev: 2.45.1
     hooks:
       - id: dvc-pre-commit
         language_version: python3

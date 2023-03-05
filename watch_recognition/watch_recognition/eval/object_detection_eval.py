@@ -3,6 +3,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import click
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -14,12 +15,12 @@ from tqdm import tqdm
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset_with_images,
 )
-from watch_recognition.predictors import RetinanetDetector, RetinanetDetectorLocal
+from watch_recognition.predictors import RetinaNetDetector, RetinaNetDetectorLocal
 from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to_coco
 
 
 def generate_coco_annotations_from_model(
-    detector: RetinanetDetector, coco_ds_file, cls_to_label
+    detector: RetinaNetDetector, coco_ds_file, cls_to_label
 ):
     coco = COCO(coco_ds_file)
     annotations = []
@@ -45,12 +46,12 @@ def generate_coco_annotations_from_model(
     return annotations
 
 
+@click.command()
 def main():
     t0 = time.perf_counter()
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
-    # model is trained with 0 as a valid cls but coco metrics ignore cls 0
-    detector = RetinanetDetectorLocal(
+    detector = RetinaNetDetectorLocal(
         Path("models/detector/exported_model"), class_to_label_name={1: "WatchFace"}
     )
 
@@ -92,7 +93,7 @@ def main():
             results = generate_coco_annotations_from_model(
                 detector,
                 coco_tmp_dataset_file,
-                cls_to_label={0: "WatchFace"},
+                cls_to_label={1: "WatchFace"},
             )
             coco_gt = COCO(coco_tmp_dataset_file)
             metrics = {"Num Images": len(coco_gt.imgs)}
@@ -111,15 +112,21 @@ def main():
 
         precision = coco_eval.eval["precision"]
         all_recalls = slice(None, None)
-        iou_th_50 = int(np.argwhere(coco_eval.params.iouThrs == 0.50))
-        iou_th_75 = int(np.argwhere(coco_eval.params.iouThrs == 0.75))
-        iou_th_95 = int(np.argwhere(coco_eval.params.iouThrs == 0.95))
-        class_0 = 0
-        areas_all = 0
-        max_dets_100 = 2
-        pr_50 = precision[iou_th_50, all_recalls, class_0, areas_all, max_dets_100]
-        pr_75 = precision[iou_th_75, all_recalls, class_0, areas_all, max_dets_100]
-        pr_95 = precision[iou_th_95, all_recalls, class_0, areas_all, max_dets_100]
+        iou_th_50_idx = int(np.argwhere(coco_eval.params.iouThrs == 0.50))
+        iou_th_75_idx = int(np.argwhere(coco_eval.params.iouThrs == 0.75))
+        iou_th_95_idx = int(np.argwhere(coco_eval.params.iouThrs == 0.95))
+        class_0_idx = 0
+        areas_all_idx = 0
+        max_dets_100_idx = 2
+        pr_50 = precision[
+            iou_th_50_idx, all_recalls, class_0_idx, areas_all_idx, max_dets_100_idx
+        ]
+        pr_75 = precision[
+            iou_th_75_idx, all_recalls, class_0_idx, areas_all_idx, max_dets_100_idx
+        ]
+        pr_95 = precision[
+            iou_th_95_idx, all_recalls, class_0_idx, areas_all_idx, max_dets_100_idx
+        ]
 
         df_50 = pd.DataFrame({"Recall": coco_eval.params.recThrs, "Precision": pr_50})
         df_50.to_csv(f"metrics/detector/PR-IoU@0.50_{split}.tsv", sep="\t", index=False)

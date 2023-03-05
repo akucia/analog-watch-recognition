@@ -15,7 +15,7 @@ from tqdm import tqdm
 from watch_recognition.predictors import (
     HandPredictorLocal,
     KPHeatmapPredictorV2Local,
-    RetinanetDetectorLocal,
+    RetinaNetDetectorLocal,
     TimePredictor,
 )
 from watch_recognition.utilities import BBox, iou_bbox_matching
@@ -46,7 +46,7 @@ def total_minutes_diff(t1: str, t2: str) -> int:
 def main(run_concurrently: bool = False, split: Optional[str] = None):
     t0 = time.perf_counter()
     time_predictor = TimePredictor(
-        detector=RetinanetDetectorLocal(
+        detector=RetinaNetDetectorLocal(
             Path("models/detector/saved_model/"),
             class_to_label_name={1: "WatchFace"},
         ),

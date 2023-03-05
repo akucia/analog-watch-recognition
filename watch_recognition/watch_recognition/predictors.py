@@ -11,6 +11,7 @@ import grpc
 import numpy as np
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
+from more_itertools import chunked
 from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
@@ -28,71 +29,22 @@ from watch_recognition.utilities import BBox, Line, Point, Polygon
 from watch_recognition.visualization import draw_masks
 
 
-class KPPredictor(ABC):
-    def __init__(self, model_path):
-        self.model = tf.keras.models.load_model(model_path, compile=False)
-        self.input_size = tuple(self.model.inputs[0].shape[1:3])
-        self.output_size = tuple(self.model.outputs[0].shape[1:3])
-        self.cache = {}
-
-    @abc.abstractmethod
-    def _decode_keypoints(
-        self, image: ImageType, predicted: np.ndarray
-    ) -> Tuple[Point, Point]:
-        pass
-
-    def predict(
-        self, image: ImageType, rotation_predictor: Optional["RotationPredictor"] = None
-    ) -> List[Point]:
-        """Runs predictions on a crop of a watch face.
-        Returns keypoints in pixel coordinates of the image
-        """
-        image_hash = _hash_image(image)
-        if image_hash in self.cache:
-            return self.cache[image_hash]
-        # TODO switch to ImageOps.pad
-        correction_angle = 0
-        if rotation_predictor is not None:
-            image, correction_angle = rotation_predictor.predict_and_correct(image)
-
-        with image.resize(self.input_size, BICUBIC) as resized_image:
-            image_np = np.expand_dims(resized_image, 0)
-            predicted = self.model.predict(image_np)[0]
-            center, top = self._decode_keypoints(image, predicted)
-        if correction_angle:
-            center = center.rotate_around_point(
-                Point(image.width / 2, image.height / 2), angle=correction_angle
-            )
-            top = top.rotate_around_point(
-                Point(image.width / 2, image.height / 2), angle=correction_angle
-            )
-        return [center, top]
-
-    def predict_from_image_and_bbox(
-        self,
-        image: ImageType,
-        bbox: BBox,
-        rotation_predictor: Optional["RotationPredictor"] = None,
-    ) -> List[Point]:
-        """Runs predictions on full image using bbox to crop area of interest before
-        running the model.
-        Returns keypoints in pixel coordinates of the image
-        """
-        with image.crop(box=bbox.as_coordinates_tuple) as crop:
-            if crop.width * crop.height < 1:
-                return []
-            points = self.predict(crop, rotation_predictor=rotation_predictor)
-            points = [point.translate(bbox.left, bbox.top) for point in points]
-            return points
-
-
 class KPHeatmapPredictorV2(ABC):
+    """Base class for keypoint predictors based on heatmap outputs"""
+
     def __init__(self, class_to_label_name, confidence_threshold: float = 0.5):
+        """
+
+        Args:
+            class_to_label_name: mapping from class index to label name
+            confidence_threshold: threshold for heatmap values to be considered as a keypoint
+        """
         self.confidence_threshold = confidence_threshold
         self.class_to_label_name = class_to_label_name
 
     @abc.abstractmethod
     def _batch_predict(self, batch_image_np: np.ndarray) -> np.ndarray:
+        """Runs predictions on a batch of images."""
         pass
 
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[Point]:
@@ -120,7 +72,10 @@ class KPHeatmapPredictorV2(ABC):
         predicted = self._batch_predict(batch_image_np)[0]
         return predicted
 
-    def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None):
+    def predict_and_plot(
+        self, image: Union[ImageType, np.ndarray], ax=None
+    ) -> List[Point]:
+        """Runs predictions on a crop of a watch face and plot resulting keypoints"""
         image_width, image_height = _get_image_shape(image)
         ax = ax or plt.gca()
         colors = distinctipy.get_colors(len(self.class_to_label_name))
@@ -185,9 +140,18 @@ class KPHeatmapPredictorV2(ABC):
 
 
 class KPHeatmapPredictorV2Local(KPHeatmapPredictorV2):
+    """Predictor for keypoint heatmaps based on local model"""
+
     def __init__(
         self, model_path, class_to_label_name, confidence_threshold: float = 0.5
     ):
+        """
+
+        Args:
+            model_path: exported saved model directory
+            class_to_label_name: mapping from class index to label name
+            confidence_threshold: threshold for heatmap values to be considered as a keypoint
+        """
         self.model: tf.keras.models.Model = tf.keras.models.load_model(
             model_path, compile=False
         )
@@ -199,6 +163,8 @@ class KPHeatmapPredictorV2Local(KPHeatmapPredictorV2):
 
 
 class KPHeatmapPredictorV2GRPC(KPHeatmapPredictorV2):
+    """Predictor for keypoint heatmaps based on remote model served via TensorflowServing and gRPC API"""
+
     def __init__(
         self,
         host: str,
@@ -207,6 +173,15 @@ class KPHeatmapPredictorV2GRPC(KPHeatmapPredictorV2):
         confidence_threshold: float = 0.5,
         timeout: float = 10.0,
     ):
+        """
+
+        Args:
+            host: address of model host
+            model_name: name of the model served by TensorflowServing
+            class_to_label_name: mapping from class index to label name
+            confidence_threshold: threshold for heatmap values to be considered as a keypoint
+            timeout: gRPC API timeout
+        """
         self.host = host
         self.model_name = model_name
         self.channel = grpc.insecure_channel(self.host)
@@ -234,17 +209,6 @@ class KPHeatmapPredictorV2GRPC(KPHeatmapPredictorV2):
         value = output.float_val
         shape = [dim.size for dim in output.tensor_shape.dim]
         return np.array(value).reshape(shape)
-
-
-class KPRegressionPredictor(KPPredictor):
-    def _decode_keypoints(self, image, predicted) -> Tuple[Point, Point]:
-        center = Point(predicted[0], predicted[1], name="Center")
-        top = Point(predicted[2], 0.25, name="Top")
-        scale_x = image.width
-        scale_y = image.height
-        center = center.scale(scale_x, scale_y)
-        top = top.scale(scale_x, scale_y)
-        return center, top
 
 
 # TODO Rename to Polygon predictor
@@ -464,54 +428,72 @@ class TFLiteDetector:
         return bboxes
 
 
-class RetinanetDetector(ABC):
+class RetinaNetDetector(ABC):
     def __init__(
         self,
         class_to_label_name: Dict[int, str],
+        confidence_threshold: float = 0.5,
     ):
         self.class_to_label_name = class_to_label_name
+        self.confidence_threshold = confidence_threshold
 
     @abc.abstractmethod
-    def _batch_predict(
+    def _batch_predict_api(
         self, batch_images: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         pass
 
     def predict(self, image: Union[ImageType, np.ndarray]) -> List[BBox]:
-        """Run object detection on the input image and draw the detection results"""
-        image_width, image_height = _get_image_shape(image)
-        image_np = np.expand_dims(np.array(image), axis=0).astype("uint8")
-        boxes, classes, scores, num_detections = self._batch_predict(image_np)
-        num_detections = num_detections[0]
-        bboxes = []
-        for box, cls, score in zip(
-            boxes[0, :num_detections],
-            classes[0, :num_detections],
-            scores[0, :num_detections],
-        ):
-            # cast everything to float to prevent issues with JSON serialization
-            # and stick to types specified by BBox class
-            float_bbox = list(map(float, box))
-            # TODO integrate bbox scaling with model export - models should return
-            #  outputs in normalized coordinates in corners format
-            clip_bbox = BBox(0, 0, 256, 256)
-            ymin, xmin, ymax, xmax = float_bbox
-            bbox = (
-                BBox(
-                    xmin,
-                    ymin,
-                    xmax,
-                    ymax,
-                    name=self.class_to_label_name[cls],
-                    score=float(score),
+        """Run object detection on the input image and convert results to BBox objects"""
+        return self.batch_predict([image])[0]
+
+    def _batch_predict(
+        self, images: List[Union[ImageType, np.ndarray]]
+    ) -> List[List[BBox]]:
+        image_width, image_height = _get_image_shape(images[0])
+        batch_images = np.array([np.array(image) for image in images])
+        results = self._batch_predict_api(batch_images)
+        all_bboxes = []
+        for boxes, classes, scores, num_detections in zip(*results):
+            image_bboxes = []
+            for box, cls, score in zip(boxes, classes, scores):
+                if score < self.confidence_threshold:
+                    continue
+                bbox = self._bbox_from_outputs(
+                    box, cls, image_height, image_width, score
                 )
-                .scale(
-                    x=image_width / clip_bbox.width, y=image_height / clip_bbox.height
-                )
-                .intersection(clip_bbox)
-            )
-            bboxes.append(bbox)
-        return bboxes
+                image_bboxes.append(bbox)
+            all_bboxes.append(image_bboxes)
+        return all_bboxes
+
+    def batch_predict(
+        self,
+        images: List[Union[ImageType, np.ndarray]],
+        maximum_request_batch_size: int = 10,
+    ) -> List[List[BBox]]:
+        # TODO add assert - all images must have the same size
+        all_bboxes = []
+        for batch in chunked(images, maximum_request_batch_size):
+            all_bboxes.extend(self._batch_predict(batch))
+        return all_bboxes
+
+    def _bbox_from_outputs(self, box, cls, image_height, image_width, score):
+        # cast everything to float to prevent issues with JSON serialization
+        # and stick to types specified by BBox class
+        float_bbox = list(map(float, box))
+        # TODO integrate bbox scaling with model export - models should return
+        #  outputs in normalized coordinates in corners format
+        # model outputs bboxes have ys as first and third coordinate
+        ymin, xmin, ymax, xmax = float_bbox
+        bbox = BBox(
+            xmin,
+            ymin,
+            xmax,
+            ymax,
+            name=self.class_to_label_name[cls],
+            score=float(score),
+        ).scale(x=image_width, y=image_height)
+        return bbox
 
     def predict_and_plot(
         self, image: Union[ImageType, np.ndarray], ax=None
@@ -519,22 +501,27 @@ class RetinanetDetector(ABC):
         bboxes = self.predict(image)
         ax = ax or plt.gca()
         ax.imshow(image)
+        ax.grid(False)
         for bbox in bboxes:
-            bbox.plot(ax=ax)
+            bbox.plot(ax=ax, draw_label=True, draw_score=True)
         return bboxes
 
 
-class RetinanetDetectorLocal(RetinanetDetector):
+class RetinaNetDetectorLocal(RetinaNetDetector):
     def __init__(
         self,
         model_path: Path,
         class_to_label_name: Dict[int, str],
+        confidence_threshold: float = 0.5,
     ):
         imported = tf.saved_model.load(model_path)
         self.model_fn = imported.signatures["serving_default"]
-        super().__init__(class_to_label_name=class_to_label_name)
+        super().__init__(
+            class_to_label_name=class_to_label_name,
+            confidence_threshold=confidence_threshold,
+        )
 
-    def _batch_predict(
+    def _batch_predict_api(
         self, input_images
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         input_images = tf.convert_to_tensor(input_images)
@@ -551,7 +538,7 @@ class RetinanetDetectorLocal(RetinanetDetector):
         )
 
 
-class RetinaNetDetectorGRPC(RetinanetDetector):
+class RetinaNetDetectorGRPC(RetinaNetDetector):
     def __init__(
         self,
         host: str,
@@ -566,7 +553,7 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
         self.timeout = timeout
         super().__init__(class_to_label_name)
 
-    def _batch_predict(
+    def _batch_predict_api(
         self, input_images: np.ndarray
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         request = predict_pb2.PredictRequest()
@@ -574,19 +561,19 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
         request.model_spec.signature_name = "serving_default"
         request.inputs["inputs"].CopyFrom(tf.make_tensor_proto(input_images))
         result = self.stub.Predict(request, self.timeout)
-        boxes = self._decode_proto(
+        boxes = tf_serving_response_proto_to_numpy(
             result.outputs["detection_boxes"].float_val,
             result.outputs["detection_boxes"].tensor_shape.dim,
         )
-        classes = self._decode_proto(
+        classes = tf_serving_response_proto_to_numpy(
             result.outputs["detection_classes"].int_val,
             result.outputs["detection_classes"].tensor_shape.dim,
         )
-        scores = self._decode_proto(
+        scores = tf_serving_response_proto_to_numpy(
             result.outputs["detection_scores"].float_val,
             result.outputs["detection_scores"].tensor_shape.dim,
         )
-        num_detections = self._decode_proto(
+        num_detections = tf_serving_response_proto_to_numpy(
             result.outputs["num_detections"].int_val,
             result.outputs["num_detections"].tensor_shape.dim,
         )
@@ -597,12 +584,168 @@ class RetinaNetDetectorGRPC(RetinanetDetector):
             num_detections,
         )
 
-    def _decode_proto(self, value, dim):
-        shape = [d.size for d in dim]
-        output = np.array(value).reshape(shape)
-        if len(shape) != 1:
-            output = output.reshape(shape)
-        return output
+
+class RetinaNetLiteDetector(RetinaNetDetector):
+    @property
+    @abc.abstractmethod
+    def input_shape(self) -> Tuple[int, int, int]:
+        pass
+
+    def _batch_predict_api(
+        self, batch_images: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        raise NotImplementedError
+        pass
+        # TODO there's no real batch prediction for lite models
+        # if batch_images.shape[1] != self.input_shape[1]:
+        #     raise NotImplementedError(
+        #         "Batch prediction is not supported for RetinaNetLite models"
+        #     )
+        # # TODO implementation of inputs validation, float32 conversion, image resizing
+        # #   and outputs scaling
+
+        # TODO image has to be float32
+        # boxes, classes, scores, num_detections = self._batch_predict_api(batch_images)
+        # # lite models don't normalize boxes
+        # boxes = boxes.reshape(-1, 4)
+        # boxes[:, 0] = boxes[:, 0] / self.input_shape[0]  # ymin
+        # boxes[:, 1] = boxes[:, 1] / self.input_shape[1]  # xmin
+        # boxes[:, 2] = boxes[:, 2] / self.input_shape[0]  # ymax
+        # boxes[:, 3] = boxes[:, 3] / self.input_shape[1]  # xmax
+        #
+        # boxes = boxes.reshape(batch_images.shape[0], -1, 4)
+        # return boxes, classes, scores, num_detections
+
+
+class RetinaNetLiteDetectorGRPC(RetinaNetLiteDetector):
+    def __init__(
+        self,
+        host: str,
+        model_name: str,
+        input_shape: Tuple[int, int, int],
+        class_to_label_name: Dict[int, str],
+        confidence_threshold: float = 0.5,
+        timeout: float = 10.0,
+    ):
+        self.host = host
+        self.model_name = model_name
+        self.channel = grpc.insecure_channel(self.host)
+        self.stub = prediction_service_pb2_grpc.PredictionServiceStub(self.channel)
+        self._input_shape = input_shape
+        self.timeout = timeout
+        super().__init__(
+            class_to_label_name=class_to_label_name,
+            confidence_threshold=confidence_threshold,
+        )
+
+    @property
+    def input_shape(self) -> Tuple[int, int, int]:
+        return self._input_shape
+
+    def _batch_predict_api(
+        self, input_images: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        request = predict_pb2.PredictRequest()
+        request.model_spec.name = self.model_name
+        request.model_spec.signature_name = "serving_default"
+        request.inputs["inputs"].CopyFrom(
+            tf.make_tensor_proto(input_images, shape=input_images.shape)
+        )
+        result = self.stub.Predict(request)
+        boxes = tf_serving_response_proto_to_numpy(
+            result.outputs["Identity"].float_val,
+            result.outputs["Identity"].tensor_shape.dim,
+        )
+
+        classes = tf_serving_response_proto_to_numpy(
+            result.outputs["Identity_1"].int_val,
+            result.outputs["Identity_1"].tensor_shape.dim,
+        )
+        scores = tf_serving_response_proto_to_numpy(
+            result.outputs["Identity_2"].float_val,
+            result.outputs["Identity_2"].tensor_shape.dim,
+        )
+        num_detections = tf_serving_response_proto_to_numpy(
+            result.outputs["Identity_4"].int_val,
+            result.outputs["Identity_4"].tensor_shape.dim,
+        )
+
+        # lite models don't normalize boxes
+        boxes = boxes.reshape(-1, 4)
+        boxes[:, 0] = boxes[:, 0] / self.input_shape[0]  # ymin
+        boxes[:, 1] = boxes[:, 1] / self.input_shape[1]  # xmin
+        boxes[:, 2] = boxes[:, 2] / self.input_shape[0]  # ymax
+        boxes[:, 3] = boxes[:, 3] / self.input_shape[1]  # xmax
+
+        boxes = boxes.reshape(input_images.shape[0], -1, 4)
+
+        return boxes, classes, scores, num_detections
+
+
+class RetinaNetLiteDetectorLocal(RetinaNetLiteDetector):
+    def __init__(
+        self,
+        model_path: Union[Path, str],
+        class_to_label_name: Dict[int, str],
+        confidence_threshold: float = 0.5,
+    ):
+        interpreter = tf.lite.Interpreter(model_path=str(model_path))
+        interpreter.allocate_tensors()
+        input_details = interpreter.get_input_details()
+        self.interpreter = interpreter
+        self._input_shape = input_details[0]["shape"][1:]
+        self.input_index = input_details[0]["index"]
+
+        output_details = interpreter.get_output_details()
+        self.bbox_index = output_details[0]["index"]
+        self.class_index = output_details[1]["index"]
+        self.score_index = output_details[2]["index"]
+        self.image_info_index = output_details[3]["index"]
+        self.num_detections_index = output_details[4]["index"]
+
+        super().__init__(
+            class_to_label_name=class_to_label_name,
+            confidence_threshold=confidence_threshold,
+        )
+
+    @property
+    def input_shape(self) -> Tuple[int, int, int]:
+        return self._input_shape
+
+    def _batch_predict_api(
+        self, input_images
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        # TODO info about images api, data types etc
+        self.interpreter.set_tensor(self.input_index, input_images)
+
+        self.interpreter.invoke()
+
+        boxes = self.interpreter.get_tensor(self.bbox_index)
+        scores = self.interpreter.get_tensor(self.score_index)
+        classes = self.interpreter.get_tensor(self.class_index)
+        num_detections = self.interpreter.get_tensor(self.num_detections_index)
+        # lite models don't normalize boxes
+        boxes = boxes.reshape(-1, 4)
+        boxes[:, 0] = boxes[:, 0] / self.input_shape[0]  # ymin
+        boxes[:, 1] = boxes[:, 1] / self.input_shape[1]  # xmin
+        boxes[:, 2] = boxes[:, 2] / self.input_shape[0]  # ymax
+        boxes[:, 3] = boxes[:, 3] / self.input_shape[1]  # xmax
+
+        boxes = boxes.reshape(input_images.shape[0], -1, 4)
+        return (
+            boxes,
+            classes,
+            scores,
+            num_detections,
+        )
+
+
+def tf_serving_response_proto_to_numpy(value, dim):
+    shape = [d.size for d in dim]
+    output = np.array(value).reshape(shape)
+    if len(shape) != 1:
+        output = output.reshape(shape)
+    return output
 
 
 def _hash_image(image: ImageType) -> str:
@@ -714,7 +857,7 @@ def mask_to_point_list(mask):
 class TimePredictor:
     def __init__(
         self,
-        detector: RetinanetDetector,
+        detector: RetinaNetDetector,
         kp_predictor: KPHeatmapPredictorV2,
         hand_predictor: HandPredictor,
     ):

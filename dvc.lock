@@ -418,3 +418,53 @@ stages:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
       md5: a0e242785798e143ed2c1cb8ea08812a
       size: 2716719
+  export-detector:
+    cmd: python watch_recognition/watch_recognition/export/export_retinanet.py
+    deps:
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
+      md5: 5d76134c5d355a5b03d6c019a983ac0a
+      size: 170371705
+    - path: models/detector/
+      md5: 4c3deb0ebd9069cd2f74f62bbf0142f8.dir
+      size: 387639400
+      nfiles: 5
+    - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
+      md5: 3f7da87dcf9edbdfe8506c88a37ec3ef
+      size: 4015
+    - path: train-configs/tf-model-garden/watch-face-detector/runtime.yaml
+      md5: 16ca08027c0ae3a7562a91f1b30e9b40
+      size: 407
+    - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
+      md5: 822138738108842ece5c88740c872c0f
+      size: 846
+    outs:
+    - path: example_predictions/detector/IMG_0040.jpg
+      md5: eb96f8e06a982e785525932db49161a2
+      size: 96143
+    - path: exported_models/detector/lite16/assets.extra/tf_serving_warmup_requests
+      md5: 24222ef7eef001a3091f660558c826ac
+      size: 786517
+    - path: exported_models/detector/lite16/model.tflite
+      md5: 7a41eed3ebb4c76b32cb445b3d62611f
+      size: 65310724
+    - path: exported_models/detector/lite8/assets.extra/tf_serving_warmup_requests
+      md5: 24222ef7eef001a3091f660558c826ac
+      size: 786517
+    - path: exported_models/detector/lite8/model.tflite
+      md5: 8efaeec8a8e6c02a7641a6a42c0c7df0
+      size: 102501816
+    - path: exported_models/detector/serving/assets.extra/tf_serving_warmup_requests
+      md5: 783b65cb6c06d334aaf972183d2c4409
+      size: 11520090
+    - path: exported_models/detector/serving/fingerprint.pb
+      md5: 33e8d1229fa780da96fc109fed2d01af
+      size: 55
+    - path: exported_models/detector/serving/saved_model.pb
+      md5: 0f699ddf36365f4869342f7e70f30b93
+      size: 5782323
+    - path: exported_models/detector/serving/variables/variables.data-00000-of-00001
+      md5: c127839a9bb59122b75d8575f600f8fb
+      size: 129544413
+    - path: exported_models/detector/serving/variables/variables.index
+      md5: 41ec05cfd7d79a4b21814b2a07bd9877
+      size: 27803
