@@ -13,7 +13,10 @@ from watch_recognition.utilities import BBox, Point, match_objects_to_bboxes
 def unison_shuffled_copies(a, b, seed=42):
     """https://stackoverflow.com/a/4602224/8814045"""
     np.random.seed(seed)
-    assert len(a) == len(b)
+    if len(a) != len(b):
+        raise ValueError(
+            f"a and b must have the same length, got {len(a)} and {len(b)}"
+        )
     p = np.random.permutation(len(a))
     return a[p], b[p]
 
@@ -64,7 +67,7 @@ def label_studio_bbox_detection_dataset_to_coco(
                 if label_name not in categories:
                     categories[label_name] = {
                         "supercategory": "watch",
-                        "id": len(categories),
+                        "id": label_mapping[label_name],
                         "name": label_name,
                         "keypoints": [],
                     }

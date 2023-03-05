@@ -2,6 +2,7 @@ import json
 import tempfile
 import time
 from pathlib import Path
+from typing import Dict, List, Union
 
 import click
 import numpy as np
@@ -20,8 +21,11 @@ from watch_recognition.train.utils import label_studio_bbox_detection_dataset_to
 
 
 def generate_coco_annotations_from_model(
-    detector: RetinaNetDetector, coco_ds_file, cls_to_label
-):
+    detector: RetinaNetDetector,
+    coco_ds_file: Union[str, Path],
+    cls_to_label: Dict[int, str],
+) -> List[Dict]:
+    """Generate coco annotations from a model and dataset file"""
     coco = COCO(coco_ds_file)
     annotations = []
     object_counter = 1
@@ -51,8 +55,9 @@ def main():
     t0 = time.perf_counter()
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
+    cls_to_label = {v: k for k, v in label_to_cls.items()}
     detector = RetinaNetDetectorLocal(
-        Path("models/detector/exported_model"), class_to_label_name={1: "WatchFace"}
+        Path("exported_models/detector/serving"), class_to_label_name=cls_to_label
     )
 
     selected_coco_metrics = {
@@ -71,8 +76,9 @@ def main():
             load_label_studio_bbox_detection_dataset_with_images(
                 dataset_path,
                 label_mapping=label_to_cls,
-                max_num_images=5,
+                max_num_images=3,
                 split=split,
+                skip_images_without_annotations=False,
             )
         ):
             save_file = Path(f"example_predictions/detector/{split}_{i}.jpg")
@@ -83,7 +89,7 @@ def main():
             plt.axis("off")
             plt.savefig(save_file, bbox_inches="tight")
         with tempfile.TemporaryDirectory() as tmp:
-            coco_tmp_dataset_file = tmp / f"coco-kp-{split}.json"
+            coco_tmp_dataset_file = Path(tmp) / f"coco-kp-{split}.json"
             label_studio_bbox_detection_dataset_to_coco(
                 dataset_path,
                 output_file=coco_tmp_dataset_file,
@@ -93,7 +99,7 @@ def main():
             results = generate_coco_annotations_from_model(
                 detector,
                 coco_tmp_dataset_file,
-                cls_to_label={1: "WatchFace"},
+                cls_to_label=cls_to_label,
             )
             coco_gt = COCO(coco_tmp_dataset_file)
             metrics = {"Num Images": len(coco_gt.imgs)}
