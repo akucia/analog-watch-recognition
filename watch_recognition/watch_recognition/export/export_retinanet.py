@@ -16,7 +16,8 @@ from watch_recognition.serving import save_tf_serving_warmup_request
 
 
 @click.command()
-def main():
+@click.argument("checkpoint_dir", type=click.Path(exists=True))
+def main(checkpoint_dir: str):
     """Export RetinaNet model for serving and tflite conversion with fp16 and int8 quantization
     Every exported model includes a warmup request for tf serving.
 
@@ -43,7 +44,7 @@ def main():
         batch_size=None,
         input_image_size=model_input_image_size,
         params=exp_config,
-        checkpoint_path=tf.train.latest_checkpoint("models/detector/"),
+        checkpoint_path=tf.train.latest_checkpoint(checkpoint_dir),
         export_dir="exported_models/detector/default/",
         log_model_flops_and_params=True,
     )

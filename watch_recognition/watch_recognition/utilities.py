@@ -847,19 +847,20 @@ def match_objects_to_bboxes(
     return dict(rectangles_to_kps)
 
 
-def iou_bbox_matching(a: List[BBox], b: List[BBox]) -> Dict[BBox, Optional[BBox]]:
+def iou_bbox_matching(
+    a: List[BBox], b: List[BBox], threshold: float = 0.0
+) -> Tuple[Dict[BBox, Optional[BBox]], List[BBox]]:
     if not b:
-        return dict.fromkeys(a)
+        return dict.fromkeys(a), []
     matching = {}
     for bbox_a in a:
         scores = sorted(b, key=lambda bbox_b: bbox_b.iou(bbox_a), reverse=True)
         top_score_bbox = scores[0]
         if top_score_bbox in matching.values():
             matching[bbox_a] = None
-        elif top_score_bbox.iou(bbox_a) > 0:
+        elif top_score_bbox.iou(bbox_a) > threshold:
             matching[bbox_a] = top_score_bbox
         else:
             matching[bbox_a] = None
-    # TODO unmatched assigned to matching[None]?
-
-    return matching
+    unmatched_boxes = [box for box in b if box not in matching.values()]
+    return matching, unmatched_boxes

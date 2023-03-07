@@ -71,9 +71,15 @@ def show_batch(raw_records, tf_ex_decoder, category_index, filepath):
     type=click.Path(exists=True),
 )
 @click.option("--seed", default=None, type=int)
+@click.option(
+    "--profile",
+    is_flag=True,
+    help="If set to true will profile the training process for 3 x steps_per_loop steps and exit.",
+)
 def main(
     experiment_config_dir: str,
     seed: Optional[int],
+    profile: bool = False,
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
@@ -160,15 +166,27 @@ def main(
         category_index,
         filepath="debug/detector/train_dataset_sample.jpg",
     )
-
-    model, eval_logs = tfm.core.train_lib.run_experiment(
-        distribution_strategy=distribution_strategy,
-        task=task,
-        mode="train_and_eval",
-        params=exp_config,
-        model_dir=model_dir,
-        run_post_eval=True,
-    )
+    if profile:
+        tf.profiler.experimental.start(model_dir)
+        exp_config.trainer.train_steps = exp_config.trainer.steps_per_loop * 3
+        model, eval_logs = tfm.core.train_lib.run_experiment(
+            distribution_strategy=distribution_strategy,
+            task=task,
+            mode="train_and_eval",
+            params=exp_config,
+            model_dir=model_dir,
+            run_post_eval=True,
+        )
+        tf.profiler.experimental.stop()
+    else:
+        model, eval_logs = tfm.core.train_lib.run_experiment(
+            distribution_strategy=distribution_strategy,
+            task=task,
+            mode="train_and_eval",
+            params=exp_config,
+            model_dir=model_dir,
+            run_post_eval=True,
+        )
 
 
 if __name__ == "__main__":

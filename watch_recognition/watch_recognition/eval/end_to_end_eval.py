@@ -144,7 +144,7 @@ def _evaluate_on_single_image(
         predictions = [
             bbox.scale(1 / img.width, 1 / img.height) for bbox in predictions
         ]
-    targets_to_predictions = iou_bbox_matching(valid_targets, predictions)
+    targets_to_predictions, _ = iou_bbox_matching(valid_targets, predictions)
     evaluation_records = []
     for target, pred in targets_to_predictions.items():
         predicted_time = pred.name if pred is not None else None

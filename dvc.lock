@@ -84,44 +84,50 @@ stages:
       md5: d8ebb095ef177b6cab208c01a4901948
       size: 20782
     - path: example_predictions/detector/train_1.jpg
-      md5: 41da5b6cf8f259ab033950a342a68ef8
-      size: 20103
+      md5: ded7d78e4178d3fc7d6344ca65cc98a7
+      size: 20078
     - path: example_predictions/detector/train_2.jpg
-      md5: ae0e1b6115dd13289d53d95d25a882ff
-      size: 18098
+      md5: bb18a812342265dc5d9a7b5460f5fdec
+      size: 18046
     - path: example_predictions/detector/val_0.jpg
-      md5: 61abe33c682304f93dec326532b9de68
-      size: 12166
+      md5: 24751b80d7d7e6178276f470d25ec395
+      size: 12168
     - path: example_predictions/detector/val_1.jpg
-      md5: 8947d232cc552d99bab627d2c01c43d9
-      size: 26325
+      md5: ddbebf745d0ca0430e7025bcef356f2c
+      size: 26281
     - path: example_predictions/detector/val_2.jpg
-      md5: 660b15216cd924b97b754f2524733504
-      size: 18961
-    - path: metrics/detector/PR-IoU@0.50_train.tsv
-      md5: de041724486c975cdf306d7c9a6edbd2
-      size: 2356
-    - path: metrics/detector/PR-IoU@0.50_val.tsv
-      md5: 667941f85cfc6474f1f83b4600013530
-      size: 1781
-    - path: metrics/detector/PR-IoU@0.75_train.tsv
-      md5: 091ca98c589420b7154b545327cf65a8
-      size: 2381
-    - path: metrics/detector/PR-IoU@0.75_val.tsv
-      md5: 046ed63a6b8d75d193032adf39721938
-      size: 1534
-    - path: metrics/detector/PR-IoU@0.95_train.tsv
-      md5: ca3b983b71c2230f9a71263c283fdec1
-      size: 1718
-    - path: metrics/detector/PR-IoU@0.95_val.tsv
+      md5: 99f78452cf3bab743d575e7a86980b6f
+      size: 18928
+    - path: metrics/detector/train/PR-IoU@0.50.tsv
+      md5: 1756ce982c14c7d229e8373eb76c2fda
+      size: 2352
+    - path: metrics/detector/train/PR-IoU@0.75.tsv
+      md5: e52bfdb1408657c0f06afd5d7d0d3180
+      size: 2369
+    - path: metrics/detector/train/PR-IoU@0.95.tsv
+      md5: d7780f8251cda2286bbf8f3815d08594
+      size: 1728
+    - path: metrics/detector/train/coco.json
+      md5: b2cc801441d8b3db7f215a07c3eb3680
+      size: 285
+    - path: metrics/detector/train/detection.json
+      md5: 53d88efed849eb9af38ebd29081542b6
+      size: 136
+    - path: metrics/detector/val/PR-IoU@0.50.tsv
+      md5: f4a69a128553b42cba42023b02a5fbb1
+      size: 1797
+    - path: metrics/detector/val/PR-IoU@0.75.tsv
+      md5: 81e3b72aaf24236b1c7a2f1e062f1372
+      size: 1616
+    - path: metrics/detector/val/PR-IoU@0.95.tsv
       md5: 51ec7fc7e784201f855e99bf0b34de18
       size: 1164
-    - path: metrics/detector/coco_train.json
-      md5: db4722e202f0cdfcae5e8fbde72b22fb
-      size: 286
-    - path: metrics/detector/coco_val.json
-      md5: 75a1e0336a3162dc745ddf9c1c12f553
-      size: 289
+    - path: metrics/detector/val/coco.json
+      md5: 9a21b1f20d9b428a0d985635d56343bc
+      size: 287
+    - path: metrics/detector/val/detection.json
+      md5: 02d7a2935f4991c6c6fe774a880c95cc
+      size: 135
   update-metrics:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
