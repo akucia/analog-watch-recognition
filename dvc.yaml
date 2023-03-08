@@ -50,8 +50,7 @@ stages:
           persist: false
   export-detector:
     cmd: >-
-      python watch_recognition/watch_recognition/export/export_retinanet.py
-        "models/detector/"
+      python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
     deps:
       - models/detector/
       - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord

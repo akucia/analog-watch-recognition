@@ -57,8 +57,8 @@ stages:
       size: 261746
       nfiles: 1
     - path: models/detector/
-      md5: 389e0e92e2443ecbaa60609a66ba841e.dir
-      size: 387639400
+      md5: 127e6330ef4d5f4d735835b7cb5c71fd.dir
+      size: 387639399
       nfiles: 5
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py

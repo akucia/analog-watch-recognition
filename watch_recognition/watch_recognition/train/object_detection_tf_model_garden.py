@@ -94,10 +94,10 @@ def main(
     )
     retinanet_task.train_data.parser = Parser(
         aug_rand_hflip=True,
-        aug_scale_min=0.8,
-        aug_scale_max=1.2,
+        aug_scale_min=0.5,
+        aug_scale_max=1.5,
         aug_type=Augmentation(
-            type="randaug",
+            type="autoaug",
         ),
     )
 
@@ -167,17 +167,20 @@ def main(
         filepath="debug/detector/train_dataset_sample.jpg",
     )
     if profile:
-        tf.profiler.experimental.start(model_dir)
-        exp_config.trainer.train_steps = exp_config.trainer.steps_per_loop * 3
-        model, eval_logs = tfm.core.train_lib.run_experiment(
-            distribution_strategy=distribution_strategy,
-            task=task,
-            mode="train_and_eval",
-            params=exp_config,
-            model_dir=model_dir,
-            run_post_eval=True,
-        )
-        tf.profiler.experimental.stop()
+        with tf.profiler.experimental.Profile(model_dir):
+            for step in range(3):
+                with tf.profiler.experimental.Trace('train', step_num=step, _r=1):
+
+                    exp_config.trainer.train_steps = exp_config.trainer.steps_per_loop
+                    model, eval_logs = tfm.core.train_lib.run_experiment(
+                    distribution_strategy=distribution_strategy,
+                    task=task,
+                    mode="train_and_eval",
+                    params=exp_config,
+                    model_dir=model_dir,
+                    run_post_eval=True,
+                    )
+
     else:
         model, eval_logs = tfm.core.train_lib.run_experiment(
             distribution_strategy=distribution_strategy,

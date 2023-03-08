@@ -11,26 +11,20 @@ max_to_keep: 1
 optimizer_config:
   ema: null
   learning_rate:
-    stepwise:
-      boundaries:
-      - 100
-      - 750
-      - 1100
-      name: PiecewiseConstantDecay
+    cosine:
+      name: CosineDecay
+      initial_learning_rate: 0.001
+      alpha: 0.01
+      decay_steps: 1195
       offset: 0
-      values:
-      - 0.000064
-      - 0.00032
-      - 0.000032
-      - 0.0000032
-    type: stepwise
+    type: cosine
   optimizer:
     type: adam
   warmup:
     linear:
       name: linear
-      warmup_learning_rate: 0.0067
-      warmup_steps: 0
+      warmup_learning_rate: 0
+      warmup_steps: 105
     type: linear
 recovery_begin_steps: 0
 recovery_max_trials: 0
