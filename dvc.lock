@@ -76,57 +76,57 @@ stages:
       size: 19774777
       nfiles: 40
     - path: exported_models/detector/serving/
-      md5: 9a72a6ab51989bc118973f13c0ff0896.dir
-      size: 146876042
+      md5: 8238a0638d5b62dbb10997c09428505b.dir
+      size: 146874800
       nfiles: 8
     outs:
     - path: example_predictions/detector/train_0.jpg
-      md5: d8f571f47b8f0e7d8009945bf2dd94cd
-      size: 57774
+      md5: d8ebb095ef177b6cab208c01a4901948
+      size: 20782
     - path: example_predictions/detector/train_1.jpg
-      md5: 6684abe6414dd0102ccd52ca110059a7
-      size: 53384
+      md5: 31d49757e33561bb2c91b301c86ac6e4
+      size: 18902
     - path: example_predictions/detector/train_2.jpg
-      md5: 45966842a683ce40615722b341951a97
-      size: 45516
+      md5: db7385fd494bc7158b1f2ee2eaeff522
+      size: 18171
     - path: example_predictions/detector/val_0.jpg
-      md5: f134aa26976447856931c9587c18c462
-      size: 30102
+      md5: 21df0af50d7ebdaf84c218431e8d4a4f
+      size: 12146
     - path: example_predictions/detector/val_1.jpg
-      md5: 41392be0cb7cfd01c19bdbf8ec337771
-      size: 71903
+      md5: e76fa59b96765e4f1c5a587575a67ca5
+      size: 26225
     - path: example_predictions/detector/val_2.jpg
-      md5: 1198f070f5cca0ccce8aa73aacf75a56
-      size: 52948
+      md5: e0346f50bcb890d39f75ea3a8a2725b9
+      size: 19205
     - path: metrics/detector/train/PR-IoU@0.50.tsv
-      md5: a74546cbdf9973eadc9c74b074c3763b
-      size: 2121
+      md5: 35d21d2311eec4a68cd28c07c398d71e
+      size: 2096
     - path: metrics/detector/train/PR-IoU@0.75.tsv
-      md5: b5358079e5534b58b96b6c3ebacebaf9
-      size: 2135
+      md5: 35d21d2311eec4a68cd28c07c398d71e
+      size: 2096
     - path: metrics/detector/train/PR-IoU@0.95.tsv
-      md5: 88010f37dfc1907ac36497805221beb4
-      size: 1739
+      md5: 1b8bf776cc216e9f2d849fa4743e12cb
+      size: 1593
     - path: metrics/detector/train/coco.json
-      md5: 4ec9eb95fee5c5f967eec9702b0d0c6d
-      size: 286
+      md5: 898d92d4d103c20c030756c61d5901c8
+      size: 285
     - path: metrics/detector/train/detection.json
-      md5: 3eec2ca1281b2947797a5f742531486a
+      md5: 50e5b8f0920033b6cf039e587b3a150c
       size: 136
     - path: metrics/detector/val/PR-IoU@0.50.tsv
-      md5: 93591e69168cccdf5323727a6368bf72
-      size: 1555
+      md5: e99b7080bbce819ea1061d8f4c2af3be
+      size: 2199
     - path: metrics/detector/val/PR-IoU@0.75.tsv
-      md5: ede1c775e4a2e13050c2c2189f46a007
-      size: 1282
+      md5: 167775502a24bf830a8e7c04563a3e89
+      size: 2049
     - path: metrics/detector/val/PR-IoU@0.95.tsv
       md5: eb9c22f401e52e662cc9020d738478e0
       size: 1059
     - path: metrics/detector/val/coco.json
-      md5: 5e630d4c036ffdb4170c97d7fd13daf7
+      md5: 5ecc156ce14f8354ca56f1de5e0fcfa5
       size: 286
     - path: metrics/detector/val/detection.json
-      md5: 57151a1fd63553b3ff67f10db8d932d5
+      md5: 9c1eb20e00b84a465b3ef48cd78496a8
       size: 134
   update-metrics:
     cmd: python scripts/update-metrics-table-and-graph.py
@@ -440,8 +440,8 @@ stages:
       md5: 4544fc968858586e64d11f00fe228cbd
       size: 170365240
     - path: models/detector/
-      md5: 389e0e92e2443ecbaa60609a66ba841e.dir
-      size: 387639400
+      md5: 127e6330ef4d5f4d735835b7cb5c71fd.dir
+      size: 387639399
       nfiles: 5
     - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
       md5: 3f7da87dcf9edbdfe8506c88a37ec3ef
@@ -454,32 +454,32 @@ stages:
       size: 845
     outs:
     - path: example_predictions/detector/IMG_0040.jpg
-      md5: 898944a34927546d726e27b421a7847f
-      size: 228653
+      md5: 92765c5a527ddf48b53e7f86e4bfb4c7
+      size: 94670
     - path: exported_models/detector/lite16/assets.extra/tf_serving_warmup_requests
       md5: 24222ef7eef001a3091f660558c826ac
       size: 786517
     - path: exported_models/detector/lite16/model.tflite
-      md5: 94322c4d68b675eb82a8b6ede2c81a81
+      md5: 11102f2f14f85b8f57332a21804f49f0
       size: 65310724
     - path: exported_models/detector/lite8/assets.extra/tf_serving_warmup_requests
       md5: 24222ef7eef001a3091f660558c826ac
       size: 786517
     - path: exported_models/detector/lite8/model.tflite
-      md5: c96d4f8c9374659118acfb2380d58ff8
+      md5: 28982df5c0c10b55e6777a1f2432293b
       size: 102501816
     - path: exported_models/detector/serving/assets.extra/tf_serving_warmup_requests
       md5: 783b65cb6c06d334aaf972183d2c4409
       size: 11520090
     - path: exported_models/detector/serving/fingerprint.pb
-      md5: df5826f7a6a02c1e4d508175e90851af
+      md5: 21dd92f1875a37adb037f089893059a0
       size: 55
     - path: exported_models/detector/serving/saved_model.pb
-      md5: f4a141ff2a2a755ee1b838fe9cead85a
-      size: 5783565
+      md5: 0f699ddf36365f4869342f7e70f30b93
+      size: 5782323
     - path: exported_models/detector/serving/variables/variables.data-00000-of-00001
-      md5: f4f86c20bb027cf5a328bc90546e0c17
+      md5: dfc404ebcd0f645fc33c05d38e760262
       size: 129544413
     - path: exported_models/detector/serving/variables/variables.index
-      md5: 5ab5756f1508373309bf1ef8ea57b271
+      md5: d42ff639553e6a528d3804e51f4c3009
       size: 27803
