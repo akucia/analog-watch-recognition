@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow_models as tfm
 from official.core.base_task import RuntimeConfig
 from official.core.base_trainer import ExperimentConfig, TrainerConfig
-from official.vision.configs.common import Augmentation
+from official.vision.configs.common import Augmentation, RandAugment
 from official.vision.configs.retinanet import Parser, RetinaNetTask
 from official.vision.dataloaders.tf_example_decoder import TfExampleDecoder
 from official.vision.ops.preprocess_ops import resize_and_crop_image
@@ -97,7 +97,13 @@ def main(
         aug_scale_min=0.5,
         aug_scale_max=1.5,
         aug_type=Augmentation(
-            type="autoaug",
+            type="randaug",
+            randaug=RandAugment(
+                cutout_const=100,
+                translate_const=250,
+                magnitude_std=0.1,
+                prob_to_apply=0.5,
+            ),
         ),
     )
 
@@ -169,16 +175,15 @@ def main(
     if profile:
         with tf.profiler.experimental.Profile(model_dir):
             for step in range(3):
-                with tf.profiler.experimental.Trace('train', step_num=step, _r=1):
-
+                with tf.profiler.experimental.Trace("train", step_num=step, _r=1):
                     exp_config.trainer.train_steps = exp_config.trainer.steps_per_loop
                     model, eval_logs = tfm.core.train_lib.run_experiment(
-                    distribution_strategy=distribution_strategy,
-                    task=task,
-                    mode="train_and_eval",
-                    params=exp_config,
-                    model_dir=model_dir,
-                    run_post_eval=True,
+                        distribution_strategy=distribution_strategy,
+                        task=task,
+                        mode="train_and_eval",
+                        params=exp_config,
+                        model_dir=model_dir,
+                        run_post_eval=True,
                     )
 
     else:

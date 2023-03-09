@@ -28,3 +28,6 @@ add-sampled-images: active-learning-select-images
 
 generate-full-requirements:
 	pip-compile -v dev-requirements.in.txt -o dev-requirements.txt
+
+run-detection-evaluation:
+	python watch_recognition/watch_recognition/eval/object_detection_eval.py --save-plots --save-per-image-metrics

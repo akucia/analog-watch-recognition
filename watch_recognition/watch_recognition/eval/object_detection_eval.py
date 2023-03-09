@@ -25,7 +25,9 @@ plt.rcParams["font.family"] = "Roboto"
 
 
 @click.command()
-def main():
+@click.option("--save-plots", is_flag=True)
+@click.option("--save-per-image-metrics", is_flag=True)
+def main(save_plots: bool = False, save_per_image_metrics: bool = False):
     t0 = time.perf_counter()
     dataset_path = Path("datasets/watch-faces-local.json")
     label_to_cls = {"WatchFace": 1}
@@ -56,8 +58,8 @@ def main():
             label_to_cls,
             split=split,
             save_dir=detector_metrics_dir,
-            save_per_image_metrics=False,
-            plot=False,
+            save_per_image_metrics=save_per_image_metrics,
+            plot=save_plots,
         )
 
         calculate_and_save_coco_metrics(
