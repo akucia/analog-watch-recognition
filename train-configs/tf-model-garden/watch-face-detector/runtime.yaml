@@ -3,12 +3,12 @@ batchnorm_spatial_persistent: false
 dataset_num_private_threads: null
 default_shard_dim: -1
 distribution_strategy: mirrored
-enable_xla: false
+enable_xla: true
 gpu_thread_mode: null
 loss_scale: null
-mixed_precision_dtype: bfloat16
+mixed_precision_dtype: float16
 num_cores_per_replica: 1
-num_gpus: 0
+num_gpus: 1
 num_packs: 1
 per_gpu_thread_count: 0
 run_eagerly: false

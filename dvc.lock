@@ -4,27 +4,27 @@ stages:
     cmd: python scripts/download-images.py datasets/watch-faces.json --concurrent
     deps:
     - path: datasets/watch-faces.json
-      md5: 9ef591869e24dfc73e6b2ca9e398ea78
-      size: 1737448
+      md5: 14510961fc2bed7275d4f63169c0171a
+      size: 1765710
     - path: scripts/download-images.py
       md5: a037cfab1a482a356f1d7d62804041d3
       size: 3961
     outs:
     - path: datasets/test
-      md5: 0aeb029db40e49068d63308665810b57.dir
-      size: 18701099
-      nfiles: 54
+      md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
+      size: 18869343
+      nfiles: 55
     - path: datasets/train
-      md5: 9c414afa46808b376366ae8e0ff3c786.dir
-      size: 170152358
-      nfiles: 481
+      md5: e30af68ca2dd21a74f89ef92025bd889.dir
+      size: 193665906
+      nfiles: 588
     - path: datasets/val
-      md5: 1ab506f4b22a797ed4afeaf195c51466.dir
-      size: 19774777
-      nfiles: 40
+      md5: c2e5983ceddfc4ca034e7992c059f2fd.dir
+      size: 20206227
+      nfiles: 42
     - path: datasets/watch-faces-local.json
-      md5: ac8a41e164ac41d98092ce8e2d5ffe4f
-      size: 1724269
+      md5: add063aad322a28056d9757d8cda4c4b
+      size: 1750001
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
       "train-configs/tf-model-garden/watch-face-detector/" --seed 42
@@ -376,34 +376,34 @@ stages:
       --run-concurrently
     deps:
     - path: datasets/test
-      md5: 0aeb029db40e49068d63308665810b57.dir
-      size: 18701099
-      nfiles: 54
+      md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
+      size: 18869343
+      nfiles: 55
     - path: datasets/train
-      md5: 9c414afa46808b376366ae8e0ff3c786.dir
-      size: 170152358
-      nfiles: 481
+      md5: e30af68ca2dd21a74f89ef92025bd889.dir
+      size: 193665906
+      nfiles: 588
     - path: datasets/val
-      md5: 1ab506f4b22a797ed4afeaf195c51466.dir
-      size: 19774777
-      nfiles: 40
+      md5: c2e5983ceddfc4ca034e7992c059f2fd.dir
+      size: 20206227
+      nfiles: 42
     - path: datasets/watch-faces-local.json
-      md5: ac8a41e164ac41d98092ce8e2d5ffe4f
-      size: 1724269
+      md5: add063aad322a28056d9757d8cda4c4b
+      size: 1750001
     params:
       params.yaml:
         detector.label_to_cls:
           WatchFace: 1
     outs:
     - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
-      md5: 1b3ab510ea04a39f1a49cc771833a9bb
-      size: 18726377
+      md5: a42e28e9d926efa0f58135807ba6fc49
+      size: 18894906
     - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
-      md5: fb9bb944e963342abfb348fa5cc721c7
-      size: 170364577
+      md5: c23f1ef67c94c434e8fb06d92c38e29a
+      size: 193908620
     - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
-      md5: 1806fd092ac1abdc084925f53bd59cf4
-      size: 19788569
+      md5: a3fef63dfc62fba8bea844c2ca5b7cc8
+      size: 20220589
   generate-watch-hands-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
       datasets/watch-faces-local.json  datasets/tf-records/segmentation/watch-hands/  --num-shards=1

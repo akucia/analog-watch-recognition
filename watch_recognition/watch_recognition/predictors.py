@@ -1,7 +1,6 @@
 import abc
 import dataclasses
 import hashlib
-import tempfile
 from abc import ABC
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
@@ -12,7 +11,6 @@ import numpy as np
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from more_itertools import chunked
-from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
 from tensorflow_serving.apis import predict_pb2, prediction_service_pb2_grpc
@@ -327,105 +325,6 @@ class HandPredictorGRPC(HandPredictor):
         value = output.float_val
         shape = [dim.size for dim in output.tensor_shape.dim]
         return np.array(value).reshape(shape)
-
-
-class TFLiteDetector:
-    def __init__(self, model_path: Path):
-        if model_path.is_dir():
-            model_path /= "model.tflite"
-        self.model = tf.lite.Interpreter(model_path=str(model_path))
-        _, input_height, input_width, _ = self.model.get_input_details()[0]["shape"]
-        self.input_size = (input_width, input_height)
-        self.model.allocate_tensors()
-        self.cache = {}
-
-    @classmethod
-    def detect_objects(cls, interpreter, image, threshold):
-        """Returns a list of detection results, each a dictionary of object info."""
-        # Feed the input image to the model
-        cls.set_input_tensor(interpreter, image)
-        interpreter.invoke()
-
-        # Get all outputs from the model
-        boxes = cls.get_output_tensor(interpreter, 0)
-        classes = cls.get_output_tensor(interpreter, 1)
-        scores = cls.get_output_tensor(interpreter, 2)
-        count = int(cls.get_output_tensor(interpreter, 3))
-
-        results = []
-        for i in range(count):
-            if scores[i] >= threshold:
-                result = {
-                    "bounding_box": boxes[i],
-                    "class_id": classes[i],
-                    "score": scores[i],
-                }
-                results.append(result)
-        return results
-
-    # functions to run object detector in tflite from object detector model maker
-    @staticmethod
-    def set_input_tensor(interpreter, image):
-        """Set the input tensor."""
-        tensor_index = interpreter.get_input_details()[0]["index"]
-        input_tensor = interpreter.tensor(tensor_index)()[0]
-        input_tensor[:, :] = image
-
-    @staticmethod
-    def get_output_tensor(interpreter, index):
-        """Retur the output tensor at the given index."""
-        output_details = interpreter.get_output_details()[index]
-        tensor = np.squeeze(interpreter.get_tensor(output_details["index"]))
-        return tensor
-
-    @staticmethod
-    def preprocess_image(image_path, input_size):
-        """Preprocess the input image to feed to the TFLite model"""
-        img = tf.io.read_file(image_path)
-        img = tf.io.decode_image(img, channels=3)
-        img = tf.image.convert_image_dtype(img, tf.uint8)
-        original_image = img
-        resized_img = tf.image.resize(img, input_size)
-        resized_img = resized_img[tf.newaxis, :]
-        return resized_img, original_image
-
-    def predict(self, image: ImageType) -> List[BBox]:
-        """Run object detection on the input image and draw the detection results"""
-        image_hash = _hash_image(image)
-        if image_hash in self.cache:
-            return self.cache[image_hash]
-        im = image.copy()
-        im.thumbnail((512, 512), Image.BICUBIC)
-        # TODO skip temp file?
-        with tempfile.TemporaryFile() as tmp:
-            im.save(tmp, "PNG")
-            # Load the input image and preprocess it
-            preprocessed_image, original_image = self.preprocess_image(
-                tmp, (self.input_size[1], self.input_size[0])
-            )
-
-        # Run object detection on the input image
-        results = self.detect_objects(self.model, preprocessed_image, threshold=0.5)
-
-        bboxes = []
-        for obj in results:
-            ymin, xmin, ymax, xmax = obj["bounding_box"]
-            # Find the class index of the current object
-            # class_id = int(obj["class_id"])
-            score = float(obj["score"])
-            bboxes.append(
-                BBox(
-                    x_min=xmin,
-                    y_min=ymin,
-                    x_max=xmax,
-                    y_max=ymax,
-                    name="bbox",
-                    score=score,
-                ).scale(image.width, image.height)
-            )
-        self.cache[image_hash] = bboxes
-
-        return bboxes
 
 
 class RetinaNetDetector(ABC):

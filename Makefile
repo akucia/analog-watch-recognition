@@ -20,10 +20,10 @@ dev-install:
 select-unused-images:
 	python scripts/select-unused-images.py --data-dir ./new-images --output-path ./unused-images --clean-save-dir
 
-active-learning-select-images: select-unused-images
+active-learning-select-images:
 	python scripts/score-images-for-learning.py --data-dir ./unused-images --run-concurrently --num-samples 15 --output-path ./sampled-images --clean-save-dir
 
-add-sampled-images: active-learning-select-images
+add-sampled-images:
 	python scripts/add-images-to-label-studio-project.py --source-dir ./sampled-images --label-studio-project ${PROJECT_ID} --label-studio-host ${LABEL_STUDIO_URL} --label-studio-api-token ${LABEL_STUDIO_ACCESS_TOKEN}
 
 generate-full-requirements:
