@@ -139,12 +139,14 @@ def main(checkpoint_dir: str):
     detector = RetinaNetDetectorLocal(
         Path(serving_export_dir), class_to_label_name={1: "WatchFace"}
     )
+    examples_dir = Path("example_predictions/detector/")
+    examples_dir.mkdir(parents=True, exist_ok=True)
     with Image.open(Path("example_data/IMG_0040.jpg")) as img:
         plt.figure(figsize=(10, 10))
         plt.tight_layout()
         detector.predict_and_plot(img)
         plt.axis("off")
-        plt.savefig("example_predictions/detector/IMG_0040.jpg", bbox_inches="tight")
+        plt.savefig(examples_dir / "IMG_0040.jpg", bbox_inches="tight")
     print("done")
     print("creating warmup request...")
     save_tf_serving_warmup_request(
