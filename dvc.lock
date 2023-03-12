@@ -34,13 +34,13 @@ stages:
       size: 233024871
       nfiles: 4
     - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
-      md5: 3f7da87dcf9edbdfe8506c88a37ec3ef
-      size: 4015
+      md5: f3e501593edb3bbcf9e9213765403f23
+      size: 3255
     - path: train-configs/tf-model-garden/watch-face-detector/runtime.yaml
       md5: 71503a0285b578c4ccd9b2cbea2f4a74
       size: 405
     - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
-      md5: 7299109522324023bf6924fa3b0db717
+      md5: d6a17c825eeee10d90ca143bb4604f69
       size: 845
     params:
       params.yaml:
@@ -57,8 +57,8 @@ stages:
       size: 276880
       nfiles: 1
     - path: models/detector/
-      md5: 435cdb3fe2d419ce6f631a0b89d965f2.dir
-      size: 387755448
+      md5: 9dd8387cc4d9c4e89d4a7387a9d0c7a0.dir
+      size: 321639161
       nfiles: 5
   eval-detector:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
@@ -76,16 +76,16 @@ stages:
       size: 20206227
       nfiles: 42
     - path: exported_models/detector/serving/
-      md5: 3efcdcd73aebf9a0964578dec8157d3a.dir
-      size: 146876042
+      md5: 45009e5c9dd82f8869c4ddc21f52e7fa.dir
+      size: 143111980
       nfiles: 8
     outs:
     - path: example_predictions/detector/train_0.jpg
-      md5: 871793c626d33c2608a149f7e51954fe
-      size: 43481
+      md5: 32642cd8e2010a5d644bd263f441817d
+      size: 42953
     - path: example_predictions/detector/train_1.jpg
-      md5: 5fc4833b70a434c2c95a7005a4a20fcc
-      size: 49531
+      md5: 9deebf3a78ad4d42e789296bc9d6b8ea
+      size: 49410
     - path: example_predictions/detector/train_2.jpg
       md5: f5475d5c75f883d12592546c337bf513
       size: 46732
@@ -93,40 +93,40 @@ stages:
       md5: 0e3ea39f90c009e79c0daa1a7dad560e
       size: 40986
     - path: example_predictions/detector/val_1.jpg
-      md5: c9bb27028e073e7b66966b13e6fec123
-      size: 57673
+      md5: 4a70a2d74a0e11951d0817cf7442cafb
+      size: 57031
     - path: example_predictions/detector/val_2.jpg
-      md5: 939211952cb357cf767aea7a8b81b484
-      size: 29948
+      md5: cb5ccd8a204f9733ead4a2913d45bbad
+      size: 30010
     - path: metrics/detector/train/PR-IoU@0.50.tsv
-      md5: dc00cbc18910ae479b259fe8e36037e9
-      size: 2235
+      md5: 568c7cd0a71d459533067af6608680fc
+      size: 2351
     - path: metrics/detector/train/PR-IoU@0.75.tsv
-      md5: 99f335945e88e9aa6290ee88b897f290
-      size: 2249
+      md5: 817834680885afddebaa43ccd2a69b47
+      size: 2322
     - path: metrics/detector/train/PR-IoU@0.95.tsv
-      md5: fcebc5567272c0c41f04e5d849260a70
-      size: 1927
+      md5: efb6cf690816985e722bb29678ea5798
+      size: 1656
     - path: metrics/detector/train/coco.json
-      md5: 3cd8954d3621d76c0b36c63113421fcd
-      size: 286
+      md5: 35c73783e03358e093a7005b83b6d9ed
+      size: 271
     - path: metrics/detector/train/detection.json
-      md5: b54847b86d33ff44c0445d20e005c0af
+      md5: f3f6e5209273095409720d909e470a09
       size: 136
     - path: metrics/detector/val/PR-IoU@0.50.tsv
-      md5: 3208dc01404e89085964f79f877101cf
-      size: 1951
+      md5: bec5895256a5a8512899cad02c3c4dbf
+      size: 1726
     - path: metrics/detector/val/PR-IoU@0.75.tsv
-      md5: 183ffe7e73f136ee1b1be6fb7961faf2
-      size: 1419
+      md5: e052f6caa6ff46658ceff1e84435721b
+      size: 1286
     - path: metrics/detector/val/PR-IoU@0.95.tsv
-      md5: 6537b2dcbe97ec6f20f3e0fe207b8b29
-      size: 1059
+      md5: d121d030164e615dcfc8df1848247957
+      size: 1119
     - path: metrics/detector/val/coco.json
-      md5: d6220e123d72a7184b6a3433b104515c
-      size: 287
+      md5: db9453545905f904a9f30d817bc4436d
+      size: 289
     - path: metrics/detector/val/detection.json
-      md5: ae3e60a828f855e04cfea36545e7fd28
+      md5: 7651b707c65e858de29186ff25c72cfc
       size: 134
   update-metrics:
     cmd: python scripts/update-metrics-table-and-graph.py
@@ -440,46 +440,46 @@ stages:
       md5: 98a20f2f3dd39ba936c18e17acd8931c
       size: 193908620
     - path: models/detector/
-      md5: 435cdb3fe2d419ce6f631a0b89d965f2.dir
-      size: 387755448
+      md5: 9dd8387cc4d9c4e89d4a7387a9d0c7a0.dir
+      size: 321639161
       nfiles: 5
     - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
-      md5: 3f7da87dcf9edbdfe8506c88a37ec3ef
-      size: 4015
+      md5: f3e501593edb3bbcf9e9213765403f23
+      size: 3255
     - path: train-configs/tf-model-garden/watch-face-detector/runtime.yaml
       md5: 71503a0285b578c4ccd9b2cbea2f4a74
       size: 405
     - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
-      md5: 7299109522324023bf6924fa3b0db717
+      md5: d6a17c825eeee10d90ca143bb4604f69
       size: 845
     outs:
     - path: example_predictions/detector/IMG_0040.jpg
-      md5: f0f4f2f4c2b167a1836f1490210789ec
-      size: 228571
+      md5: 45d2758e7fb2d593def682f13df85fcc
+      size: 229124
     - path: exported_models/detector/lite16/assets.extra/tf_serving_warmup_requests
       md5: 24222ef7eef001a3091f660558c826ac
       size: 786517
     - path: exported_models/detector/lite16/model.tflite
-      md5: 6421861137fe6c0d021e309b51256a24
-      size: 65310724
+      md5: f236b83e11b9bd05ee82b4e2bcc7f74f
+      size: 54842296
     - path: exported_models/detector/lite8/assets.extra/tf_serving_warmup_requests
       md5: 24222ef7eef001a3091f660558c826ac
       size: 786517
     - path: exported_models/detector/lite8/model.tflite
-      md5: 919a27726d28e7be749e8ba42b26a3d5
-      size: 102501816
+      md5: ed0af5113aba9a8eaa60d463a865fd95
+      size: 91572496
     - path: exported_models/detector/serving/assets.extra/tf_serving_warmup_requests
       md5: 783b65cb6c06d334aaf972183d2c4409
       size: 11520090
     - path: exported_models/detector/serving/fingerprint.pb
-      md5: 4e08d1ba4c79af9d5e0f0667eb76bed6
-      size: 55
+      md5: 18afe8c9aa69ec42eb56cd5b8a463cb8
+      size: 54
     - path: exported_models/detector/serving/saved_model.pb
-      md5: f4a141ff2a2a755ee1b838fe9cead85a
-      size: 5783565
+      md5: 180c500b4c33e41b17ae6aa6d28b3dc0
+      size: 23869315
     - path: exported_models/detector/serving/variables/variables.data-00000-of-00001
-      md5: d11ee97dd327b3add4ff5fce5c905615
-      size: 129544413
+      md5: 49e4ac7afe981792d0a3474f3232c50c
+      size: 107671904
     - path: exported_models/detector/serving/variables/variables.index
-      md5: d4f904d9350fcb36170bd790a81e159c
-      size: 27803
+      md5: e5c44c18974082fe8e36417019569095
+      size: 50501
