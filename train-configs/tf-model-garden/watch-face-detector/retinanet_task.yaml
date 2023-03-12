@@ -5,7 +5,7 @@ export_config:
   cast_num_detections_to_float: false
   output_normalized_coordinates: false
 freeze_backbone: false
-init_checkpoint: gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080
+init_checkpoint: null
 init_checkpoint_modules: backbone
 losses:
   box_loss_weight: 50
@@ -16,46 +16,16 @@ losses:
   loss_weight: 1.0
 model:
   anchor:
-    anchor_size: 4.0
-    aspect_ratios:
-    - 0.5
-    - 1.0
-    - 2.0
+    anchor_size: 3
+    aspect_ratios: [0.5, 1.0, 2.0]
     num_scales: 3
   backbone:
-    resnet:
-      bn_trainable: true
-      depth_multiplier: 1.0
-      model_id: 50
-      replace_stem_max_pool: false
-      resnetd_shortcut: false
-      scale_stem: true
-      se_ratio: 0.0
-      stem_type: v0
-      stochastic_depth_drop_rate: 0.0
-    type: resnet
+    spinenet:
+      stochastic_depth_drop_rate: 0.2
+      model_id: '49'
+    type: 'spinenet'
   decoder:
-    fpn:
-      fusion_type: sum
-      num_filters: 256
-      use_keras_layer: false
-      use_separable_conv: false
-    type: fpn
-  detection_generator:
-    apply_nms: true
-    max_num_detections: 100
-    nms_iou_threshold: 0.5
-    nms_version: v2
-    pre_nms_score_threshold: 0.05
-    pre_nms_top_k: 5000
-    soft_nms_sigma: null
-    tflite_post_processing:
-      max_classes_per_detection: 2
-      max_detections: 200
-      nms_iou_threshold: 0.5
-      nms_score_threshold: 0.1
-      use_regular_nms: false
-    use_cpu_nms: false
+    type: 'identity'
   head:
     attribute_heads: []
     num_convs: 4
@@ -69,10 +39,10 @@ model:
   max_level: 7
   min_level: 3
   norm_activation:
-    activation: relu
+    activation: 'swish'
     norm_epsilon: 0.001
     norm_momentum: 0.99
-    use_sync_bn: false
+    use_sync_bn: true
   num_classes: 2
 name: null
 per_category_metrics: true

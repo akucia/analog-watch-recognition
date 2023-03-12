@@ -22,6 +22,8 @@ import tensorflow as tf
 pp = pprint.PrettyPrinter(indent=4)
 print(tf.__version__)
 
+plt.rcParams["font.family"] = "Roboto"
+
 
 def build_inputs_for_object_detection(image, input_image_size):
     """Builds Object Detection model inputs for serving."""
