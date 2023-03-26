@@ -168,11 +168,13 @@ def main(
         .shuffle(buffer_size=buffer_size)
         .take(3)
     )
+    debug_img_path = Path("debug/detector/")
+    debug_img_path.mkdir(parents=True, exist_ok=True)
     show_batch(
         raw_train_records,
         tf_ex_decoder,
         category_index,
-        filepath="debug/detector/train_dataset_sample.jpg",
+        filepath=debug_img_path / "train_dataset_sample.jpg",
     )
     if profile:
         with tf.profiler.experimental.Profile(model_dir):
