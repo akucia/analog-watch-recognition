@@ -289,7 +289,6 @@ tensorboard_logs/
 
 #misc
 .python-version
-example_data/
 runs.json
 
 /download_data/test/*
@@ -299,7 +298,6 @@ runs.json
 /download_data/watch-face-detection-train/*
 /download_data/watch-face-detection-val/*
 
-*.mov
 *.avi
 
 /cloud_train/
@@ -321,3 +319,4 @@ runs.json
 /example_predictions
 
 analog-watch-recognition.code-workspace
+!/example_data/IMG_1200_720p.mov

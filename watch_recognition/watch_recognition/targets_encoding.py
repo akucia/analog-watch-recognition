@@ -419,7 +419,8 @@ def select_minute_and_hour_points(
 def get_minute_and_hour_points(
     center: Point, hand_points: Tuple[Point, Point]
 ) -> Tuple[Point, Point]:
-    assert len(hand_points) < 3, "expected max 2 points for hands"
+    if len(hand_points) < 3:
+        raise ValueError("expected max 2 points for hands")
     hand_points_np = np.array([p.as_coordinates_tuple for p in hand_points]).reshape(
         -1, 2
     )
@@ -562,7 +563,8 @@ def segment_hands_mask(
     debug: bool = False,
 ) -> List[np.ndarray]:
     # TODO separate mask logic from line fitting logic
-    assert len(mask.shape) == 2, f"mask must have 2D shape, got {mask.shape}"
+    if len(mask.shape) == 2:
+        raise ValueError(f"mask must have 2D shape, got {mask.shape}")
 
     vectors = []
     points = []
@@ -717,7 +719,7 @@ def _fit_lines_to_points(all_points, center):
     hands = [
         dataclasses.replace(hand, score=score) for hand, score in zip(hands, scores)
     ]
-    # hands = remove_complementary_hands(hands, center)
+    hands = [dataclasses.replace(hand, start=center) for hand in hands]
     return hands
 
 
@@ -787,13 +789,10 @@ def line_selector(
         raise NotImplementedError(
             f"I don't know what to do with {len(sorted_lines)} recognized hand lines"
         )
-    # selected_lines = [
-    #     dataclasses.replace(selected_line, start=center)
-    #     for selected_line in selected_lines
-    # ]
-    # if there are two lines: shorter is hour, longer is minutes
     minute, hour = sorted(
         selected_lines, key=lambda line: line.end.distance(center), reverse=True
     )
+    minute = dataclasses.replace(minute, end=minute.end.rename("Minute"))
+    hour = dataclasses.replace(hour, end=hour.end.rename("Hour"))
 
     return (minute, hour), rejected_lines

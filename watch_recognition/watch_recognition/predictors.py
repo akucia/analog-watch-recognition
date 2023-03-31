@@ -443,6 +443,7 @@ class RetinaNetDetectorGRPC(RetinaNetDetector):
         host: str,
         model_name: str,
         class_to_label_name: Dict[int, str],
+        confidence_threshold: float = 0.5,
         timeout: float = 10.0,
     ):
         self.host = host
@@ -450,7 +451,10 @@ class RetinaNetDetectorGRPC(RetinaNetDetector):
         self.channel = grpc.insecure_channel(self.host)
         self.stub = prediction_service_pb2_grpc.PredictionServiceStub(self.channel)
         self.timeout = timeout
-        super().__init__(class_to_label_name)
+        super().__init__(
+            class_to_label_name=class_to_label_name,
+            confidence_threshold=confidence_threshold,
+        )
 
     def _batch_predict_api(
         self, input_images: np.ndarray
@@ -691,28 +695,26 @@ def read_time(
     polygon: Polygon,
     points: List[Point],
     image_shape: Tuple[int, int],
-    debug: bool = False,
-    debug_image=None,
     hands_mask=None,
-) -> Optional[Tuple[float, float]]:
+) -> Tuple[Optional[Tuple[float, float]], Tuple[Line, Line]]:
     detected_center_points = [p for p in points if p.name == "Center"]
     if detected_center_points:
         center = sorted(detected_center_points, key=lambda p: p.score, reverse=True)[0]
     else:
-        return None
+        return None, tuple()
 
     detected_top_points = [p for p in points if p.name == "Top"]
     if detected_top_points:
         top = sorted(detected_top_points, key=lambda p: p.score, reverse=True)[0]
     else:
-        return None
+        return None, tuple()
     if hands_mask is not None:
         mask = hands_mask
     else:
         mask = polygon.to_mask(image_shape[0], image_shape[1])
 
     # TODO this might be faster if image shape is smaller
-    segmented_hands = segment_hands_mask(mask, center=center, debug=debug)
+    segmented_hands = segment_hands_mask(mask, center=center)
     points_per_hand = []
     for mask in segmented_hands:
         points = mask_to_point_list(mask)
@@ -724,24 +726,10 @@ def read_time(
 
     if valid_lines:
         pred_minute, pred_hour = valid_lines
-        minute_kp = dataclasses.replace(pred_minute.end, name="Minute")
-        hour_kp = dataclasses.replace(pred_hour.end, name="Hour")
-        if debug:
-            fig, axarr = plt.subplots(1, 1)
-            axarr.imshow(draw_masks(np.array(debug_image), segmented_hands))
-
-            pred_minute.plot(ax=axarr, color="green")
-            minute_kp.plot(ax=axarr)
-
-            pred_hour.plot(ax=axarr, color="green", lw=3)
-            hour_kp.plot(ax=axarr, marker="d")
-
-            for hand in other_lines:
-                hand.plot(ax=axarr, color="red")
-            center.plot(ax=axarr, color="magenta")
-            top.plot(ax=axarr, color="yellow")
-        return points_to_time(center, hour_kp, minute_kp, top, debug=debug)
-    return None
+        minute_kp = pred_minute.end
+        hour_kp = pred_hour.end
+        return points_to_time(center, hour_kp, minute_kp, top), valid_lines
+    return None, tuple()
 
 
 def mask_to_point_list(mask):
@@ -776,7 +764,7 @@ class TimePredictor:
                 points = self.kp_predictor.predict(crop)
                 hands_polygon = self.hand_predictor.predict(crop)
 
-                time = read_time(
+                time, _ = read_time(
                     hands_polygon,
                     points,
                     crop.size,
@@ -793,6 +781,57 @@ class TimePredictor:
         ]
         return bboxes
 
+    def predict_debug(
+        self, image: ImageType
+    ) -> Tuple[List[BBox], List[Point], List[Line]]:
+        # TODO DRY refactor this function and predict
+        pil_img = image.convert("RGB")
+        bboxes = self.detector.predict(pil_img)
+        transcriptions = []
+
+        bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
+        all_points = []
+        all_lines = []
+        for box in bboxes:
+            with image.crop(box=box.as_coordinates_tuple) as crop:
+                crop.thumbnail((256, 256), BICUBIC)
+                points = self.kp_predictor.predict(crop)
+                hands_polygon = self.hand_predictor.predict(crop)
+
+                time, lines = read_time(
+                    hands_polygon,
+                    points,
+                    crop.size,
+                )
+                # scale and move lines and points to image size
+                points = [
+                    p.scale(box.width / crop.width, box.height / crop.height).translate(
+                        box.left, box.top
+                    )
+                    for p in points
+                ]
+                lines = [
+                    line.scale(
+                        box.width / crop.width, box.height / crop.height
+                    ).translate(box.left, box.top)
+                    for line in lines
+                ]
+                all_points.extend(points)
+                # TODO lines are not originating from the center point
+                all_lines.extend(lines)
+            if time:
+                read_hour, read_minute = time
+                predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
+                transcriptions.append(predicted_time)
+            else:
+                transcriptions.append("??:??")
+
+        bboxes = [
+            bbox.rename(transcription)
+            for bbox, transcription in zip(bboxes, transcriptions)
+        ]
+        return bboxes, all_points, all_lines
+
     def predict_and_plot(self, img):
         fig, axarr = plt.subplots(1, 1)
         bboxes = self.detector.predict_and_plot(img, ax=axarr)
@@ -801,19 +840,13 @@ class TimePredictor:
                 crop.thumbnail((256, 256), BICUBIC)
                 fig, axarr = plt.subplots(1, 3)
                 axarr[0].axis("off")
-                points = self.kp_predictor.predict_and_plot(
-                    crop,
-                    ax=axarr[0],
-                )
-                hands_polygon = self.hand_predictor.predict_and_plot(
-                    crop,
-                    ax=axarr[1],
-                )
+                points = self.kp_predictor.predict_and_plot(crop, ax=axarr[0])
+                hands_polygon = self.hand_predictor.predict_and_plot(crop, ax=axarr[1])
                 self.hand_predictor.predict_mask_and_draw(crop, ax=axarr[2])
 
-                time = read_time(
-                    hands_polygon, points, crop.size, debug=True, debug_image=crop
-                )
+                time, lines = read_time(hands_polygon, points, crop.size)
+                for line in lines:
+                    line.plot(ax=axarr[0], color="red")
                 if time is not None:
                     predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
                     fig.suptitle(predicted_time, fontsize=16)

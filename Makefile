@@ -31,3 +31,6 @@ generate-full-requirements:
 
 run-detection-evaluation:
 	python watch_recognition/watch_recognition/eval/object_detection_eval.py --save-plots --save-per-image-metrics
+
+render-demo-video:
+	python scripts/render-demo-movie.py example_data/IMG_1200_720p.mov IMG_1200_720p-render.mp4

@@ -22,4 +22,6 @@ services:
       - ../exported_models/detector/serving:/models/detector/1
       - ../exported_models/detector/lite16:/models/detector/lite16/1
       - ../exported_models/detector/lite8:/models/detector/lite8/1
+      - ../models/keypoint:/models/keypoint/1
+      - ../models/segmentation:/models/segmentation/1
       - ./models.conf:/models.conf

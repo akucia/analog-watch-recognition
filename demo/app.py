@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 from matplotlib import pyplot as plt
 from PIL import Image, ImageOps
+from PIL.Image import BICUBIC
 
 from watch_recognition.eval.end_to_end_eval import _evaluate_on_single_image
 from watch_recognition.predictors import (
@@ -15,12 +16,14 @@ from watch_recognition.predictors import (
     read_time,
 )
 
+plt.rcParams["font.family"] = "Roboto"
+
 model_host = "localhost:8500"
 time_predictor = TimePredictor(
     detector=RetinaNetDetectorGRPC(
         host=model_host,
         model_name="detector",
-        class_to_label_name={0: "WatchFace"},
+        class_to_label_name={1: "WatchFace"},
     ),
     kp_predictor=KPHeatmapPredictorV2GRPC(
         host=model_host,
@@ -30,7 +33,7 @@ time_predictor = TimePredictor(
             1: "Center",
             2: "Crown",
         },
-        confidence_threshold=0.5,
+        confidence_threshold=0.05,
     ),
     hand_predictor=HandPredictorGRPC(
         host=model_host,
@@ -94,17 +97,19 @@ def debug():
     if file:
         demo_on_file(file)
     with Image.open(file) as img:
-        plt.tight_layout()
-        plt.axis("off")
         fig, axarr = plt.subplots(1, 1)
+        axarr.axis("off")
+        # TODO switch to predict debug?
         bboxes = time_predictor.detector.predict_and_plot(img, ax=axarr)
-
         st.pyplot(fig)
         for i, bbox in enumerate(bboxes):
             with img.crop(box=bbox.as_coordinates_tuple) as crop:
+                crop.thumbnail((256, 256), BICUBIC)
                 plt.tight_layout()
                 plt.axis("off")
                 fig, axarr = plt.subplots(1, 2)
+                axarr[0].axis("off")
+                axarr[1].axis("off")
                 points = time_predictor.kp_predictor.predict_and_plot(
                     crop,
                     ax=axarr[0],
@@ -113,16 +118,15 @@ def debug():
                     crop,
                     ax=axarr[1],
                 )
-                time = read_time(hands_polygon, points, crop.size)
+                time, lines = read_time(hands_polygon, points, crop.size)
+                for line in lines:
+                    line.plot(ax=axarr[1], lw=4)
                 if time:
-                    predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
+                    predicted_time = f"{time[0]:02}:{time[1]:02}"
                 else:
                     predicted_time = "??:??"
-                fig.suptitle(predicted_time, fontsize=10)
+                st.header(predicted_time)
                 st.pyplot(fig)
-            fig = plt.figure()
-            read_time(hands_polygon, points, crop.size, debug=True, debug_image=crop)
-            st.pyplot(fig)
 
 
 def main():

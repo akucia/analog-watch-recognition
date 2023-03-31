@@ -263,3 +263,10 @@ stages:
       deps:
         - scripts/update-metrics-table-and-graph.py
         - metrics
+  render-demo-video:
+      cmd: scripts/render-demo-movie.py example_data/IMG_1200_720p.mov demo.mp4
+      deps:
+        - scripts/render-demo-movie.py
+        - example_data/IMG_1200_720p.mov
+      outs:
+        - demo.mp4
