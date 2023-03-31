@@ -1,11 +1,11 @@
 from enum import Enum, auto
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 from matplotlib import pyplot as plt
 from PIL import Image, ImageOps
-from PIL.Image import BICUBIC
 
 from watch_recognition.eval.end_to_end_eval import _evaluate_on_single_image
 from watch_recognition.predictors import (
@@ -13,8 +13,17 @@ from watch_recognition.predictors import (
     KPHeatmapPredictorV2GRPC,
     RetinaNetDetectorGRPC,
     TimePredictor,
-    read_time,
 )
+
+kp_name_to_color = {
+    "Top": (255, 0, 0),
+    "Center": (0, 255, 0),
+    "Crown": (0, 0, 255),
+}
+line_name_to_color = {
+    "Hour": (255, 0, 0),
+    "Minute": (0, 255, 0),
+}
 
 plt.rcParams["font.family"] = "Roboto"
 
@@ -97,36 +106,22 @@ def debug():
     if file:
         demo_on_file(file)
     with Image.open(file) as img:
+        frame = time_predictor.predict_and_draw(
+            np.array(img), kp_name_to_color, line_name_to_color
+        )
         fig, axarr = plt.subplots(1, 1)
         axarr.axis("off")
-        # TODO switch to predict debug?
-        bboxes = time_predictor.detector.predict_and_plot(img, ax=axarr)
+        axarr.imshow(frame)
         st.pyplot(fig)
-        for i, bbox in enumerate(bboxes):
-            with img.crop(box=bbox.as_coordinates_tuple) as crop:
-                crop.thumbnail((256, 256), BICUBIC)
-                plt.tight_layout()
-                plt.axis("off")
-                fig, axarr = plt.subplots(1, 2)
-                axarr[0].axis("off")
-                axarr[1].axis("off")
-                points = time_predictor.kp_predictor.predict_and_plot(
-                    crop,
-                    ax=axarr[0],
-                )
-                hands_polygon = time_predictor.hand_predictor.predict_and_plot(
-                    crop,
-                    ax=axarr[1],
-                )
-                time, lines = read_time(hands_polygon, points, crop.size)
-                for line in lines:
-                    line.plot(ax=axarr[1], lw=4)
-                if time:
-                    predicted_time = f"{time[0]:02}:{time[1]:02}"
-                else:
-                    predicted_time = "??:??"
-                st.header(predicted_time)
-                st.pyplot(fig)
+
+        fig, axarr = plt.subplots(1, 1)
+        axarr.axis("off")
+        axarr.imshow(frame)
+        time_predictor.predict_and_plot(
+            img,
+            ax=axarr,
+        )
+        st.pyplot(fig)
 
 
 def main():

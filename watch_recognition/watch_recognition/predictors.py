@@ -11,6 +11,7 @@ import numpy as np
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from more_itertools import chunked
+from PIL import Image
 from PIL.Image import BICUBIC
 from PIL.Image import Image as ImageType
 from tensorflow_serving.apis import predict_pb2, prediction_service_pb2_grpc
@@ -753,37 +754,12 @@ class TimePredictor:
         self.hand_predictor = hand_predictor
 
     def predict(self, image: ImageType) -> List[BBox]:
-        pil_img = image.convert("RGB")
-        bboxes = self.detector.predict(pil_img)
-        transcriptions = []
-
-        bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
-        for box in bboxes:
-            with image.crop(box=box.as_coordinates_tuple) as crop:
-                crop.thumbnail((256, 256), BICUBIC)
-                points = self.kp_predictor.predict(crop)
-                hands_polygon = self.hand_predictor.predict(crop)
-
-                time, _ = read_time(
-                    hands_polygon,
-                    points,
-                    crop.size,
-                )
-            if time:
-                read_hour, read_minute = time
-                predicted_time = f"{read_hour:02.0f}:{read_minute:02.0f}"
-                transcriptions.append(predicted_time)
-            else:
-                transcriptions.append("??:??")
-        bboxes = [
-            bbox.rename(transcription)
-            for bbox, transcription in zip(bboxes, transcriptions)
-        ]
-        return bboxes
+        boxes, _, _, _ = self.predict_debug(image)
+        return boxes
 
     def predict_debug(
         self, image: ImageType
-    ) -> Tuple[List[BBox], List[Point], List[Line]]:
+    ) -> Tuple[List[BBox], List[Point], List[Line], List[Polygon]]:
         # TODO DRY refactor this function and predict
         pil_img = image.convert("RGB")
         bboxes = self.detector.predict(pil_img)
@@ -791,6 +767,7 @@ class TimePredictor:
 
         bboxes = [dataclasses.replace(bbox, name="WatchFace") for bbox in bboxes]
         all_points = []
+        all_polygons = []
         all_lines = []
         for box in bboxes:
             with image.crop(box=box.as_coordinates_tuple) as crop:
@@ -810,6 +787,10 @@ class TimePredictor:
                     )
                     for p in points
                 ]
+                hands_polygon = hands_polygon.scale(
+                    box.width / crop.width, box.height / crop.height
+                ).translate(box.left, box.top)
+
                 lines = [
                     line.scale(
                         box.width / crop.width, box.height / crop.height
@@ -817,7 +798,7 @@ class TimePredictor:
                     for line in lines
                 ]
                 all_points.extend(points)
-                # TODO lines are not originating from the center point
+                all_polygons.append(hands_polygon)
                 all_lines.extend(lines)
             if time:
                 read_hour, read_minute = time
@@ -830,26 +811,40 @@ class TimePredictor:
             bbox.rename(transcription)
             for bbox, transcription in zip(bboxes, transcriptions)
         ]
-        return bboxes, all_points, all_lines
+        return bboxes, all_points, all_lines, all_polygons
 
-    def predict_and_plot(self, img):
-        fig, axarr = plt.subplots(1, 1)
-        bboxes = self.detector.predict_and_plot(img, ax=axarr)
-        for i, bbox in enumerate(bboxes):
-            with img.crop(box=bbox.as_coordinates_tuple) as crop:
-                crop.thumbnail((256, 256), BICUBIC)
-                fig, axarr = plt.subplots(1, 3)
-                axarr[0].axis("off")
-                points = self.kp_predictor.predict_and_plot(crop, ax=axarr[0])
-                hands_polygon = self.hand_predictor.predict_and_plot(crop, ax=axarr[1])
-                self.hand_predictor.predict_mask_and_draw(crop, ax=axarr[2])
+    def predict_and_draw(
+        self,
+        img: np.ndarray,
+        kp_name_to_color: Dict[str, Tuple[int, int, int]],
+        line_name_to_color: Dict[str, Tuple[int, int, int]],
+    ) -> np.ndarray:
+        bboxes, points, lines, polygons = self.predict_debug(Image.fromarray(img))
+        frame = np.array(img)
+        for box in bboxes:
+            frame = box.draw(frame)
+        for point in points:
+            color = kp_name_to_color[point.name]
+            frame = point.draw_marker(frame, thickness=2, color=color)
+        for line in lines:
+            color = line_name_to_color[line.end.name]
+            frame = line.draw(frame, thickness=2, color=color)
+        return frame
 
-                time, lines = read_time(hands_polygon, points, crop.size)
-                for line in lines:
-                    line.plot(ax=axarr[0], color="red")
-                if time is not None:
-                    predicted_time = f"{time[0]:02.0f}:{time[1]:02.0f}"
-                    fig.suptitle(predicted_time, fontsize=16)
+    def predict_and_plot(self, img, ax=None):
+        if ax is None:
+            _, ax = plt.subplots(1, 1)
+        bboxes, points, lines, polygons = self.predict_debug(img)
+        ax.imshow(img)
+        ax.axis("off")
+        for box in bboxes:
+            box.plot(ax)
+        for point in points:
+            point.plot(ax)
+        for polygon in polygons:
+            polygon.plot(ax)
+        for line in lines:
+            line.plot(ax)
 
 
 def _get_image_shape(image: Union[ImageType, np.ndarray]):

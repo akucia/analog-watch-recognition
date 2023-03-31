@@ -1,11 +1,14 @@
+#!/usr/bin/env python
+
 import concurrent
 import itertools
 from pathlib import Path
 from threading import Event, Thread
+from typing import Tuple
 
 import click
 import cv2
-from PIL import Image
+import numpy as np
 from tqdm import tqdm
 
 from watch_recognition.predictors import (
@@ -47,6 +50,7 @@ def main(
     max_frames: int = -1,
     enable_multithreading: bool = False,
 ):
+    print(f"Running predictions on {input_file} and saving to {output_file}.")
     file = Path(input_file)
     output_file = Path(output_file)
     output_file.parent.mkdir(exist_ok=True, parents=True)
@@ -72,6 +76,7 @@ def main(
 
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    source_fps = int(cap.get(cv2.CAP_PROP_FPS))
 
     crop_padding = (frame_height - frame_width) // 2
     if enable_multithreading:
@@ -81,10 +86,13 @@ def main(
             spinner = Thread(target=spin, args=("loading input frames...", done))
             spinner.start()
             while cap.isOpened():
-                if 0 < max_frames < len(futures):
+                if 0 < max_frames <= len(futures):
                     break
 
-                _, frame = cap.read()
+                success, frame = cap.read()
+                if not success:
+                    break
+
                 future = executor.submit(
                     _process_frame, crop_padding, frame, predictor, len(futures)
                 )
@@ -101,23 +109,25 @@ def main(
         processed_frames = []
         pbar = tqdm()
         while cap.isOpened():
-            if 0 < max_frames < len(processed_frames):
+            if 0 < max_frames <= len(processed_frames):
                 break
-            _, frame = cap.read()
+            success, frame = cap.read()
+            if not success:
+                break
             processed_frames.append(
                 _process_frame(crop_padding, frame, predictor, len(processed_frames))
             )
             pbar.update(1)
         pbar.close()
     cap.release()
-    # sort frames by frame_id
+
+    print(f"saving {len(processed_frames)} frames")
     processed_frames = sorted(processed_frames, key=lambda x: x[0])
-    # write frames to video
 
     out = cv2.VideoWriter(
         str(output_file),
         cv2.VideoWriter_fourcc(*"mp4v"),
-        cap.get(cv2.CAP_PROP_FPS) - 10,
+        source_fps - 10,
         (int(frame_width), int(frame_width)),  # square video
     )
     for frame in processed_frames:
@@ -126,20 +136,12 @@ def main(
     cv2.destroyAllWindows()
 
 
-def _process_frame(crop_padding, frame, predictor, frame_id):
+def _process_frame(
+    crop_padding: int, frame: np.ndarray, predictor: TimePredictor, frame_id: int
+) -> Tuple[int, np.ndarray]:
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     frame = frame[crop_padding:-crop_padding, :]
-    with Image.fromarray(frame) as pil_img:
-        bboxes, points, lines = predictor.predict_debug(pil_img)
-        for box in bboxes:
-            frame = box.draw(frame)
-        for point in points:
-            color = kp_name_to_color[point.name]
-            frame = point.draw_marker(frame, thickness=2, color=color)
-        for line in lines:
-            color = line_name_to_color[line.end.name]
-            frame = line.draw(frame, thickness=2, color=color)
-
+    frame = predictor.predict_and_draw(frame, kp_name_to_color, line_name_to_color)
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
     return frame_id, frame
 

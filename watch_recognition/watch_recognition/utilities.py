@@ -89,7 +89,7 @@ class Point:
             data["keypointlabels"][0],
         ).scale(1 / 100, 1 / 100)
 
-    def plot(self, ax=None, color="red", marker="x", size=20, **kwargs):
+    def plot(self, ax=None, color: Optional[str] = None, marker="x", size=20, **kwargs):
         if ax is None:
             ax = plt.gca()
         ax.scatter(
@@ -102,7 +102,12 @@ class Point:
             **kwargs,
         )
 
-    def draw_marker(self, image: np.ndarray, color=None, thickness=3) -> np.ndarray:
+    def draw_marker(
+        self,
+        image: np.ndarray,
+        color: Optional[Tuple[int, int, int]] = None,
+        thickness: int = 3,
+    ) -> np.ndarray:
         original_image_np = image.astype(np.uint8)
 
         x, y = self.as_coordinates_tuple
@@ -407,10 +412,17 @@ class BBox:
             text += self.name
         if draw_score:
             text += f"\n{self.score:.2f}"
+
+        border_offset = 50
+        y_text_pos = (
+            self.y_min - border_offset
+            if self.y_min - border_offset > border_offset
+            else self.y_min + border_offset
+        )
         if draw_label or draw_score:
             ax.text(
                 self.x_min,
-                self.y_min,
+                y_text_pos,
                 text,
                 bbox={"facecolor": color, "alpha": 0.4},
                 clip_box=ax.clipbox,
@@ -424,11 +436,16 @@ class BBox:
         xmin, ymin, xmax, ymax = tuple(map(int, self.as_coordinates_tuple))
 
         cv2.rectangle(original_image_np, (xmin, ymin), (xmax, ymax), color, 2)
-        y = ymin - 15 if ymin - 15 > 15 else ymin + 15
+        border_offset = 50
+        y_text_pos = (
+            ymin - border_offset
+            if ymin - border_offset > border_offset
+            else ymin + border_offset
+        )
         cv2.putText(
             original_image_np,
             self.name,
-            (xmin, y),
+            (xmin, y_text_pos),
             cv2.FONT_HERSHEY_SIMPLEX,
             1,
             color,
@@ -602,7 +619,9 @@ class Line:
                 width=0.5,
             )
 
-    def draw(self, img: np.ndarray, color=(0, 255, 0), thickness=10) -> np.ndarray:
+    def draw(
+        self, img: np.ndarray, color: Tuple[int, int, int] = (0, 255, 0), thickness=10
+    ) -> np.ndarray:
         original_image_np = img.astype(np.uint8)
         start = self.start.as_coordinates_tuple
         end = self.end.as_coordinates_tuple
@@ -710,16 +729,18 @@ class Polygon:
     ):
         if ax is None:
             ax = plt.gca()
-        rect = patches.Polygon(
+
+        patch = patches.Polygon(
             self.coords,
             edgecolor=color,
-            facecolor="none",
+            facecolor=color,
             linewidth=linewidth,
+            alpha=0.25,
             **kwargs,
         )
 
         # Add the patch to the Axes
-        ax.add_patch(rect)
+        ax.add_patch(patch)
         if self.name and draw_name_label:
             ax.text(
                 np.min(self.coords[:, 0]),

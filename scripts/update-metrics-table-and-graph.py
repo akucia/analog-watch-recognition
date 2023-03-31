@@ -1,20 +1,15 @@
-import subprocess
+import subprocess  # nosec
 
 if __name__ == "__main__":
-    with open("README.md") as f:
+    with open("README.md") as f:  # nosec
         readme_lines = f.readlines()
 
     graph_start = readme_lines.index("# Graph\n")
-    graph_end = readme_lines.index("# Metrics\n")
-    readme_before_graph = readme_lines[:graph_start]
-    graph_md = [
-        subprocess.run(["dvc", "dag", "--md"], stdout=subprocess.PIPE).stdout.decode(
-            "utf-8"
-        )
-    ]
-
+    graph_end = readme_lines.index("# Installation\n")
     metrics_start = readme_lines.index("# Metrics\n")
-    metrics_end = readme_lines.index("## End 2 end metrics definitions\n")
+    metrics_end = graph_start
+    readme_before_metrics = readme_lines[:metrics_start]
+
     metrics_tables_md = []
     commands = [
         [
@@ -58,23 +53,28 @@ if __name__ == "__main__":
             "--md",
         ],
     ]
+    graph_md = [  # nosec
+        subprocess.run(["dvc", "dag", "--md"], stdout=subprocess.PIPE).stdout.decode(
+            "utf-8"
+        )
+    ]
     for cmd in commands:
         print(" ".join(cmd))
-        metrics_tables_md.append(
+        metrics_tables_md.append(  # nosec
             subprocess.run(cmd, stdout=subprocess.PIPE).stdout.decode("utf-8")
         )
 
-    readme_after_metrics = readme_lines[metrics_end:]
+    readme_after_graph = readme_lines[graph_end:]
 
     graph_header = [readme_lines[graph_start]]
     metrics_header = [readme_lines[metrics_start]]
     new_readme = (
-        readme_before_graph
-        + graph_header
-        + graph_md
+        readme_before_metrics
         + metrics_header
         + metrics_tables_md
-        + readme_after_metrics
+        + graph_header
+        + graph_md
+        + readme_after_graph
     )
 
     with open("README.md", "w") as f:

@@ -419,7 +419,7 @@ def select_minute_and_hour_points(
 def get_minute_and_hour_points(
     center: Point, hand_points: Tuple[Point, Point]
 ) -> Tuple[Point, Point]:
-    if len(hand_points) < 3:
+    if len(hand_points) > 2:
         raise ValueError("expected max 2 points for hands")
     hand_points_np = np.array([p.as_coordinates_tuple for p in hand_points]).reshape(
         -1, 2
@@ -563,7 +563,7 @@ def segment_hands_mask(
     debug: bool = False,
 ) -> List[np.ndarray]:
     # TODO separate mask logic from line fitting logic
-    if len(mask.shape) == 2:
+    if len(mask.shape) != 2:
         raise ValueError(f"mask must have 2D shape, got {mask.shape}")
 
     vectors = []

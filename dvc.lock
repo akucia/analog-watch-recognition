@@ -132,12 +132,12 @@ stages:
     cmd: python scripts/update-metrics-table-and-graph.py
     deps:
     - path: metrics
-      md5: 699d120390e32817904c515a12c1e78d.dir
-      size: 203189
-      nfiles: 33
+      md5: 7720dbd530419e0aed0127b256d6495e.dir
+      size: 212311
+      nfiles: 38
     - path: scripts/update-metrics-table-and-graph.py
-      md5: b6166e699fc2111731ce9ebed407e806
-      size: 2108
+      md5: 6a91ab9d3e3ba8ec6a3fa252dd1853cb
+      size: 2068
   train-keypoint:
     cmd: python watch_recognition/watch_recognition/train/heatmap_regression_task.py
       --epochs 100 --batch-size 32 --confidence-threshold 0.5 --seed 42
@@ -483,3 +483,17 @@ stages:
     - path: exported_models/detector/serving/variables/variables.index
       md5: c44f4054fe1df9b9eb6374d50816c1e0
       size: 50501
+  render-demo:
+    cmd: scripts/render-demo-movie.py example_data/IMG_1200_720p.mov demo/demo.mp4
+      --enable-multithreading
+    deps:
+    - path: example_data/IMG_1200_720p.mov
+      md5: 5dfad65d6cb1231b1dc70d24153ef52a
+      size: 12545634
+    - path: scripts/render-demo-movie.py
+      md5: 7ca4659bab16040db84a1f87bbc67385
+      size: 4462
+    outs:
+    - path: demo/demo.mp4
+      md5: 2a53a37aa96b97c95348d08063e4809e
+      size: 8935751
