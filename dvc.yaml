@@ -202,32 +202,25 @@ stages:
       - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   train-segmentation:
     cmd: >-
-      python watch_recognition/watch_recognition/train/segmentation_task.py
-      --epochs ${segmentation.epochs}
-      --batch-size ${segmentation.batch-size}
-      --confidence-threshold ${segmentation.confidence-threshold}
+      python watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
       --seed ${seed}
     params:
       - segmentation
       - seed
     deps:
-      - datasets/train
-      - datasets/test
-      - datasets/val
+      - datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
+      - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
       - datasets/watch-faces-local.json
       - watch_recognition/watch_recognition/train/segmentation_task.py
-    metrics:
-      - metrics/segmentation/metrics.json:
-          cache: false
     plots:
-      - metrics/segmentation/plots/:
-          cache: false
-      - example_predictions/segmentation/test-image-2.jpg:
+      - debug/segmentation/train_data_0.png:
+          persist: true
+      - debug/segmentation/train_data_1.png:
+          persist: true
+      - debug/segmentation/train_data_2.png:
           persist: true
     outs:
       - models/segmentation/:
-          persist: true
-      - debug/segmentation/:
           persist: true
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}

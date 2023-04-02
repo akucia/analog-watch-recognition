@@ -2,18 +2,18 @@ from concurrent import futures
 from concurrent.futures import as_completed
 from io import BytesIO
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import click
 import numpy as np
 import yaml
-from official.vision.data.tfrecord_lib import convert_to_feature
 from PIL import Image
 from tqdm import tqdm
 
 import tensorflow as tf
-from watch_recognition.datasets.generate_detection_tf_records import (
+from watch_recognition.datasets.common import (
     image_info_to_feature_dict,
+    polygon_annotations_to_feature_dict,
 )
 from watch_recognition.label_studio_adapters import (
     load_label_studio_polygon_detection_dataset,
@@ -23,39 +23,7 @@ from watch_recognition.utilities import Polygon
 DATASET_SPLIT_OPTIONS = ["train", "val"]
 
 
-def encode_polygons_to_label_mask(
-    polygons: List[Polygon], mask_size: Tuple[int, int]
-) -> np.ndarray:
-    mask = np.zeros((*mask_size, 1))
-    for polygon in polygons:
-        if polygon.label is None:
-            raise ValueError(f"polygon label is required, got {polygon.label}")
-        poly_mask = polygon.to_mask(
-            width=mask_size[1], height=mask_size[0], value=polygon.label
-        )
-        mask[:, :] = np.expand_dims(poly_mask, axis=-1)
-    return mask.astype("uint8")
-
-
-def polygon_annotations_to_feature_dict(polygon_annotations: List[Polygon], image_size):
-    """Convert COCO annotations to an encoded feature dict."""
-
-    feature_dict = {
-        "image/segmentation/class/encoded": convert_to_feature(
-            tf.io.encode_png(
-                encode_polygons_to_label_mask(polygon_annotations, image_size)
-            ).numpy()
-        ),
-        "image/segmentation/class/format": convert_to_feature(b"png")
-        # "image/object/is_crowd": convert_to_feature(False),
-        # TODO area
-        # "image/object/area": convert_to_feature(data["area"], "float_list"),
-    }
-
-    return feature_dict
-
-
-def create_tf_example(
+def _create_tf_example(
     image_id: int,
     image_np: np.ndarray,
     polygons: List[Polygon],
@@ -146,7 +114,7 @@ def main(
                 try:
                     for id_, image_np, polygons in dataset_gen:
                         future = executor.submit(
-                            create_tf_example, id_, image_np, polygons
+                            _create_tf_example, id_, image_np, polygons
                         )
                         task_futures.append(future)
                     for idx, future in enumerate(
@@ -165,7 +133,7 @@ def main(
         else:
             pbar = tqdm(dataset_gen)
             for idx, (id_, image_np, polygons) in enumerate(pbar):
-                tf_example = create_tf_example(id_, image_np, polygons)
+                tf_example = _create_tf_example(id_, image_np, polygons)
                 writers[idx % num_shards].write(tf_example.SerializeToString())
 
         for writer in writers:

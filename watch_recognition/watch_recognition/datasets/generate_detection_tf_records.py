@@ -1,98 +1,25 @@
-import hashlib
 from concurrent import futures
 from concurrent.futures import as_completed
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import click
 import numpy as np
 import yaml
-from official.vision.data.tfrecord_lib import convert_to_feature
 from PIL import Image
 from tqdm import tqdm
 
 import tensorflow as tf
+from watch_recognition.datasets.common import (
+    bbox_annotations_to_feature_dict,
+    image_info_to_feature_dict,
+)
 from watch_recognition.label_studio_adapters import (
     load_label_studio_bbox_detection_dataset,
 )
 
 
-def image_info_to_feature_dict(
-    height: int,
-    width: int,
-    filename: str,
-    image_id: Union[str, int],
-    encoded_str: bytes,
-    encoded_format: str,
-):
-    """Convert image information to a dict of features."""
-
-    key = hashlib.sha256(encoded_str).hexdigest()
-
-    return {
-        "image/height": convert_to_feature(height),
-        "image/width": convert_to_feature(width),
-        "image/filename": convert_to_feature(filename.encode("utf8")),
-        "image/source_id": convert_to_feature(str(image_id).encode("utf8")),
-        "image/key/sha256": convert_to_feature(key.encode("utf8")),
-        "image/encoded": convert_to_feature(encoded_str),
-        "image/format": convert_to_feature(encoded_format.encode("utf8")),
-    }
-
-
-def bbox_annotations_to_feature_dict(
-    bbox_annotations, class_annotations, id_to_name_map
-):
-    """Convert COCO annotations to an encoded feature dict."""
-
-    names = [
-        id_to_name_map[name].encode("utf8")
-        for name in class_annotations.flatten().tolist()
-    ]
-    feature_dict = {
-        "image/object/bbox/xmin": convert_to_feature(bbox_annotations[:, 0].tolist()),
-        "image/object/bbox/ymin": convert_to_feature(bbox_annotations[:, 1].tolist()),
-        "image/object/bbox/xmax": convert_to_feature(bbox_annotations[:, 2].tolist()),
-        "image/object/bbox/ymax": convert_to_feature(bbox_annotations[:, 3].tolist()),
-        "image/object/class/text": convert_to_feature(names),
-        "image/object/class/label": convert_to_feature(
-            class_annotations.flatten().tolist()
-        ),
-        # "image/object/is_crowd": convert_to_feature(False),
-        # TODO area
-        # "image/object/area": convert_to_feature(data["area"], "float_list"),
-    }
-
-    return feature_dict
-
-
-def mask_annotations_to_feature_dict(
-    bbox_annotations, class_annotations, id_to_name_map
-):
-    """Convert COCO annotations to an encoded feature dict."""
-
-    names = [
-        id_to_name_map[name].encode("utf8")
-        for name in class_annotations.flatten().tolist()
-    ]
-    feature_dict = {
-        "image/object/bbox/xmin": convert_to_feature(bbox_annotations[:, 0].tolist()),
-        "image/object/bbox/xmax": convert_to_feature(bbox_annotations[:, 2].tolist()),
-        "image/object/bbox/ymin": convert_to_feature(bbox_annotations[:, 1].tolist()),
-        "image/object/bbox/ymax": convert_to_feature(bbox_annotations[:, 3].tolist()),
-        "image/object/class/text": convert_to_feature(names),
-        "image/object/class/label": convert_to_feature(
-            class_annotations.flatten().tolist()
-        ),
-        # "image/object/is_crowd": convert_to_feature(False),
-        # TODO area
-        # "image/object/area": convert_to_feature(data["area"], "float_list"),
-    }
-
-    return feature_dict
-
-
-def create_tf_example(
+def _create_tf_example(
     image_id: int,
     image_path: Path,
     bboxes: np.ndarray,
@@ -191,7 +118,7 @@ def main(
                 try:
                     for id_, image_path, bboxes, classes in dataset_gen:
                         future = executor.submit(
-                            create_tf_example,
+                            _create_tf_example,
                             id_,
                             image_path,
                             bboxes,
@@ -215,7 +142,7 @@ def main(
         else:
             pbar = tqdm(dataset_gen)
             for idx, (id_, image_path, bboxes, classes) in enumerate(pbar):
-                tf_example = create_tf_example(
+                tf_example = _create_tf_example(
                     id_, image_path, bboxes, classes, cls_to_label
                 )
                 writers[idx % num_shards].write(tf_example.SerializeToString())

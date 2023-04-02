@@ -410,16 +410,16 @@ stages:
       --run-concurrently
     deps:
     - path: datasets/test
-      md5: 0aeb029db40e49068d63308665810b57.dir
-      size: 18701099
-      nfiles: 54
+      md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
+      size: 18869343
+      nfiles: 55
     - path: datasets/val
-      md5: 1ab506f4b22a797ed4afeaf195c51466.dir
-      size: 19774777
-      nfiles: 40
+      md5: c2e5983ceddfc4ca034e7992c059f2fd.dir
+      size: 20206227
+      nfiles: 42
     - path: datasets/watch-faces-local.json
-      md5: ddb1e52cb640b1af3e8ba6c7c85c943a
-      size: 1744824
+      md5: 5967d4bbad75ce2f0becf98f53c2029c
+      size: 1877638
     params:
       params.yaml:
         segmentation.bbox_labels:
@@ -428,11 +428,11 @@ stages:
           Hands: 1
     outs:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 2a101ccdbac32084074ed1dea1f0da4b
-      size: 26611279
+      md5: 61c2906e3779efaf0de31c2254380723
+      size: 27047100
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: a0e242785798e143ed2c1cb8ea08812a
-      size: 2716719
+      md5: 541361741a52203cd0a88c8642e6db87
+      size: 2735783
   export-detector:
     cmd: python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
     deps:
