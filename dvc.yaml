@@ -212,7 +212,7 @@ stages:
       - datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
       - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
       - datasets/watch-faces-local.json
-      - watch_recognition/watch_recognition/train/segmentation_task.py
+      - watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
     plots:
       - debug/segmentation/train_data_0.png:
           persist: true

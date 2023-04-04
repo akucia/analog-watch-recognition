@@ -407,7 +407,7 @@ stages:
   generate-watch-hands-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
       datasets/watch-faces-local.json  datasets/tf-records/segmentation/watch-hands/  --num-shards=1
-      --run-concurrently
+      --run-concurrently --max-images=1
     deps:
     - path: datasets/test
       md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
@@ -428,11 +428,11 @@ stages:
           Hands: 1
     outs:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 61c2906e3779efaf0de31c2254380723
-      size: 27047100
+      md5: c9c23d921f9497667f651a9a90cc5134
+      size: 3946
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: 541361741a52203cd0a88c8642e6db87
-      size: 2735783
+      md5: 89b7c092ff24a7fdd320681c88944fe3
+      size: 22858
   export-detector:
     cmd: python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
     deps:
