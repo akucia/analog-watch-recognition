@@ -1,0 +1,162 @@
+differential_privacy_config: null
+eval_input_partition_dims: []
+evaluation:
+  report_per_class_iou: true
+  report_train_mean_iou: true
+export_config:
+  rescale_output: false
+init_checkpoint: null
+init_checkpoint_modules: backbone
+losses:
+  class_weights: [0.001, 0.999] # TODO this might be crucial
+  gt_is_matting_map: false
+  ignore_label: 255
+#  l2_weight_decay: 0.0001
+  l2_weight_decay: 0.0000
+  label_smoothing: 0.0
+  loss_weight: 1.0
+  top_k_percent_pixels: 0.25
+  use_groundtruth_dimension: true
+model:
+  backbone:
+    dilated_resnet:
+      last_stage_repeats: 1
+      model_id: 101
+      multigrid:
+      - 1
+      - 2
+      - 4
+      output_stride: 16
+      replace_stem_max_pool: false
+      resnetd_shortcut: false
+      se_ratio: 0.0
+      stem_type: v1
+      stochastic_depth_drop_rate: 0.0
+    type: dilated_resnet
+  decoder:
+    aspp:
+      dilation_rates:
+      - 12
+      - 24
+      - 36
+      dropout_rate: 0.0
+      level: 4
+      num_filters: 256
+      output_tensor: false
+      pool_kernel_size: null
+      spp_layer_version: v1
+      use_depthwise_convolution: false
+    type: aspp
+  head:
+    decoder_max_level: null
+    decoder_min_level: null
+    feature_fusion: null
+    level: 4
+    low_level: 2
+    low_level_num_filters: 48
+    num_convs: 0
+    num_filters: 256
+    prediction_kernel_size: 1
+    upsample_factor: 1
+    use_depthwise_convolution: false
+  input_size:
+  - 64
+  - 64
+  - 3
+  mask_scoring_head: null
+  max_level: 6
+  min_level: 3
+  norm_activation:
+    activation: swish
+    norm_epsilon: 0.001
+    norm_momentum: 0.9997
+    use_sync_bn: true
+  num_classes: 2
+name: null
+train_data:
+  apply_tf_data_service_before_batching: false
+  aug_policy: null
+  aug_rand_hflip: true
+  aug_scale_max: 1.0
+  aug_scale_min: 1.0
+  block_length: 1
+  cache: false
+  crop_size: []
+  cycle_length: 10
+  decoder:
+    simple_decoder:
+      mask_binarize_threshold: null
+      regenerate_source_id: false
+    type: simple_decoder
+  deterministic: null
+  drop_remainder: true
+  dtype: float32
+  enable_shared_tf_data_service_between_parallel_trainers: false
+  enable_tf_data_service: false
+  file_type: tfrecord
+  global_batch_size: 1
+  groundtruth_padded_size: []
+  input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
+  is_training: true
+  output_size:
+  - 64
+  - 64
+  prefetch_buffer_size: null
+  preserve_aspect_ratio: false
+  resize_eval_groundtruth: true
+  seed: 42
+  sharding: true
+  shuffle_buffer_size: 1000
+  tf_data_service_address: null
+  tf_data_service_job_name: null
+  tfds_as_supervised: false
+  tfds_data_dir: ''
+  tfds_name: ''
+  tfds_skip_decoding_feature: ''
+  tfds_split: ''
+  trainer_id: null
+train_input_partition_dims: []
+validation_data:
+  apply_tf_data_service_before_batching: false
+  aug_policy: null
+  aug_rand_hflip: true
+  aug_scale_max: 1.0
+  aug_scale_min: 1.0
+  block_length: 1
+  cache: false
+  crop_size: []
+  cycle_length: 10
+  decoder:
+    simple_decoder:
+      mask_binarize_threshold: null
+      regenerate_source_id: false
+    type: simple_decoder
+  deterministic: null
+  drop_remainder: false
+  dtype: float32
+  enable_shared_tf_data_service_between_parallel_trainers: false
+  enable_tf_data_service: false
+  file_type: tfrecord
+  global_batch_size: 1
+  groundtruth_padded_size:
+  - 64
+  - 64
+  input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
+  is_training: false
+  output_size:
+  - 64
+  - 64
+  prefetch_buffer_size: null
+  preserve_aspect_ratio: false
+  resize_eval_groundtruth: false
+  seed: 42
+  sharding: true
+  shuffle_buffer_size: 1000
+  tf_data_service_address: null
+  tf_data_service_job_name: null
+  tfds_as_supervised: false
+  tfds_data_dir: ''
+  tfds_name: ''
+  tfds_skip_decoding_feature: ''
+  tfds_split: ''
+  trainer_id: null

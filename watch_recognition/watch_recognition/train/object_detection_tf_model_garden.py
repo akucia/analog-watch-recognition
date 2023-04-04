@@ -69,7 +69,7 @@ def show_batch(raw_records, tf_ex_decoder, category_index, filepath):
 @click.command()
 @click.argument(
     "experiment-config-dir",
-    default="train-configs/tf-model-garden/watch-face-detector.yaml",
+    default="train-configs/tf-model-garden/watch-face-detector",
     type=click.Path(exists=True),
 )
 @click.option("--seed", default=None, type=int)

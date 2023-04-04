@@ -190,6 +190,7 @@ stages:
       datasets/tf-records/segmentation/watch-hands/ 
       --num-shards=1
       --run-concurrently
+      --max-images=1
     params:
       - segmentation.label_to_cls
       - segmentation.bbox_labels
@@ -221,7 +222,7 @@ stages:
           persist: true
     outs:
       - models/segmentation/:
-          persist: true
+          persist: false
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}
     deps:

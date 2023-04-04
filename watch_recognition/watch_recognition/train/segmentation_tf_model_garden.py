@@ -6,6 +6,9 @@ import click
 import numpy as np
 import tensorflow_models as tfm
 from matplotlib import pyplot as plt
+from official.core.base_task import RuntimeConfig
+from official.core.base_trainer import ExperimentConfig, TrainerConfig
+from official.vision.configs.semantic_segmentation import SemanticSegmentationTask
 
 import tensorflow as tf
 
@@ -16,50 +19,30 @@ plt.rcParams["font.family"] = "Roboto"
 
 
 @click.command()
+@click.argument(
+    "experiment-config-dir",
+    default="train-configs/tf-model-garden/watch-hands-segmentation/",
+    type=click.Path(exists=True),
+)
 @click.option("--seed", default=42, type=int)
 def main(
+    experiment_config_dir: str,
     seed: Optional[int] = 42,
 ):
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
     model_dir = "models/segmentation"
     train_data_tfrecords = "datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord"
-    val_data_tfrecords = "datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord"
+    # val_data_tfrecords = "datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord"
     # export_dir = "exported_models/segmentation"
+    experiment_config_dir = Path(experiment_config_dir)
 
-    exp_config = tfm.core.exp_factory.get_exp_config("seg_deeplabv3_pascal")
+    runtime = RuntimeConfig.from_yaml(str(experiment_config_dir / "runtime.yaml"))
+    trainer = TrainerConfig.from_yaml(str(experiment_config_dir / "trainer.yaml"))
+    task = SemanticSegmentationTask.from_yaml(str(experiment_config_dir / "task.yaml"))
+    exp_config = ExperimentConfig(task=task, trainer=trainer, runtime=runtime)
 
-    num_classes = 2
-    WIDTH, HEIGHT = 128, 128
-    input_size = [HEIGHT, WIDTH, 3]
-    BATCH_SIZE = 16
-
-    # Backbone Config
-    exp_config.task.init_checkpoint = None
-    exp_config.task.freeze_backbone = True
-
-    # Model Config
-    exp_config.task.model.num_classes = num_classes
-    exp_config.task.model.input_size = input_size
-
-    # Training Data Config
-    exp_config.task.train_data.aug_scale_min = 1.0
-    exp_config.task.train_data.aug_scale_max = 1.0
-    exp_config.task.train_data.input_path = train_data_tfrecords
-    exp_config.task.train_data.global_batch_size = BATCH_SIZE
-    exp_config.task.train_data.dtype = "float32"
-    exp_config.task.train_data.output_size = [HEIGHT, WIDTH]
-    exp_config.task.train_data.preserve_aspect_ratio = False
-    exp_config.task.train_data.seed = seed  # Reproducable Training Data
-
-    # Validation Data Config
-    exp_config.task.validation_data.input_path = val_data_tfrecords
-    exp_config.task.validation_data.global_batch_size = BATCH_SIZE
-    exp_config.task.validation_data.dtype = "float32"
-    exp_config.task.validation_data.output_size = [HEIGHT, WIDTH]
-    exp_config.task.validation_data.preserve_aspect_ratio = False
-    exp_config.task.validation_data.groundtruth_padded_size = [HEIGHT, WIDTH]
-    exp_config.task.validation_data.seed = seed  # Reproducable Validation Data
+    # exp_config = tfm.core.exp_factory.get_exp_config("seg_deeplabv3_pascal")
 
     logical_device_names = [
         logical_device.name for logical_device in tf.config.list_logical_devices()
@@ -79,27 +62,7 @@ def main(
 
     train_ds = tf.data.TFRecordDataset(train_data_tfrecords)
     num_train_examples = int(train_ds.reduce(np.int64(0), lambda x, _: x + 1).numpy())
-    # train_steps = 2000
-    train_steps = 100
-    exp_config.trainer.steps_per_loop = num_train_examples // BATCH_SIZE
-    exp_config.trainer.steps_per_loop = 1
-
-    exp_config.trainer.summary_interval = (
-        exp_config.trainer.steps_per_loop
-    )  # steps_per_loop = num_of_validation_examples // eval_batch_size
-    exp_config.trainer.checkpoint_interval = exp_config.trainer.steps_per_loop
-    exp_config.trainer.validation_interval = exp_config.trainer.steps_per_loop
-    exp_config.trainer.validation_steps = -1
-    exp_config.trainer.train_steps = train_steps
-    exp_config.trainer.optimizer_config.warmup.linear.warmup_steps = (
-        exp_config.trainer.steps_per_loop
-    )
-    exp_config.trainer.optimizer_config.learning_rate.type = "cosine"
-    exp_config.trainer.optimizer_config.learning_rate.cosine.decay_steps = train_steps
-    exp_config.trainer.optimizer_config.learning_rate.cosine.initial_learning_rate = 0.1
-    exp_config.trainer.optimizer_config.warmup.linear.warmup_learning_rate = 0.05
-
-    pp.pprint(exp_config.as_dict())
+    print(f"dataset has {num_train_examples} examples")
 
     # Setting up the Strategy
     if exp_config.runtime.mixed_precision_dtype == tf.float16:
@@ -141,9 +104,10 @@ def main(
         masks = targets["masks"]
 
         # limit to just 4 examples per batch
-        images = images[:4]
-        masks = masks[:4]
-        fig, axs = plt.subplots((len(images)), 2, figsize=(9, 16))
+        nrows = 4
+        images = images[:nrows]
+        masks = masks[:nrows]
+        fig, axs = plt.subplots(nrows, 2, figsize=(9, 16))
         titles = ["Image", "Mask"]
 
         for ax, col in zip(axs[0], titles):

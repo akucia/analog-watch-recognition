@@ -1,0 +1,136 @@
+annotation_file: ''
+differential_privacy_config: null
+export_config:
+  cast_detection_classes_to_float: false
+  cast_num_detections_to_float: false
+  output_normalized_coordinates: false
+freeze_backbone: false
+init_checkpoint: null
+init_checkpoint_modules: backbone
+losses:
+  box_loss_weight: 50
+  focal_loss_alpha: 0.25
+  focal_loss_gamma: 1.5
+  huber_loss_delta: 0.1
+  l2_weight_decay: 0.0
+  loss_weight: 1.0
+model:
+  anchor:
+    anchor_size: 3
+    aspect_ratios:
+    - 0.5
+    - 1.0
+    - 2.0
+    num_scales: 3
+  backbone:
+    spinenet:
+      model_id: '49'
+      stochastic_depth_drop_rate: 0.2
+    type: spinenet
+  decoder:
+    type: identity
+  head:
+    attribute_heads: []
+    num_convs: 4
+    num_filters: 256
+    share_classification_heads: false
+    use_separable_conv: false
+  input_size:
+  - 384
+  - 384
+  - 3
+  max_level: 7
+  min_level: 3
+  norm_activation:
+    activation: swish
+    norm_epsilon: 0.001
+    norm_momentum: 0.99
+    use_sync_bn: true
+  num_classes: 2
+name: null
+per_category_metrics: true
+train_data:
+  apply_tf_data_service_before_batching: false
+  block_length: 1
+  cache: false
+  cycle_length: null
+  decoder:
+    simple_decoder:
+      mask_binarize_threshold: null
+      regenerate_source_id: false
+    type: simple_decoder
+  deterministic: null
+  drop_remainder: false
+  dtype: float32
+  enable_shared_tf_data_service_between_parallel_trainers: false
+  enable_tf_data_service: false
+  file_type: tfrecord
+  global_batch_size: 100
+  input_path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
+  is_training: true
+  parser:
+    aug_rand_hflip: true
+    aug_scale_max: 0.8
+    aug_scale_min: 1.2
+    aug_type: null
+    match_threshold: 0.5
+    max_num_instances: 100
+    num_channels: 3
+    skip_crowd_during_training: true
+    unmatched_threshold: 0.5
+  prefetch_buffer_size: 20
+  seed: null
+  sharding: true
+  shuffle_buffer_size: 10000
+  tf_data_service_address: null
+  tf_data_service_job_name: null
+  tfds_as_supervised: false
+  tfds_data_dir: ''
+  tfds_name: ''
+  tfds_skip_decoding_feature: ''
+  tfds_split: ''
+  trainer_id: null
+use_coco_metrics: true
+use_wod_metrics: false
+validation_data:
+  apply_tf_data_service_before_batching: false
+  block_length: 1
+  cache: true
+  cycle_length: null
+  decoder:
+    simple_decoder:
+      mask_binarize_threshold: null
+      regenerate_source_id: false
+    type: simple_decoder
+  deterministic: null
+  drop_remainder: false
+  dtype: float32
+  enable_shared_tf_data_service_between_parallel_trainers: false
+  enable_tf_data_service: false
+  file_type: tfrecord
+  global_batch_size: 16
+  input_path:
+  - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
+  is_training: false
+  parser:
+    aug_rand_hflip: false
+    aug_scale_max: 1.0
+    aug_scale_min: 1.0
+    aug_type: null
+    match_threshold: 0.5
+    max_num_instances: 100
+    num_channels: 3
+    skip_crowd_during_training: true
+    unmatched_threshold: 0.5
+  prefetch_buffer_size: null
+  seed: null
+  sharding: true
+  shuffle_buffer_size: 10000
+  tf_data_service_address: null
+  tf_data_service_job_name: null
+  tfds_as_supervised: false
+  tfds_data_dir: ''
+  tfds_name: ''
+  tfds_skip_decoding_feature: ''
+  tfds_split: ''
+  trainer_id: null
