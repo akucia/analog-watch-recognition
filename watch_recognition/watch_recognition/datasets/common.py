@@ -2,9 +2,9 @@ import hashlib
 from typing import List, Tuple, Union
 
 import numpy as np
+import tensorflow as tf
 from official.vision.data.tfrecord_lib import convert_to_feature
 
-import tensorflow as tf
 from watch_recognition.utilities import Polygon
 
 
@@ -90,9 +90,8 @@ def encode_polygons_to_label_mask(
     for polygon in polygons:
         if polygon.label is None:
             raise ValueError(f"polygon label is required, got {polygon.label}")
-        poly_mask = polygon.to_mask(
-            width=mask_size[1], height=mask_size[0], value=polygon.label
-        )
+        poly_mask = polygon.to_mask(width=mask_size[1], height=mask_size[0])
+        poly_mask = np.where(poly_mask, polygon.label, 0)
         mask[:, :] = np.expand_dims(poly_mask, axis=-1)
     return mask.astype("uint8")
 

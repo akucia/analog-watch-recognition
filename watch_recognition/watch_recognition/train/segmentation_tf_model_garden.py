@@ -4,13 +4,12 @@ from typing import Optional
 
 import click
 import numpy as np
+import tensorflow as tf
 import tensorflow_models as tfm
 from matplotlib import pyplot as plt
 from official.core.base_task import RuntimeConfig
 from official.core.base_trainer import ExperimentConfig, TrainerConfig
 from official.vision.configs.semantic_segmentation import SemanticSegmentationTask
-
-import tensorflow as tf
 
 pp = pprint.PrettyPrinter(indent=4)  # Set Pretty Print Indentation
 print(tf.__version__)  # Check the version of tensorflow used
@@ -87,9 +86,15 @@ def main(
 
     for images, masks in task.build_inputs(exp_config.task.train_data).take(1):
         print()
-        print(f"images.shape: {str(images.shape):16}  images.dtype: {images.dtype!r}")
         print(
-            f'masks.shape: {str(masks["masks"].shape):16} images.dtype: {masks["masks"].dtype!r}'
+            f"images.shape: {str(images.shape):16} "
+            f"images.dtype: {images.dtype!r} "
+            f"images.max_val: {tf.reduce_max(images).numpy():5}"
+        )
+        print(
+            f"masks.shape: {str(masks['masks'].shape):16} "
+            f"masks.dtype: {masks['masks'].dtype!r} "
+            f"masks.max_val: {tf.reduce_max(masks['masks']).numpy():5}"
         )
 
     debug_dir = Path("debug/segmentation/")
@@ -118,6 +123,7 @@ def main(
             axs[j][0].imshow(tf.keras.utils.array_to_img(image))
             axs[j][0].axis("off")
             # draw the mask
+            mask = np.where(mask == 255, np.zeros_like(mask) - 1, mask)
             axs[j][1].imshow(tf.keras.utils.array_to_img(mask))
             axs[j][1].axis("off")
 
@@ -132,8 +138,41 @@ def main(
         model_dir=model_dir,
         run_post_eval=True,
     )
-    _ = model
-    _ = eval_logs
+
+    for i, batch in enumerate(
+        task.build_inputs(exp_config.task.train_data).take(num_examples)
+    ):
+        images, targets = batch
+        masks = targets["masks"]
+
+        # limit to just 4 examples per batch
+        nrows = 4
+        images = images[:nrows] * 255
+        masks = masks[:nrows]
+        logits = model(images)["logits"].numpy()
+        preds = np.expand_dims(np.argmax(logits, axis=-1), axis=-1)
+        print(preds.shape)
+        fig, axs = plt.subplots(nrows, 3, figsize=(9, 16))
+        titles = ["Image", "Mask", "Predictions"]
+
+        for ax, col in zip(axs[0], titles):
+            ax.set_title(col)
+
+        for j, (image, mask, pred) in enumerate(zip(images, masks, preds)):
+            # draw the input image
+            pil_img = tf.keras.utils.array_to_img(image)
+            axs[j][0].imshow(pil_img)
+            axs[j][0].axis("off")
+
+            mask = np.where(mask == 255, np.zeros_like(mask) - 1, mask)
+            axs[j][1].imshow(tf.keras.utils.array_to_img(mask))
+            axs[j][1].axis("off")
+
+            axs[j][2].imshow(tf.keras.utils.array_to_img(pred))
+            axs[j][2].axis("off")
+
+        fig.tight_layout()
+        plt.savefig(debug_dir / f"train_data_predict_{i}.png", bbox_inches="tight")
 
 
 if __name__ == "__main__":

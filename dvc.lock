@@ -245,27 +245,29 @@ stages:
       md5: fad55e8d91734f2d590a026e55746447
       size: 248
   train-segmentation:
-    cmd: python watch_recognition/watch_recognition/train/segmentation_task.py --epochs
-      150 --batch-size 32 --confidence-threshold 0.5 --seed 42
+    cmd: python watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
+      --seed 42
     deps:
-    - path: datasets/test
-      md5: 0aeb029db40e49068d63308665810b57.dir
-      size: 18701099
-      nfiles: 54
-    - path: datasets/train
-      md5: 9c414afa46808b376366ae8e0ff3c786.dir
-      size: 170152358
-      nfiles: 481
-    - path: datasets/val
-      md5: 1ab506f4b22a797ed4afeaf195c51466.dir
-      size: 19774777
-      nfiles: 40
+    - path: checkpoints/segmentation/deeplabv3_mobilenetv2_coco
+      md5: a37c21ee286ab71978e317df682db5f2.dir
+      size: 29628857
+      nfiles: 2
+    - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
+      md5: c9c23d921f9497667f651a9a90cc5134
+      size: 3946
+    - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
+      md5: 89b7c092ff24a7fdd320681c88944fe3
+      size: 22858
     - path: datasets/watch-faces-local.json
-      md5: ddb1e52cb640b1af3e8ba6c7c85c943a
-      size: 1744824
-    - path: watch_recognition/watch_recognition/train/segmentation_task.py
-      md5: af4c58046894343dd442a39bbfbd6411
-      size: 9265
+      md5: 5967d4bbad75ce2f0becf98f53c2029c
+      size: 1877638
+    - path: train-configs/tf-model-garden/watch-hands-segmentation
+      md5: e08b57239a60dbb5a05903ed70b05ec5.dir
+      size: 4973
+      nfiles: 3
+    - path: watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
+      md5: d12d470c17c3885f6c222df1ef79daa8
+      size: 6412
     params:
       params.yaml:
         seed: 42
@@ -274,27 +276,22 @@ stages:
           batch-size: 32
           confidence-threshold: 0.5
           label_to_cls:
-            Hands: 0
+            Hands: 1
           bbox_labels:
           - WatchFace
     outs:
-    - path: debug/segmentation/
-      md5: 78f6047cbb06c4e7889f881f7143064d.dir
-      size: 761590
-      nfiles: 4
-    - path: example_predictions/segmentation/test-image-2.jpg
-      md5: 44fc2994fb44e280363c023622c24163
-      size: 64278
-    - path: metrics/segmentation/metrics.json
-      md5: ed15dc7ca524e01ef350507b0f8cda43
-      size: 215
-    - path: metrics/segmentation/plots/
-      md5: e0203589dc6763f0c85af5d7f2eee974.dir
-      size: 13572
-      nfiles: 4
+    - path: debug/segmentation/train_data_0.png
+      md5: ea62e848c20fca1e92f3aee385294b7f
+      size: 165293
+    - path: debug/segmentation/train_data_1.png
+      md5: ea62e848c20fca1e92f3aee385294b7f
+      size: 165293
+    - path: debug/segmentation/train_data_2.png
+      md5: ea62e848c20fca1e92f3aee385294b7f
+      size: 165293
     - path: models/segmentation/
-      md5: 986e39bc0071d95599ee1918c760865c.dir
-      size: 35949342
+      md5: 6b1336529243cebca44d4f6333aa9272.dir
+      size: 1655950974
       nfiles: 5
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently

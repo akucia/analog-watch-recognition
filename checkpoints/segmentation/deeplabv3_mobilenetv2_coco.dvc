@@ -1,0 +1,5 @@
+outs:
+- md5: a37c21ee286ab71978e317df682db5f2.dir
+  size: 29628857
+  nfiles: 2
+  path: deeplabv3_mobilenetv2_coco

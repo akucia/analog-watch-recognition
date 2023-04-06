@@ -7,17 +7,13 @@ continuous_eval_timeout: 3600
 eval_tf_function: true
 eval_tf_while_loop: false
 loss_upper_bound: 1000000.0
-max_to_keep: 5
+max_to_keep: 1
 optimizer_config:
   ema: null
   learning_rate:
-    cosine:
-      alpha: 0.0
-      decay_steps: 100
-      initial_learning_rate: 0.001
-      name: CosineDecay
-      offset: 0
-    type: cosine
+    constant:
+      learning_rate: 0.0003
+    type: constant
   optimizer:
     type: adam
   warmup:
@@ -30,7 +26,7 @@ recovery_begin_steps: 0
 recovery_max_trials: 0
 steps_per_loop: 1
 summary_interval: 1
-train_steps: 100
+train_steps: 1
 train_tf_function: true
 train_tf_while_loop: true
 validation_interval: 1

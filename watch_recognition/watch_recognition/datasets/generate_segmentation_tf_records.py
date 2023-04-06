@@ -6,11 +6,11 @@ from typing import List, Optional
 
 import click
 import numpy as np
+import tensorflow as tf
 import yaml
 from PIL import Image
 from tqdm import tqdm
 
-import tensorflow as tf
 from watch_recognition.datasets.common import (
     image_info_to_feature_dict,
     polygon_annotations_to_feature_dict,
@@ -82,7 +82,7 @@ def main(
     with open("params.yaml", "r") as f:
         params = yaml.safe_load(f)
 
-    label_to_cls = params["segmentation"]["label_to_cls"]
+    label_to_cls = {"Hands": 1}
     bbox_labels = params["segmentation"]["bbox_labels"]
 
     output_name = "watch-hands"
