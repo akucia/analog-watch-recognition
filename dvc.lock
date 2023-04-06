@@ -266,8 +266,8 @@ stages:
       size: 4973
       nfiles: 3
     - path: watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
-      md5: d12d470c17c3885f6c222df1ef79daa8
-      size: 6412
+      md5: 1f44ea969363cd96d2fc4b2315e431e6
+      size: 6416
     params:
       params.yaml:
         seed: 42
@@ -289,9 +289,18 @@ stages:
     - path: debug/segmentation/train_data_2.png
       md5: ea62e848c20fca1e92f3aee385294b7f
       size: 165293
+    - path: debug/segmentation/train_data_predict_0.png
+      md5: 4f09de2279de4387537ff0be011c7ae4
+      size: 109941
+    - path: debug/segmentation/train_data_predict_1.png
+      md5: 4f09de2279de4387537ff0be011c7ae4
+      size: 109941
+    - path: debug/segmentation/train_data_predict_2.png
+      md5: 4f09de2279de4387537ff0be011c7ae4
+      size: 109941
     - path: models/segmentation/
-      md5: 6b1336529243cebca44d4f6333aa9272.dir
-      size: 1655950974
+      md5: 4ad8be7c97ddf9ce98c1219c115cd221.dir
+      size: 1655950975
       nfiles: 5
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently
