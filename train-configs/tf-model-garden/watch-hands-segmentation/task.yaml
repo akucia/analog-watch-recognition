@@ -13,8 +13,9 @@ losses:
   class_weights: [1, 5]
   gt_is_matting_map: false
   ignore_label: 255
-  l2_weight_decay: 0.0
+  l2_weight_decay: 0.00001
   loss_weight: 1.0
+  label_smoothing: 0.0001
   top_k_percent_pixels: 1.0
   use_groundtruth_dimension: true
 model:
@@ -65,9 +66,9 @@ name: null
 train_data:
   apply_tf_data_service_before_batching: false
   aug_policy: null
-  aug_rand_hflip: false
-  aug_scale_max: 1.0
-  aug_scale_min: 1.0
+  aug_rand_hflip: True
+  aug_scale_max: 1.2
+  aug_scale_min: 0.8
   block_length: 1
   cache: false
   crop_size: []
@@ -88,7 +89,7 @@ train_data:
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
   is_training: true
   output_size: [256, 256]
-  prefetch_buffer_size: null
+  prefetch_buffer_size: 8
   preserve_aspect_ratio: false
   resize_eval_groundtruth: true
   seed: 42
@@ -129,7 +130,7 @@ validation_data:
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   is_training: false
   output_size: [256, 256]
-  prefetch_buffer_size: null
+  prefetch_buffer_size: 8
   preserve_aspect_ratio: false
   resize_eval_groundtruth: true
   seed: 42
