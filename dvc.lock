@@ -253,21 +253,18 @@ stages:
       size: 29628857
       nfiles: 2
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 0c7862ad601268352828cd979dca8815
-      size: 3902
+      md5: dd17d705c757e46c941d651f7cf4c8da
+      size: 27025362
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: 7bcf2bbe6d0c23dabf1b6c7d859f4a7b
-      size: 22814
+      md5: 8e0efcf711a3763a123aa4f4d90d799d
+      size: 2730591
     - path: datasets/watch-faces-local.json
       md5: 5967d4bbad75ce2f0becf98f53c2029c
       size: 1877638
     - path: train-configs/tf-model-garden/watch-hands-segmentation
-      md5: d2d5f2261e9ece4db38e6ab237dc09dd.dir
-      size: 4807
-      nfiles: 3
-    - path: watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
-      md5: 6b73c3855643c86ba03fc867fc9883e4
-      size: 10199
+      md5: 16e5b653cab80ecf21be46d741d2d8c4.dir
+      size: 9730
+      nfiles: 6
     params:
       params.yaml:
         seed: 42
@@ -281,20 +278,20 @@ stages:
           - WatchFace
     outs:
     - path: debug/segmentation/train_data_0.png
-      md5: 60a8033bcc9477af31f8147f7fe70084
-      size: 172363
+      md5: 65ec91f54f57d96f2000fb6bf74b5c53
+      size: 818020
     - path: debug/segmentation/train_data_1.png
-      md5: 60a8033bcc9477af31f8147f7fe70084
-      size: 172363
+      md5: 11c14975fa1d45147e61b2efe14cb9db
+      size: 790599
     - path: debug/segmentation/train_data_2.png
-      md5: 60a8033bcc9477af31f8147f7fe70084
-      size: 172363
+      md5: 19096c8f8050cccd055dc5e04fb69264
+      size: 765937
     - path: debug/segmentation/train_data_predict_0.png
-      md5: f248be1e35e426fec6a06f1a0d76cfd8
-      size: 174961
+      md5: 63ef3f1d1fcb05017064d8408b3b2da0
+      size: 237570
     - path: models/segmentation/
-      md5: ec8eef18cd173b6221ef9a9fa648cf8e.dir
-      size: 27444510
+      md5: 0dedf8a6e890fdf5afcf19e7d86949f3.dir
+      size: 27358347
       nfiles: 5
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently
@@ -407,7 +404,7 @@ stages:
   generate-watch-hands-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
       datasets/watch-faces-local.json  datasets/tf-records/segmentation/watch-hands/  --num-shards=1
-      --run-concurrently --max-images=1
+      --run-concurrently
     deps:
     - path: datasets/test
       md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
@@ -428,11 +425,11 @@ stages:
           Hands: 1
     outs:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 0c7862ad601268352828cd979dca8815
-      size: 3902
+      md5: dd17d705c757e46c941d651f7cf4c8da
+      size: 27025362
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: 7bcf2bbe6d0c23dabf1b6c7d859f4a7b
-      size: 22814
+      md5: 8e0efcf711a3763a123aa4f4d90d799d
+      size: 2730591
   export-detector:
     cmd: python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
     deps:

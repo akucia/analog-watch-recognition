@@ -16,7 +16,6 @@ losses:
   l2_weight_decay: 0.0
   loss_weight: 1.0
   top_k_percent_pixels: 1.0
-  use_binary_cross_entropy: false
   use_groundtruth_dimension: true
 model:
   backbone:
@@ -84,7 +83,7 @@ train_data:
   enable_shared_tf_data_service_between_parallel_trainers: false
   enable_tf_data_service: false
   file_type: tfrecord
-  global_batch_size: 1
+  global_batch_size: 32
   groundtruth_padded_size: []
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
   is_training: true
@@ -125,9 +124,9 @@ validation_data:
   enable_shared_tf_data_service_between_parallel_trainers: false
   enable_tf_data_service: false
   file_type: tfrecord
-  global_batch_size: 1
+  global_batch_size: 32
   groundtruth_padded_size: [256, 256]
-  input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
+  input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   is_training: false
   output_size: [256, 256]
   prefetch_buffer_size: null

@@ -143,7 +143,7 @@ def main(
 
     input_image_size = exp_config.task.train_data.output_size
 
-    for i, raw_record in enumerate(train_ds):
+    for i, raw_record in enumerate(train_ds.take(3)):
         example = tf.train.Example()
         example.ParseFromString(raw_record.numpy())
         original_image = tf.io.decode_jpeg(

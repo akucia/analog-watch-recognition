@@ -6,7 +6,7 @@ distribution_strategy: mirrored
 enable_xla: true
 gpu_thread_mode: null
 loss_scale: null
-mixed_precision_dtype: null
+mixed_precision_dtype: float16
 num_cores_per_replica: 1
 num_gpus: 0
 num_packs: 1
