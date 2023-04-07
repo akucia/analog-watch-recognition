@@ -13,9 +13,8 @@ losses:
   class_weights: [1, 5]
   gt_is_matting_map: false
   ignore_label: 255
-  l2_weight_decay: 0.00001
+  l2_weight_decay: 0
   loss_weight: 1.0
-  label_smoothing: 0.0001
   top_k_percent_pixels: 1.0
   use_groundtruth_dimension: true
 model:
