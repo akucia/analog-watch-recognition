@@ -10,11 +10,18 @@ from matplotlib import pyplot as plt
 from official.core.base_task import RuntimeConfig
 from official.core.base_trainer import ExperimentConfig, TrainerConfig
 from official.vision.configs.semantic_segmentation import SemanticSegmentationTask
+from official.vision.ops import preprocess_ops
 
 pp = pprint.PrettyPrinter(indent=4)  # Set Pretty Print Indentation
 print(tf.__version__)  # Check the version of tensorflow used
 
 plt.rcParams["font.family"] = "Roboto"
+
+
+def create_mask(pred_mask):
+    pred_mask = tf.math.argmax(pred_mask, axis=-1)
+    pred_mask = pred_mask[..., tf.newaxis]
+    return pred_mask[0]
 
 
 @click.command()
@@ -31,17 +38,12 @@ def main(
     if seed is not None:
         tf.keras.utils.set_random_seed(seed)
     model_dir = "models/segmentation"
-    train_data_tfrecords = "datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord"
-    # val_data_tfrecords = "datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord"
-    # export_dir = "exported_models/segmentation"
     experiment_config_dir = Path(experiment_config_dir)
 
     runtime = RuntimeConfig.from_yaml(str(experiment_config_dir / "runtime.yaml"))
     trainer = TrainerConfig.from_yaml(str(experiment_config_dir / "trainer.yaml"))
     task = SemanticSegmentationTask.from_yaml(str(experiment_config_dir / "task.yaml"))
     exp_config = ExperimentConfig(task=task, trainer=trainer, runtime=runtime)
-
-    # exp_config = tfm.core.exp_factory.get_exp_config("seg_deeplabv3_pascal")
 
     logical_device_names = [
         logical_device.name for logical_device in tf.config.list_logical_devices()
@@ -59,7 +61,7 @@ def main(
 
     print(f"device: {device}")
 
-    train_ds = tf.data.TFRecordDataset(train_data_tfrecords)
+    train_ds = tf.data.TFRecordDataset(exp_config.task.train_data.input_path)
     num_train_examples = int(train_ds.reduce(np.int64(0), lambda x, _: x + 1).numpy())
     print(f"dataset has {num_train_examples} examples")
 
@@ -139,39 +141,89 @@ def main(
         run_post_eval=True,
     )
 
-    for i, batch in enumerate(
-        task.build_inputs(exp_config.task.train_data).take(num_examples)
-    ):
-        images, targets = batch
-        masks = targets["masks"]
+    input_image_size = exp_config.task.train_data.output_size
 
-        # limit to just 4 examples per batch
-        nrows = 4
-        images = images[:nrows] * 255
-        masks = masks[:nrows]
-        logits = model(images)["logits"].numpy()
-        preds = np.expand_dims(np.argmax(logits, axis=-1), axis=-1)
-        print(preds.shape)
-        fig, axs = plt.subplots(nrows, 3, figsize=(9, 16))
-        titles = ["Image", "Mask", "Predictions"]
+    for i, raw_record in enumerate(train_ds):
+        example = tf.train.Example()
+        example.ParseFromString(raw_record.numpy())
+        original_image = tf.io.decode_jpeg(
+            example.features.feature["image/encoded"].bytes_list.value[0]
+        )
+        mask = tf.io.decode_png(
+            example.features.feature[
+                "image/segmentation/class/encoded"
+            ].bytes_list.value[0]
+        )
+        # TODO image might need to be normalized with image net mean and std
+        inference_image = original_image
+        inference_image = tf.cast(inference_image, dtype=tf.float32)
+        inference_image = preprocess_ops.normalize_image(
+            inference_image,
+            offset=preprocess_ops.MEAN_RGB,
+            scale=preprocess_ops.STDDEV_RGB,
+        )
+        inference_image, image_info = preprocess_ops.resize_image(
+            inference_image, input_image_size
+        )
+        # drw image, mask, image with mask overlayed and histogram of mask values in a single row
+        predicted_mask = model(tf.expand_dims(inference_image, axis=0))["logits"]
+        predicted_mask = tf.image.resize(
+            predicted_mask, input_image_size, method="bilinear"
+        )
+        predicted_mask = create_mask(predicted_mask)
+        print(predicted_mask.shape)
+        original_image = tf.image.resize(original_image, size=input_image_size)
+        original_image = tf.cast(original_image, dtype=tf.uint8)
+        mask = tf.image.resize(mask, size=input_image_size)
 
-        for ax, col in zip(axs[0], titles):
-            ax.set_title(col)
+        fig, axs = plt.subplots(1, 6, figsize=(20, 5))
+        axs[0].imshow(original_image)
 
-        for j, (image, mask, pred) in enumerate(zip(images, masks, preds)):
-            # draw the input image
-            pil_img = tf.keras.utils.array_to_img(image)
-            axs[j][0].imshow(pil_img)
-            axs[j][0].axis("off")
+        m = axs[1].imshow(mask)
+        m.set_clim(-1, 1)
 
-            mask = np.where(mask == 255, np.zeros_like(mask) - 1, mask)
-            axs[j][1].imshow(tf.keras.utils.array_to_img(mask))
-            axs[j][1].axis("off")
+        axs[2].imshow(original_image)
+        axs[2].imshow(mask, alpha=0.5)
 
-            axs[j][2].imshow(tf.keras.utils.array_to_img(pred))
-            axs[j][2].axis("off")
+        m = axs[3].imshow(predicted_mask)
+        m.set_clim(-1, 1)
+        plt.colorbar(m, ax=axs[3])
 
-        fig.tight_layout()
+        axs[4].imshow(original_image)
+        axs[4].imshow(predicted_mask, alpha=0.5)
+
+        axs[5].hist(predicted_mask.numpy().flatten())
+
+        # I'm not sure if the metrics here are applied correctly, but I want to have any measurement of mask quality
+        # calculate ssim between target and predicted masks
+        ssim = tf.reduce_mean(
+            tf.image.ssim(
+                tf.cast(tf.expand_dims(mask, axis=0), dtype=tf.float32),
+                tf.cast(tf.expand_dims(predicted_mask, axis=0), dtype=tf.float32),
+                max_val=1.0,
+            )
+        )
+        title_iou = f"SSIM: {ssim.numpy():.3f}"
+
+        # calculate the mean IOU between target and predicted masks
+        meanIOU = tf.reduce_mean(
+            tf.keras.metrics.MeanIoU(num_classes=2, name="mean_iou", dtype=tf.float32)(
+                mask, predicted_mask
+            )
+        )
+        title_meaniou = f"iou: {meanIOU.numpy():.3f}"
+        # calculate the F1 score between target and predicted masks
+        precision = tf.reduce_mean(
+            tf.keras.metrics.Precision(dtype=tf.float32)(mask, predicted_mask)
+        )
+        recall = tf.reduce_mean(
+            tf.keras.metrics.Recall(dtype=tf.float32)(mask, predicted_mask)
+        )
+        f1_score = 2 * (precision * recall) / (precision + recall)
+        title_f1 = f"F1-score: {f1_score.numpy():.3f}"
+
+        print(title_iou, title_meaniou, title_f1)
+        fig.suptitle(title_iou + " " + title_meaniou + " " + title_f1)
         plt.savefig(debug_dir / f"train_data_predict_{i}.png", bbox_inches="tight")
 
 

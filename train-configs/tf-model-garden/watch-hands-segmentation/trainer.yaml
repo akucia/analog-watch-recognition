@@ -12,7 +12,7 @@ optimizer_config:
   ema: null
   learning_rate:
     constant:
-      learning_rate: 0.0003
+      learning_rate: 0.001
     type: constant
   optimizer:
     type: adam
@@ -25,8 +25,8 @@ optimizer_config:
 recovery_begin_steps: 0
 recovery_max_trials: 0
 steps_per_loop: 1
-summary_interval: 1
-train_steps: 1
+summary_interval: 10
+train_steps: 250
 train_tf_function: true
 train_tf_while_loop: true
 validation_interval: 1

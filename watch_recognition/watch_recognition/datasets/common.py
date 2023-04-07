@@ -98,7 +98,6 @@ def encode_polygons_to_label_mask(
 
 def polygon_annotations_to_feature_dict(polygon_annotations: List[Polygon], image_size):
     """Convert COCO annotations to an encoded feature dict."""
-    names = [p.name.encode("utf8") for p in polygon_annotations]
     feature_dict = {
         "image/segmentation/class/encoded": convert_to_feature(
             tf.io.encode_png(
@@ -106,10 +105,6 @@ def polygon_annotations_to_feature_dict(polygon_annotations: List[Polygon], imag
             ).numpy()
         ),
         "image/segmentation/class/format": convert_to_feature(b"png"),
-        "image/segmentation/class/text": convert_to_feature(names),
-        # "image/object/is_crowd": convert_to_feature(False),
-        # TODO area
-        # "image/object/area": convert_to_feature(data["area"], "float_list"),
     }
 
     return feature_dict

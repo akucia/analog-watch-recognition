@@ -1,7 +1,7 @@
 differential_privacy_config: null
 eval_input_partition_dims: []
 evaluation:
-  report_per_class_iou: true
+  report_per_class_iou: false
   report_train_mean_iou: true
 export_config:
   rescale_output: false
@@ -10,13 +10,11 @@ init_checkpoint_modules:
 - backbone
 - decoder
 losses:
-  class_weights: []
+  class_weights: [1, 5]
   gt_is_matting_map: false
   ignore_label: 255
   l2_weight_decay: 0.0
-  label_smoothing: 0.0
   loss_weight: 1.0
-  mask_scoring_weight: 1.0
   top_k_percent_pixels: 1.0
   use_binary_cross_entropy: false
   use_groundtruth_dimension: true
@@ -43,22 +41,19 @@ model:
   head:
     decoder_max_level: null
     decoder_min_level: null
-    feature_fusion: null
+    feature_fusion: deeplabv3plus
     level: 4
-    logit_activation: null
     low_level: 2
     low_level_num_filters: 48
     num_convs: 0
     num_filters: 256
-    prediction_kernel_size: 1
-    upsample_factor: 1
+    prediction_kernel_size: 3
+    upsample_factor: 2
     use_depthwise_convolution: false
   input_size:
   - null
   - null
   - 3
-  mask_scoring_head:
-    fc_input_size: [32, 32]
   max_level: 6
   min_level: 3
   norm_activation:
@@ -69,7 +64,6 @@ model:
   num_classes: 2
 name: null
 train_data:
-  additional_dense_features: []
   apply_tf_data_service_before_batching: false
   aug_policy: null
   aug_rand_hflip: false
@@ -81,7 +75,6 @@ train_data:
   cycle_length: 10
   decoder:
     simple_decoder:
-      attribute_names: []
       mask_binarize_threshold: null
       regenerate_source_id: false
     type: simple_decoder
@@ -95,9 +88,9 @@ train_data:
   groundtruth_padded_size: []
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
   is_training: true
-  output_size: [512, 512]
+  output_size: [256, 256]
   prefetch_buffer_size: null
-  preserve_aspect_ratio: true
+  preserve_aspect_ratio: false
   resize_eval_groundtruth: true
   seed: 42
   sharding: true
@@ -133,12 +126,12 @@ validation_data:
   enable_tf_data_service: false
   file_type: tfrecord
   global_batch_size: 1
-  groundtruth_padded_size: [512, 512]
+  groundtruth_padded_size: [256, 256]
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
   is_training: false
-  output_size: [512, 512]
+  output_size: [256, 256]
   prefetch_buffer_size: null
-  preserve_aspect_ratio: true
+  preserve_aspect_ratio: false
   resize_eval_groundtruth: true
   seed: 42
   sharding: true
