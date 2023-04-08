@@ -70,7 +70,7 @@ def main(
             },
             confidence_threshold=0.5,
         ),
-        hand_predictor=HandPredictorGRPC("localhost:8500", "segmentation"),
+        hand_predictor=HandPredictorGRPC("localhost:8500", "hands"),
     )
     cap = cv2.VideoCapture(str(file))
 

@@ -22,6 +22,7 @@ services:
       - ../exported_models/detector/serving:/models/detector/1
       - ../exported_models/detector/lite16:/models/detector/lite16/1
       - ../exported_models/detector/lite8:/models/detector/lite8/1
+      - ../exported_models/segmentation/hands/default:/models/hands/1
+      - ../exported_models/segmentation/hands/lite:/models/hands/lite/1
       - ../models/keypoint:/models/keypoint/1
-      - ../models/segmentation:/models/segmentation/1
       - ./models.conf:/models.conf

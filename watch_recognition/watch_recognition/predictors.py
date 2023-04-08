@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import grpc
 import numpy as np
+import tensorflow as tf
 from distinctipy import distinctipy
 from matplotlib import pyplot as plt
 from more_itertools import chunked
@@ -17,7 +18,6 @@ from PIL.Image import Image as ImageType
 from tensorflow_serving.apis import predict_pb2, prediction_service_pb2_grpc
 from tensorflow_serving.apis.predict_pb2 import PredictResponse
 
-import tensorflow as tf
 from watch_recognition.targets_encoding import (
     _fit_lines_to_points,
     extract_points_from_map,
@@ -224,11 +224,13 @@ class HandPredictor(ABC):
         image: Union[ImageType, np.ndarray],
     ) -> Polygon:
         """Runs predictions on a crop of a watch face.
-        Returns keypoints in pixel coordinates of the image
+        Returns polygons in pixel coordinates of the image
         """
         image_width, image_height = _get_image_shape(image)
         image_np = np.expand_dims(np.array(image), 0)
-        predicted = self._batch_predict(image_np)[0].squeeze()
+        predicted = self._batch_predict(image_np)[0]
+        # TODO support confidence threshold
+        predicted = np.argmax(predicted, axis=-1).squeeze()
 
         weights = predicted.flatten() > self.confidence_threshold
         if weights.sum() > 0:
@@ -316,13 +318,13 @@ class HandPredictorGRPC(HandPredictor):
         request = predict_pb2.PredictRequest()
         request.model_spec.name = self.model_name
         request.model_spec.signature_name = "serving_default"
-        request.inputs["image"].CopyFrom(tf.make_tensor_proto(batch_image_np))
+        request.inputs["inputs"].CopyFrom(tf.make_tensor_proto(batch_image_np))
         result = self.stub.Predict(request, self.timeout)
         return self._decode_proto_results(result)
 
     def _decode_proto_results(self, result: PredictResponse) -> np.ndarray:
-        # TODO rename the model outputs name later to make it universal
-        output = result.outputs["model_3"]
+        # TODO index of the correct class should not be required, this can be handled in export
+        output = result.outputs["logits"]
         value = output.float_val
         shape = [dim.size for dim in output.tensor_shape.dim]
         return np.array(value).reshape(shape)

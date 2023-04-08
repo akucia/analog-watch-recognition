@@ -46,7 +46,7 @@ time_predictor = TimePredictor(
     ),
     hand_predictor=HandPredictorGRPC(
         host=model_host,
-        model_name="segmentation",
+        model_name="hands",
     ),
 )
 

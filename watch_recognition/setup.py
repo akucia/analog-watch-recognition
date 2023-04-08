@@ -19,7 +19,7 @@ setuptools.setup(
         "pandas>=1.0.0",
         "albumentations~=1.0.3",
         "tqdm",
-        "matplotlib~=3.4.3",
+        "matplotlib~=3.7.0",
         "scikit-image~=0.19.3",
         "Pillow~=9.4.0",
         "scikit-learn~=1.2.1",

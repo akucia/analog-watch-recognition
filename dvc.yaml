@@ -210,7 +210,6 @@ stages:
     deps:
       - datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
       - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      - datasets/watch-faces-local.json
       - train-configs/tf-model-garden/watch-hands-segmentation
       - checkpoints/segmentation/deeplabv3_mobilenetv2_coco
     plots:

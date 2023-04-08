@@ -52,6 +52,7 @@ def generate_blob_gstorage_path(bucket_name: str, blob_name: str) -> str:
 @click.option(
     "--source-dir",
     help="Specify the source images directory",
+    type=click.Path(exists=True, file_okay=False, dir_okay=True),
 )
 @click.option(
     "--export-file",
@@ -69,6 +70,7 @@ def generate_blob_gstorage_path(bucket_name: str, blob_name: str) -> str:
 @click.option("--label-studio-api-token")
 @click.option("--n-images", help="Number of images to add", type=int)
 @click.option("--shuffle-images", is_flag=True)
+@click.option("--verify-existing-images", is_flag=True)
 def main(
     source_dir: str,
     export_file: Optional[str],
@@ -79,6 +81,7 @@ def main(
     label_studio_api_token: str,
     n_images: int,
     shuffle_images: bool,
+    verify_existing_images: bool,
 ):
     t0 = time.perf_counter()
     if verbose:
@@ -86,24 +89,24 @@ def main(
     else:
         logging.basicConfig(level=logging.INFO)
     source_dir = Path(source_dir)
-    assert source_dir.exists()
 
     ls = Client(url=label_studio_host, api_key=label_studio_api_token)
     project = ls.get_project(label_studio_project)
     imported_blobs = set()
-    for task in project.get_tasks():
-        image_url = task["data"]["image"]
-        image_name = file_name_from_gstorage_url(image_url)
-        imported_blobs.add(image_name)
+    if verify_existing_images:
+        for task in project.get_tasks():
+            image_url = task["data"]["image"]
+            image_name = file_name_from_gstorage_url(image_url)
+            imported_blobs.add(image_name)
 
-    cls_to_label = {0: "WatchFace"}
+    cls_to_label = {1: "WatchFace"}
     detector = RetinaNetDetectorGRPC(
         "localhost:8500", model_name="detector", class_to_label_name=cls_to_label
     )
 
     hand_predictor = HandPredictorGRPC(
         host="localhost:8500",
-        model_name="segmentation",
+        model_name="hands",
     )
     kp_predictor = KPHeatmapPredictorV2GRPC(
         host="localhost:8500",
@@ -161,12 +164,10 @@ def main(
                 keypoints.extend(points)
                 polygon = hand_predictor.predict_from_image_and_bbox(pil_img, box)
                 polygons.append(polygon)
-                decoded_time = read_time(
+                decoded_time, _ = read_time(
                     polygon,
                     points,
                     (int(box.width), int(box.height)),
-                    debug=False,
-                    debug_image=None,
                 )
                 if decoded_time is not None:
                     predicted_time = f"{decoded_time[0]:02.0f}:{decoded_time[1]:02.0f}"
@@ -246,7 +247,7 @@ def main(
 def _assign_fold_from_bytes_content(img_path):
     with img_path.open("rb") as f:
         data = f.read()
-        int_hash = int(md5(data).hexdigest(), 16)
+        int_hash = int(md5(data, usedforsecurity=False).hexdigest(), 16)
         float_hash = int_hash / 2**128
         if float_hash < 0.8:
             fold = "train"
