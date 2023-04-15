@@ -224,6 +224,19 @@ stages:
     outs:
       - models/segmentation/:
           persist: false
+
+  export-segmentation:
+    cmd: >-
+      python watch_recognition/watch_recognition/export/export_segmentation.py models/segmentation train-configs/tf-model-garden/watch-hands-segmentation/
+    deps:
+      - models/segmentation/
+      - train-configs/tf-model-garden/watch-hands-segmentation
+    plots:
+      - example_predictions/segmentation/hands/example-1.jpg:
+          persist: true
+    outs:
+      - exported_models/segmentation/hands/:
+          persist: true
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}
     deps:

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple, Union
 import cv2
 import matplotlib.patches as mpatches
 import numpy as np
+import tensorflow as tf
 from matplotlib import patches
 from matplotlib import pyplot as plt
 from scipy import odr
@@ -18,8 +19,6 @@ from skimage.measure import (
     ransac,
     regionprops,
 )
-
-import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True)
@@ -669,7 +668,7 @@ class Polygon:
         if not contours:
             return Polygon(np.array([]).reshape(-1, 2))
 
-        contour = sorted(contours, key=lambda c: len(c))[0]
+        contour = sorted(contours, key=lambda c: len(c), reverse=True)[0]
         appr_poly = approximate_polygon(contour, tolerance=simplification_tolerance)
         return Polygon(appr_poly[:, ::-1])
 

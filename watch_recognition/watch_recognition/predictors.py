@@ -229,8 +229,8 @@ class HandPredictor(ABC):
         image_width, image_height = _get_image_shape(image)
         image_np = np.expand_dims(np.array(image), 0)
         predicted = self._batch_predict(image_np)[0]
-        # TODO support confidence threshold
-        predicted = np.argmax(predicted, axis=-1).squeeze()
+        predicted = np.exp(predicted) / np.sum(np.exp(predicted), axis=2, keepdims=True)
+        predicted = predicted[:, :, 1]  # for now just take the 1 class
 
         weights = predicted.flatten() > self.confidence_threshold
         if weights.sum() > 0:
@@ -287,15 +287,15 @@ class HandPredictor(ABC):
 
 
 class HandPredictorLocal(HandPredictor):
-    def __init__(self, model_path, confidence_threshold: float = 0.5):
-        self.model = tf.keras.models.load_model(model_path, compile=False)
-        self.input_size = tuple(self.model.inputs[0].shape[1:3])
-        self.output_size = tuple(self.model.outputs[0].shape[1:3])
+    def __init__(self, model_path: Union[str, Path], confidence_threshold: float = 0.5):
+        imported = tf.saved_model.load(str(model_path))
+        self.model_fn = imported.signatures["serving_default"]
         super().__init__(confidence_threshold=confidence_threshold)
 
     def _batch_predict(self, batch_image_numpy: np.ndarray) -> np.ndarray:
-        predicted = self.model.predict(batch_image_numpy, verbose=0)
-        return predicted
+        input_images = tf.convert_to_tensor(batch_image_numpy)
+        predicted = self.model_fn(input_images)["logits"]
+        return predicted.numpy()
 
 
 class HandPredictorGRPC(HandPredictor):
