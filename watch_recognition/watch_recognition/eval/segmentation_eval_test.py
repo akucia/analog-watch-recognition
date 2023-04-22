@@ -89,7 +89,6 @@ def test_iou_score_from_masks_partial():
         ]
     )
     iou_score = iou_score_from_masks(predicted, target)
-    print(iou_score)
     assert iou_score == pytest.approx(0.5, rel=1e-2)
 
 
@@ -112,5 +111,4 @@ def test_iou_score_from_masks_partial_2():
         ]
     )
     iou_score = iou_score_from_masks(predicted, target)
-    print(iou_score)
     assert iou_score == pytest.approx(0.67, rel=1e-2)

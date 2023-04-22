@@ -238,7 +238,7 @@ stages:
       - exported_models/segmentation/hands/:
           persist: true
   eval-segmentation:
-    cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}
+    cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold} --save-per-image-metrics
     deps:
       - exported_models/segmentation/hands
       - watch_recognition/watch_recognition/eval/segmentation_eval.py
@@ -253,6 +253,12 @@ stages:
       - example_predictions/segmentation/hands/val_2.jpg
       - example_predictions/segmentation/hands/val_3.jpg
       - example_predictions/segmentation/hands/val_4.jpg
+    outs:
+      - metrics/segmentation/hands/train/segmentation_eval_per_image.csv
+      - metrics/segmentation/hands/val/segmentation_eval_per_image.csv
+    metrics:
+      - metrics/segmentation/hands/train/segmentation.json
+      - metrics/segmentation/hands/val/segmentation.json
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently --split=val
     deps:

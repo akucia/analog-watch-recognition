@@ -101,7 +101,7 @@ def calculate_and_save_segmentation_metrics(
         df.to_csv(save_dir / "segmentation_eval_per_image.csv", index=False)
     y_targets = np.concatenate(y_targets).reshape(-1, 1)
     y_preds = np.concatenate(y_preds).reshape(-1, 1)
-
+    print(f"generating {split} classification report")
     report = classification_report(
         y_targets, y_preds, target_names=["background", "hands"], output_dict=True
     )

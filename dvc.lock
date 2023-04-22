@@ -321,22 +321,22 @@ stages:
       size: 132
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
-      0.5
+      0.5 --save-per-image-metrics
     deps:
     - path: exported_models/segmentation/hands
       md5: a46437eea74fff1a99d0e0abe9fbe8b1.dir
       size: 38257417
       nfiles: 11
     - path: watch_recognition/watch_recognition/eval/segmentation_eval.py
-      md5: 32f306781596170643d1d35457e9c996
-      size: 5164
+      md5: 1aee4f04a6e798baf4990f56c6fe5177
+      size: 6822
     outs:
     - path: example_predictions/segmentation/hands/train_0.jpg
-      md5: cfaaae1a405dc2f21dea1aafdc7a9ae5
-      size: 23932
+      md5: c7f80a1515055b31f9dbdcbafc395153
+      size: 23935
     - path: example_predictions/segmentation/hands/train_1.jpg
-      md5: f99bd91ade7b4c69d44839f7e16e1b43
-      size: 19214
+      md5: cb0d9f6627a0cbc54513ef918f292734
+      size: 19289
     - path: example_predictions/segmentation/hands/train_2.jpg
       md5: 4d3216f3becdcd93994f73bcc8b9c284
       size: 27765
@@ -347,20 +347,32 @@ stages:
       md5: a72ccd468840b43d30f11817af41a58f
       size: 20766
     - path: example_predictions/segmentation/hands/val_0.jpg
-      md5: 2d64d322b06422eb368626ea3e47e532
-      size: 22860
+      md5: 2be9d54baaab54b7566582bb943e7f5d
+      size: 22847
     - path: example_predictions/segmentation/hands/val_1.jpg
-      md5: fccb1e17e2d4c8fffb5fc6487e23050a
-      size: 29665
+      md5: 44878e6df4ed0b484ccb0d27d72dc489
+      size: 29663
     - path: example_predictions/segmentation/hands/val_2.jpg
-      md5: c88ad37504ad0afbc05a729eed5ee764
-      size: 21938
+      md5: 51ddf78c010181b981b6ddc82cd5711a
+      size: 21959
     - path: example_predictions/segmentation/hands/val_3.jpg
-      md5: eec575b9becb597f6b57feb744f8cf79
-      size: 28499
+      md5: 87739475d2f3206558dfc89436ff8360
+      size: 28498
     - path: example_predictions/segmentation/hands/val_4.jpg
       md5: 69a09f47962fdb701e41b559db919431
       size: 20033
+    - path: metrics/segmentation/hands/train/segmentation.json
+      md5: f0cde01ad2aed4474b03c7e32749e261
+      size: 699
+    - path: metrics/segmentation/hands/train/segmentation_eval_per_image.csv
+      md5: a3dc8b4bd1bd6a8b0f33b7c86d67e6fb
+      size: 12348
+    - path: metrics/segmentation/hands/val/segmentation.json
+      md5: 6991b06aa85f3138005105818dc7e631
+      size: 694
+    - path: metrics/segmentation/hands/val/segmentation_eval_per_image.csv
+      md5: fbb7b8319a5f344b0eeeeb6b45964107
+      size: 2959
   generate-detection-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_detection_tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=1
       --run-concurrently
