@@ -240,20 +240,19 @@ stages:
   eval-segmentation:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold}
     deps:
-      - models/segmentation/
-      - models/detector/
+      - exported_models/segmentation/hands
       - watch_recognition/watch_recognition/eval/segmentation_eval.py
     plots:
-      - example_predictions/segmentation/train_0.jpg
-      - example_predictions/segmentation/train_1.jpg
-      - example_predictions/segmentation/train_2.jpg
-      - example_predictions/segmentation/train_3.jpg
-      - example_predictions/segmentation/train_4.jpg
-      - example_predictions/segmentation/val_0.jpg
-      - example_predictions/segmentation/val_1.jpg
-      - example_predictions/segmentation/val_2.jpg
-      - example_predictions/segmentation/val_3.jpg
-      - example_predictions/segmentation/val_4.jpg
+      - example_predictions/segmentation/hands/train_0.jpg
+      - example_predictions/segmentation/hands/train_1.jpg
+      - example_predictions/segmentation/hands/train_2.jpg
+      - example_predictions/segmentation/hands/train_3.jpg
+      - example_predictions/segmentation/hands/train_4.jpg
+      - example_predictions/segmentation/hands/val_0.jpg
+      - example_predictions/segmentation/hands/val_1.jpg
+      - example_predictions/segmentation/hands/val_2.jpg
+      - example_predictions/segmentation/hands/val_3.jpg
+      - example_predictions/segmentation/hands/val_4.jpg
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently --split=val
     deps:

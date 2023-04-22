@@ -1,5 +1,4 @@
 tensorflow_datasets
-dvc[gcs]
 dvc[gs]
 isort
 black==23.1.0
@@ -29,3 +28,6 @@ opencv-python
 dvclive==1.3.2
 more-itertools~=8.14.0
 ipython-autotime
+pytest
+pytest-cov
+rich==13.3.1

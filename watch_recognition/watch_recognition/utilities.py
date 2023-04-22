@@ -723,7 +723,8 @@ class Polygon:
         ax=None,
         color: str = "red",
         linewidth: int = 1,
-        draw_name_label: bool = True,
+        draw_label: bool = True,
+        alpha: float = 0.25,
         **kwargs,
     ):
         if ax is None:
@@ -734,13 +735,13 @@ class Polygon:
             edgecolor=color,
             facecolor=color,
             linewidth=linewidth,
-            alpha=0.25,
+            alpha=alpha,
             **kwargs,
         )
 
         # Add the patch to the Axes
         ax.add_patch(patch)
-        if self.name and draw_name_label:
+        if self.name and draw_label:
             ax.text(
                 np.min(self.coords[:, 0]),
                 np.min(self.coords[:, 1]),

@@ -34,3 +34,9 @@ run-detection-evaluation:
 
 render-demo-video:
 	python scripts/render-demo-movie.py example_data/IMG_1200_720p.mov IMG_1200_720p-render.mp4
+
+test:
+	pytest -v watch_recognition/
+
+test-cov:
+	pytest --cov=watch_recognition -v watch_recognition/

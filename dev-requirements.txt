@@ -102,6 +102,8 @@ configobj==5.0.8
     # via dvc
 contourpy==1.0.7
     # via matplotlib
+coverage[toml]==7.2.3
+    # via pytest-cov
 cryptography==39.0.0
     # via asyncssh
 cycler==0.11.0
@@ -133,7 +135,7 @@ dpath==2.1.4
     # via dvc
 dulwich==0.21.2
     # via scmrepo
-dvc[gcs,gs]==2.43.1
+dvc[gs]==2.43.1
     # via
     #   -r dev-requirements.in.txt
     #   dvc-gs
@@ -166,6 +168,8 @@ entrypoints==0.4
     # via altair
 etils[enp,epath]==1.0.0
     # via tensorflow-datasets
+exceptiongroup==1.1.1
+    # via pytest
 executing==1.2.0
     # via stack-data
 filelock==3.9.0
@@ -281,6 +285,8 @@ importlib-metadata==6.0.0
     # via streamlit
 importlib-resources==5.10.2
     # via etils
+iniconfig==2.0.0
+    # via pytest
 ipython==8.11.0
     # via ipython-autotime
 ipython-autotime==0.3.1
@@ -408,6 +414,7 @@ packaging==23.0
     #   hydra-core
     #   keras-cv
     #   matplotlib
+    #   pytest
     #   scikit-image
     #   streamlit
     #   tensorflow
@@ -440,6 +447,8 @@ pillow==9.4.0
     #   tf-models-official
 platformdirs==2.6.2
     # via black
+pluggy==1.0.0
+    # via pytest
 portalocker==2.7.0
     # via sacrebleu
 promise==2.3
@@ -516,6 +525,12 @@ pyparsing==3.0.9
     #   pydot
 pyrsistent==0.19.3
     # via jsonschema
+pytest==7.3.1
+    # via
+    #   -r dev-requirements.in.txt
+    #   pytest-cov
+pytest-cov==4.0.0
+    # via -r dev-requirements.in.txt
 python-dateutil==2.8.2
     # via
     #   kaggle
@@ -560,6 +575,7 @@ requests-oauthlib==1.3.1
     # via google-auth-oauthlib
 rich==13.3.1
     # via
+    #   -r dev-requirements.in.txt
     #   dvc
     #   streamlit
 rsa==4.9
@@ -691,7 +707,10 @@ toml==0.10.2
     #   streamlit
     #   tensorflow-datasets
 tomli==2.0.1
-    # via black
+    # via
+    #   black
+    #   coverage
+    #   pytest
 tomlkit==0.11.6
     # via dvc
 toolz==0.12.0

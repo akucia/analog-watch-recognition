@@ -257,17 +257,15 @@ class HandPredictor(ABC):
         predicted = self._batch_predict(image_batch_np)[0]
 
         predicted = predicted > self.confidence_threshold
-        masks = []
-        for cls, name in {0: "ClockHands"}.items():
-            mask = predicted[:, :, cls]
-            mask = cv2.resize(
-                mask.astype("uint8"),
-                image_np.shape[:2][::-1],
-                interpolation=cv2.INTER_NEAREST,
-            ).astype("bool")
-            masks.append(mask)
 
-        ax.imshow(draw_masks(image_np, masks))
+        mask = predicted[:, :, -1]
+        mask = cv2.resize(
+            mask.astype("uint8"),
+            image_np.shape[:2][::-1],
+            interpolation=cv2.INTER_NEAREST,
+        ).astype("bool")
+
+        ax.imshow(draw_masks(image_np, [mask]))
 
     def predict_and_plot(self, image: Union[ImageType, np.ndarray], ax=None) -> Polygon:
         ax = ax or plt.gca()
