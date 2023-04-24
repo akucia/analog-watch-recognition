@@ -1,87 +1,14 @@
-import hashlib
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from google.cloud import storage
-from google.cloud.storage import Blob
 from PIL import Image, ImageOps
-from PIL.Image import BICUBIC, NEAREST
-from pycocotools.coco import COCO
-from skimage.filters import gaussian
+from PIL.Image import BICUBIC
 from skimage.transform import rotate
-from tqdm import tqdm
 
 from watch_recognition.utilities import Line, Point
-
-
-def load_binary_masks_from_coco_dataset(
-    data_dir: Union[str, Path],
-    image_size: Optional[Tuple[int, int]] = (224, 224),
-    filter_classes: Optional[List[str]] = None,
-    blur_masks: bool = False,
-):
-
-    data_dir = str(data_dir)
-    if data_dir.startswith("gs://"):
-        bucket_name = data_dir.replace("gs://", "").split("/")[0]
-        storage_client = storage.Client()
-        bucket = storage_client.get_bucket(bucket_or_name=bucket_name)
-        prefix = data_dir.replace(f"gs://{bucket_name}/", "")
-        blobs: List[Blob] = list(bucket.list_blobs(prefix=prefix))
-        for blob in tqdm(blobs):
-            download_path = Path("/tmp/" + blob.name)
-            if not download_path.exists() or download_path.stat().st_size == 0:
-                download_path.parent.mkdir(exist_ok=True, parents=True)
-                blob.download_to_filename(download_path)
-        data_dir = data_dir.replace(f"gs://{bucket_name}", "/tmp/")
-        print("local data dir: {data_dir}")
-    annotations_file = Path(data_dir) / "result.json"
-
-    coco = COCO(annotations_file)
-    catIds = coco.getCatIds(catNms=filter_classes)
-    imgIds = coco.getImgIds(catIds=catIds)
-    imgs = coco.loadImgs(imgIds)
-    all_images = []
-    all_filenames = []
-    all_masks = []
-    all_hashes = []
-    for img in imgs:
-        filename = img["file_name"]
-        all_filenames.append(filename)
-        image_path = f"{data_dir}/{filename}"
-        img_np = load_image(image_path, image_size=None)
-
-        annIds = coco.getAnnIds(imgIds=img["id"], catIds=catIds, iscrowd=None)
-        anns = coco.loadAnns(annIds)
-        with Image.fromarray(img_np) as img_pil:
-            if image_size is not None:
-                img_pil = ImageOps.pad(img_pil, size=image_size)
-            all_images.append(np.array(img_pil))
-            md5hash = hashlib.md5(img_pil.tobytes())
-            float_hash = int(md5hash.hexdigest(), base=16) / 16**32
-            all_hashes.append(float_hash)
-
-        masks = np.array([coco.annToMask(ann) for ann in anns])
-        mask = ((np.sum(masks, axis=0) > 0) * 255).astype("uint8")
-        with Image.fromarray(mask) as mask_pil:
-            if image_size is not None:
-                mask_pil = ImageOps.pad(mask_pil, size=image_size, method=NEAREST)
-            mask_pil = (np.array(mask_pil) > 0).astype("float32")
-            mask_pil = np.expand_dims(mask_pil, axis=-1)
-            if blur_masks:
-                mask_pil = gaussian(mask_pil)
-                mask_pil /= mask_pil.max()
-            all_masks.append(mask_pil)
-
-    all_images = np.array(all_images)
-    all_masks = np.array(all_masks)
-    all_filenames = np.array(all_filenames)
-    all_hashes = np.array(all_hashes)
-
-    return all_images, all_masks, all_filenames, all_hashes
 
 
 def load_single_kp_example(
@@ -202,6 +129,7 @@ def load_image(
     else:
         file = open(image_path, "rb")
     with Image.open(file) as img:
+        img = ImageOps.exif_transpose(img)
         if img.mode != "RGB":
             img = img.convert("RGB")
         if image_size is not None:

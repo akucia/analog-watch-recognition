@@ -6,45 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from watch_recognition.targets_encoding import (
-    add_sample_weights,
-    encode_keypoints_to_angle,
-    encode_keypoints_to_hands_angles,
-    encode_keypoints_to_mask,
-    set_shapes,
-    set_shapes_with_sample_weight,
-)
-
-EMPTY_TRANSFORMS = A.Compose(
-    [],
-    # format="xyas" is required while using tf.Data pipielines, otherwise
-    # tf cannot validate the output shapes # TODO check if this is correct
-    # remove_invisible=False is required to preserve the order and number of keypoints
-    keypoint_params=A.KeypointParams(format="xyas", remove_invisible=False),
-)
-
-DEFAULT_TRANSFORMS = A.Compose(
-    [
-        A.Rotate(limit=30, p=0.8),
-        A.OneOf(
-            [
-                A.HueSaturationValue(p=0.8),
-                A.RGBShift(p=0.8),
-                A.ChannelShuffle(p=0.8),
-                A.ChannelDropout(p=0.8),
-                A.CLAHE(p=0.8),
-                A.ISONoise(p=0.8),
-                A.InvertImg(p=0.8),
-            ],
-            p=1,
-        ),
-        # A.MotionBlur(),
-    ],
-    # format="xyas" is required while using tf.Data pipielines, otherwise
-    # tf cannot validate the output shapes # TODO check if this is correct
-    # remove_invisible=False is required to preserve the order and number of keypoints
-    keypoint_params=A.KeypointParams(format="xyas", remove_invisible=False),
-)
+from watch_recognition.targets_encoding import encode_keypoints_to_mask, set_shapes
 
 
 def get_transforms_for_kp_regression(image_size: int = 64):
@@ -182,37 +144,9 @@ def encode_kp_coordinates(image, kps):
     kps_c_y = kps[0, 1] / image.shape[1]
     # top
     kps_t_x = kps[1, 0] / image.shape[0]
-    kps_t_y = kps[1, 1] / image.shape[1]
+    # kps_t_y = kps[1, 1] / image.shape[1]
     kps = tf.stack((kps_c_x, kps_c_y, kps_t_x))
     return image, kps
-
-
-def mask_aug_fn(image, mask, image_size):
-    data = {
-        "image": image,
-        "mask": mask,
-    }
-    aug_data = get_transforms_for_segmentation_masks(image_size)(**data)
-    aug_img = aug_data["image"]
-    aug_mask = aug_data["mask"]
-    aug_mask = tf.cast(aug_mask, tf.float32)
-    return aug_img, aug_mask
-
-
-def resize_fn(image, mask, image_size):
-    data = {
-        "image": image,
-        "mask": mask,
-    }
-    aug_data = A.Resize(
-        image_size,
-        image_size,
-        # interpolation=cv2.INTER_CUBIC,
-    )(**data)
-    aug_img = aug_data["image"]
-    aug_mask = aug_data["mask"]
-    aug_mask = tf.cast(aug_mask, tf.float32)
-    return aug_img, aug_mask
 
 
 def augment_kp_data(image, kp, image_size):
@@ -225,27 +159,8 @@ def augment_kp_data(image, kp, image_size):
 
 
 def add_noise_to_kp_coordinates(image, kp, sigma=0.01):
-
     kp = tf.random.normal(tf.shape(kp), stddev=sigma) + kp
     return image, kp
-
-
-def augment_mask_data(image, mask, image_size):
-    image, mask = tf.numpy_function(
-        func=mask_aug_fn,
-        inp=[image, mask, image_size],
-        Tout=(tf.uint8, tf.float32),
-    )
-    return image, mask
-
-
-def resize_mask_data(image, mask, image_size):
-    image, mask = tf.numpy_function(
-        func=resize_fn,
-        inp=[image, mask, image_size],
-        Tout=(tf.uint8, tf.float32),
-    )
-    return image, mask
 
 
 def augment_kp_angle_cls_data(image, kp):
@@ -257,97 +172,7 @@ def augment_kp_angle_cls_data(image, kp):
     return image, kp
 
 
-def view_images_and_segmentation_prediction(ds, model):
-
-    batch = next(iter(ds))  # extract 1 batch from the dataset
-    image, masks = batch[0], batch[1]
-    preds = model.predict(image)
-    print(preds.shape)
-    image = image.numpy()
-    masks = masks.numpy()
-
-    fig, axarr = plt.subplots(5, 4, figsize=(15, 15))
-    for i in range(5):
-        ax = axarr[i]
-        img = image[i]
-        ax_idx = 0
-
-        mask = (masks[i, :, :, -1] * 255).astype("uint8")
-        mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-        ax[ax_idx].imshow(mask)
-        ax[ax_idx].set_title("Masks")
-
-        ax_idx += 1
-        pred = (preds[i, :, :, -1] * 255).astype("uint8")
-        pred = cv2.cvtColor(pred, cv2.COLOR_GRAY2RGB)
-        ax[ax_idx].imshow(pred)
-        ax[ax_idx].set_title("Pred")
-
-        ax_idx += 1
-        merged = cv2.addWeighted(img, 0.5, mask, 1.0, 0.0)
-        ax[ax_idx].imshow(merged)
-        ax[ax_idx].set_title("Masks + Image")
-        ax_idx += 1
-
-        pred_merged = cv2.addWeighted(img, 0.5, pred, 1.0, 0.0)
-        ax[ax_idx].imshow(pred_merged)
-        ax[ax_idx].set_title("Pred + Image")
-
-
-def view_image_and_segmasks(ds):
-
-    batch = next(iter(ds))  # extract 1 batch from the dataset
-    image, masks = batch[0], batch[1]
-    image = image.numpy()
-    masks = masks.numpy()
-
-    if len(masks.shape) > 2 and masks.shape[-1] > 1:
-        fig, axarr = plt.subplots(5, masks.shape[-1] + 2, figsize=(15, 15))
-        for i in range(5):
-            ax = axarr[i]
-            img = image[i]
-            ax_idx = 0
-            ax[ax_idx].imshow(img.astype("uint8"))
-            ax[ax_idx].set_xticks([])
-            ax[ax_idx].set_yticks([])
-            ax[ax_idx].set_title("Image")
-            for j in range(masks.shape[-1]):
-                ax_idx = j + 1
-                ax[ax_idx].imshow(masks[i, :, :, j])
-                ax[ax_idx].set_title("Masks")
-
-            merged = cv2.addWeighted(
-                img, 0.5, (masks[i] * 255).astype("uint8"), 0.5, 0.0
-            )
-
-            ax_idx += 1
-            ax[ax_idx].imshow(merged)
-            ax[ax_idx].set_title("Masks + Image")
-    else:
-        fig, axarr = plt.subplots(5, 3, figsize=(15, 15))
-        for i in range(5):
-            ax = axarr[i]
-            img = image[i]
-            ax_idx = 0
-            ax[ax_idx].imshow(img.astype("uint8"))
-            ax[ax_idx].set_xticks([])
-            ax[ax_idx].set_yticks([])
-            ax[ax_idx].set_title("Image")
-
-            ax_idx += 1
-            mask = (masks[i, :, :, -1] * 255).astype("uint8")
-            mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2RGB)
-            ax[ax_idx].imshow(mask)
-            ax[ax_idx].set_title("Masks")
-            merged = cv2.addWeighted(img, 0.5, mask, 1.0, 0.0)
-
-            ax_idx += 1
-            ax[ax_idx].imshow(merged)
-            ax[ax_idx].set_title("Masks + Image")
-
-
 def view_image_and_kp(ds, max_examples: int = 5):
-
     batch = next(iter(ds))  # extract 1 batch from the dataset
     image, kps = batch[0], batch[1]
     image = image.numpy()
@@ -374,7 +199,6 @@ def view_image_and_kp(ds, max_examples: int = 5):
 
 
 def view_images_and_kp_prediction(ds, model, n_kp=2, max_examples: int = 5):
-
     batch = next(iter(ds))  # extract 1 batch from the dataset
     image, kps = batch[0], batch[1]
     preds = model.predict(image)
@@ -415,94 +239,6 @@ def view_images_and_kp_prediction(ds, model, n_kp=2, max_examples: int = 5):
         ax.set_title("Image")
         ax.scatter(*pred_kp[0, :2])
         ax.scatter(*pred_kp[1, :2])
-
-
-def get_watch_angle_dataset(
-    X, y, augment: bool = True, bin_size=90, image_size=(224, 224), batch_size=32
-) -> tf.data.Dataset:
-    encode_kp = partial(encode_keypoints_to_angle, bin_size=bin_size)
-    set_shape_f = partial(
-        set_shapes, img_shape=(*image_size, 3), target_shape=(360 // bin_size,)
-    )
-
-    dataset = tf.data.Dataset.from_tensor_slices((X, y))
-    AUTOTUNE = tf.data.experimental.AUTOTUNE
-    if augment:
-        dataset = dataset.map(
-            augment_kp_angle_cls_data,
-            num_parallel_calls=AUTOTUNE,
-        )
-    dataset = (
-        dataset.map(encode_kp, num_parallel_calls=AUTOTUNE)
-        .map(set_shape_f, num_parallel_calls=AUTOTUNE)
-        .shuffle(8 * batch_size)
-        .batch(batch_size)
-        .prefetch(AUTOTUNE)
-    )
-    return dataset
-
-
-def get_hands_angles_dataset(
-    X, y, augment: bool = True, image_size=(96, 96), batch_size=32
-) -> tf.data.Dataset:
-    encode_kp = partial(encode_keypoints_to_hands_angles)
-    set_shape_f = partial(set_shapes, img_shape=(*image_size, 3), target_shape=(2,))
-
-    dataset = tf.data.Dataset.from_tensor_slices((X, y))
-    AUTOTUNE = tf.data.experimental.AUTOTUNE
-    if augment:
-        dataset = dataset.map(
-            augment_kp_angle_cls_data,
-            num_parallel_calls=AUTOTUNE,
-        )
-    dataset = (
-        dataset.map(encode_kp, num_parallel_calls=AUTOTUNE)
-        .map(set_shape_f, num_parallel_calls=AUTOTUNE)
-        .shuffle(8 * batch_size)
-        .batch(batch_size)
-        .prefetch(AUTOTUNE)
-    )
-    return dataset
-
-
-def get_watch_hands_mask_dataset(
-    X, y, augment: bool = True, image_size=(224, 224), batch_size=32, class_weights=None
-) -> tf.data.Dataset:
-
-    dataset = tf.data.Dataset.from_tensor_slices((X, y))
-    AUTOTUNE = tf.data.experimental.AUTOTUNE
-    if augment:
-        augmentation_fn = partial(augment_mask_data, image_size=image_size[0])
-        dataset = dataset.map(
-            augmentation_fn,
-            num_parallel_calls=AUTOTUNE,
-        )
-    else:
-        resize_fn = partial(resize_mask_data, image_size=image_size[0])
-        dataset = dataset.map(
-            resize_fn,
-            num_parallel_calls=AUTOTUNE,
-        )
-
-    if class_weights:
-        add_sample_weights_f = partial(add_sample_weights, class_weights=class_weights)
-        dataset = dataset.map(add_sample_weights_f)
-        set_shape_f = partial(
-            set_shapes_with_sample_weight,
-            img_shape=(*image_size, 3),
-            target_shape=(*image_size, 1),
-        )
-    else:
-        set_shape_f = partial(
-            set_shapes, img_shape=(*image_size, 3), target_shape=(*image_size, 1)
-        )
-    dataset = (
-        dataset.map(set_shape_f, num_parallel_calls=AUTOTUNE)
-        .shuffle(8 * batch_size)
-        .batch(batch_size)
-        .prefetch(AUTOTUNE)
-    )
-    return dataset
 
 
 def get_watch_keypoints_heatmap_dataset(

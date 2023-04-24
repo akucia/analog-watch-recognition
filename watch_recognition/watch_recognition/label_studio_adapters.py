@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, Iterator, List, Optional, Tuple
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps
 
 from watch_recognition.data_preprocessing import load_image
 from watch_recognition.utilities import BBox, Point, Polygon, match_objects_to_bboxes
@@ -28,6 +28,7 @@ def load_label_studio_polygon_detection_dataset(
         polygons: List[Polygon] = []
         image_path = source.parent / task["image"]
         with Image.open(image_path) as img:
+            img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
             if "bbox" in task:
                 for obj in task["bbox"]:
@@ -84,6 +85,7 @@ def load_label_studio_kp_detection_dataset(
         keypoints: List[Point] = []
         image_path = source.parent / task["image"]
         with Image.open(image_path) as img:
+            img = ImageOps.exif_transpose(img)
             img = img.convert("RGB")
             if "bbox" in task:
                 for obj in task["bbox"]:
