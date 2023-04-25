@@ -14,8 +14,8 @@ optimizer_config:
     cosine:
       name: CosineDecay
       initial_learning_rate: 0.001
-      alpha: 0.001
-      decay_steps: 1350
+      alpha: 0.01
+      decay_steps: 1100
       offset: 0
     type: cosine
   optimizer:
@@ -30,7 +30,7 @@ recovery_begin_steps: 0
 recovery_max_trials: 0
 steps_per_loop: 50
 summary_interval: 50
-train_steps: 1500
+train_steps: 1250
 train_tf_function: true
 train_tf_while_loop: true
 validation_interval: 50

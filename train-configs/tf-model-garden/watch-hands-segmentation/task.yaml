@@ -1,21 +1,21 @@
 differential_privacy_config: null
 eval_input_partition_dims: []
 evaluation:
-  report_per_class_iou: false
+  report_per_class_iou: true
   report_train_mean_iou: true
 export_config:
   rescale_output: false
 init_checkpoint: checkpoints/segmentation/deeplabv3_mobilenetv2_coco/best_ckpt-63
 init_checkpoint_modules:
 - backbone
-- decoder
+# - decoder
 losses:
-  class_weights: [1, 5]
+  class_weights: []
   gt_is_matting_map: false
   ignore_label: 255
   l2_weight_decay: 0
   loss_weight: 1.0
-  top_k_percent_pixels: 1.0
+  top_k_percent_pixels: 0.5
   use_groundtruth_dimension: true
 model:
   backbone:
@@ -28,7 +28,7 @@ model:
     type: mobilenet
   decoder:
     aspp:
-      dilation_rates: []
+      dilation_rates: [1, 2, 3]
       dropout_rate: 0.0
       level: 4
       num_filters: 256
@@ -44,7 +44,7 @@ model:
     level: 4
     low_level: 2
     low_level_num_filters: 48
-    num_convs: 0
+    num_convs: 4
     num_filters: 256
     prediction_kernel_size: 3
     upsample_factor: 2
@@ -65,7 +65,7 @@ name: null
 train_data:
   apply_tf_data_service_before_batching: false
   aug_policy: null
-  aug_rand_hflip: True
+  aug_rand_hflip: true
   aug_scale_max: 1.2
   aug_scale_min: 0.8
   block_length: 1
@@ -87,7 +87,7 @@ train_data:
   groundtruth_padded_size: []
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
   is_training: true
-  output_size: [256, 256]
+  output_size: [320, 320]
   prefetch_buffer_size: 8
   preserve_aspect_ratio: false
   resize_eval_groundtruth: true
@@ -125,10 +125,10 @@ validation_data:
   enable_tf_data_service: false
   file_type: tfrecord
   global_batch_size: 32
-  groundtruth_padded_size: [256, 256]
+  groundtruth_padded_size: [320, 320]
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   is_training: false
-  output_size: [256, 256]
+  output_size: [320, 320]
   prefetch_buffer_size: 8
   preserve_aspect_ratio: false
   resize_eval_groundtruth: true
