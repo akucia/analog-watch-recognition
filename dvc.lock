@@ -253,15 +253,15 @@ stages:
       size: 29628857
       nfiles: 2
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 72eeebd53de7d76b8c6511ba0ebaaa60
-      size: 27505494
+      md5: 6556ca39c3e1e53068bfea67af91310d
+      size: 27688326
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: 1523386f0c97c2c05bec89dcb2bbf40a
-      size: 2730591
+      md5: 0ccbf420ddf4f754be1305eba9adf764
+      size: 2730084
     - path: train-configs/tf-model-garden/watch-hands-segmentation
-      md5: 253b4353865e71386046fe84c6d0694a.dir
-      size: 8461
-      nfiles: 4
+      md5: c7fd488223a578e54483ebe0fc18819d.dir
+      size: 9313
+      nfiles: 5
     params:
       params.yaml:
         seed: 42
@@ -275,20 +275,20 @@ stages:
           - WatchFace
     outs:
     - path: debug/segmentation/train_data_0.png
-      md5: 6fddf935a550f80846a8bc9fe89753e6
-      size: 631664
+      md5: 2bca295de45ca9d1e17fd9acbaa1ba1b
+      size: 713705
     - path: debug/segmentation/train_data_1.png
-      md5: e4fa3840238911c222f64d54726268fc
-      size: 777443
+      md5: f696ccd130951db9978f6b2c4b0856d9
+      size: 748308
     - path: debug/segmentation/train_data_2.png
-      md5: 458f7972da9358f2fb51ddf1b25ec482
-      size: 772204
+      md5: 1c246ebb9c1d56d48d666fee4b294361
+      size: 766920
     - path: debug/segmentation/train_data_predict_0.png
-      md5: a75f927b1f4b198043e28629f65bfd54
-      size: 240484
+      md5: d8836051608ccc1acb0da257769e8a06
+      size: 252657
     - path: models/segmentation/
-      md5: 20ca4d1605fb5e7280199b49e74f357b.dir
-      size: 27354077
+      md5: 8ff1725b35de069e2459d1a5090e3632.dir
+      size: 85962077
       nfiles: 5
   eval-end-2-end:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently
@@ -420,8 +420,8 @@ stages:
       size: 20206227
       nfiles: 42
     - path: datasets/watch-faces-local.json
-      md5: 3456c71402019423e6ce5c1da476bf3a
-      size: 1893642
+      md5: 3255f41be92d5d2e70a0bf91c953bb5e
+      size: 1929022
     params:
       params.yaml:
         segmentation.bbox_labels:
@@ -430,11 +430,11 @@ stages:
           Hands: 1
     outs:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 72eeebd53de7d76b8c6511ba0ebaaa60
-      size: 27505494
+      md5: 6556ca39c3e1e53068bfea67af91310d
+      size: 27688326
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: 1523386f0c97c2c05bec89dcb2bbf40a
-      size: 2730591
+      md5: 0ccbf420ddf4f754be1305eba9adf764
+      size: 2730084
   export-detector:
     cmd: python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
     deps:
