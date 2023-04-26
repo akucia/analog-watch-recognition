@@ -1,4 +1,5 @@
 import json
+import shutil
 import time
 from pathlib import Path
 from typing import Dict, List, Union
@@ -43,7 +44,9 @@ def calculate_and_save_segmentation_metrics(
     dataset = list(dataset_gen)
     y_targets = []
     y_preds = []
-
+    renders_save_dir = Path(f"renders/hands/{split}/")
+    shutil.rmtree(renders_save_dir)
+    renders_save_dir.mkdir(exist_ok=True, parents=True)
     for example_id, image_array, target_polygons in tqdm(dataset):
         with Image.fromarray(image_array) as image:
             if image.mode != "RGB":
@@ -70,7 +73,7 @@ def calculate_and_save_segmentation_metrics(
             plt.figure(figsize=(15, 15))
             plt.tight_layout()
             plt.imshow(image)
-            plot_save_dir = Path(f"renders/hands/{split}/")
+            plot_save_dir = renders_save_dir / f"{iou_score:.1f}"
             plot_save_dir.mkdir(exist_ok=True, parents=True)
             # TODO color should be based on IOU score or other metric
             for target in target_polygons:

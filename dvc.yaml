@@ -281,5 +281,8 @@ stages:
       deps:
         - scripts/render-demo-movie.py
         - example_data/IMG_1200_720p.mov
+        - exported_models/segmentation/hands
+        - exported_models/detector
+        - models/keypoint
       outs:
         - demo/demo.mp4

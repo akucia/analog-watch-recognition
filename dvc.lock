@@ -324,55 +324,55 @@ stages:
       0.5 --save-per-image-metrics
     deps:
     - path: exported_models/segmentation/hands
-      md5: 1bf08e8900ce78ce5672c0262a5a9350.dir
-      size: 38259857
+      md5: 3b58dc1f0c04c81221946dbc722111ae.dir
+      size: 78526747
       nfiles: 11
     - path: watch_recognition/watch_recognition/eval/segmentation_eval.py
-      md5: 1aee4f04a6e798baf4990f56c6fe5177
-      size: 6822
+      md5: 69c563b086ab56ae5130bfedde60694d
+      size: 6988
     outs:
     - path: example_predictions/segmentation/hands/train_0.jpg
-      md5: b50073ddd2c95bee26ac6f4b2444a87a
-      size: 29107
+      md5: 981b2797663edf82dc18d038b0baa060
+      size: 23901
     - path: example_predictions/segmentation/hands/train_1.jpg
-      md5: 1e7bcd1cde4ba47a3e6b37bb4882b2c1
-      size: 22999
+      md5: 2f1a00479c4bb11f8f1307b464311af8
+      size: 19262
     - path: example_predictions/segmentation/hands/train_2.jpg
-      md5: 7bd1f2cf3499b77206eeb4e1172a7c1d
-      size: 34026
+      md5: 07b002a4502425405f6d7b2c315a056d
+      size: 27776
     - path: example_predictions/segmentation/hands/train_3.jpg
-      md5: 0c42bb7853eb37cf70e23c3f0241be16
-      size: 24527
+      md5: 422ba7e750c8aa26bf0b644603fd14ae
+      size: 19985
     - path: example_predictions/segmentation/hands/train_4.jpg
-      md5: 1241a888eaad11d920196e0de15e41ba
-      size: 25478
+      md5: 1eb87c3a78b8f1d9fd5534f6889473fc
+      size: 20760
     - path: example_predictions/segmentation/hands/val_0.jpg
-      md5: 565a5173c9cf1449c1c4ea78524f97e3
-      size: 27625
+      md5: 1ab371cd4286f11131d9f678a7be7b04
+      size: 22880
     - path: example_predictions/segmentation/hands/val_1.jpg
-      md5: 8878781336f526ad660f4c5e709a40de
-      size: 37591
+      md5: 91c5db22d16737131620ade14e5d7d8d
+      size: 29674
     - path: example_predictions/segmentation/hands/val_2.jpg
-      md5: b04167f081b0ba2b02e5ea80e52a0487
-      size: 27831
+      md5: 4d9fdeb6b58b53d2298beb3f258061f8
+      size: 21951
     - path: example_predictions/segmentation/hands/val_3.jpg
-      md5: c09e8816d2f3fae3baba08ceaddede39
-      size: 34955
+      md5: a53fea6e3d692c87f7e2082bd224ac0a
+      size: 28462
     - path: example_predictions/segmentation/hands/val_4.jpg
-      md5: 8b6dbb572681c5f7f1dc29db848f1900
-      size: 23870
+      md5: abaec18c8c9b3d8efa919727cdd257c7
+      size: 20012
     - path: metrics/segmentation/hands/train/segmentation.json
-      md5: 298d479937e913b9cd6b46a7adfba173
-      size: 698
+      md5: fa129b59bebe01ac48ec04f9e1f275fd
+      size: 699
     - path: metrics/segmentation/hands/train/segmentation_eval_per_image.csv
-      md5: 608d475dfacc24888c38066e1e17c715
-      size: 12282
+      md5: 4dc012dd133efb717dfdd704a68e7329
+      size: 12632
     - path: metrics/segmentation/hands/val/segmentation.json
-      md5: 5fd1cf5ab39f3272246923b365430734
-      size: 697
+      md5: 38ba61d92b4511880a9de75f3d94dfda
+      size: 694
     - path: metrics/segmentation/hands/val/segmentation_eval_per_image.csv
-      md5: 2043b034646ccd5e74c560aaa644ecca
-      size: 2974
+      md5: 54402e2c0627d9086bab3138575d07da
+      size: 2939
   generate-detection-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_detection_tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=1
       --run-concurrently
@@ -505,18 +505,18 @@ stages:
       models/segmentation train-configs/tf-model-garden/watch-hands-segmentation/
     deps:
     - path: models/segmentation/
-      md5: 20ca4d1605fb5e7280199b49e74f357b.dir
-      size: 27354077
+      md5: 8ff1725b35de069e2459d1a5090e3632.dir
+      size: 85962077
       nfiles: 5
     - path: train-configs/tf-model-garden/watch-hands-segmentation
-      md5: 253b4353865e71386046fe84c6d0694a.dir
-      size: 8461
-      nfiles: 4
+      md5: d7d840cb70aa393c5fe143010e06d427.dir
+      size: 4859
+      nfiles: 3
     outs:
     - path: example_predictions/segmentation/hands/example-1.jpg
-      md5: 11d95f1969869924895a4b77bd36f521
-      size: 60249
+      md5: fabd62e6182cf7e3222ff326082a9cd1
+      size: 60087
     - path: exported_models/segmentation/hands/
-      md5: 1bf08e8900ce78ce5672c0262a5a9350.dir
-      size: 38259857
+      md5: 3b58dc1f0c04c81221946dbc722111ae.dir
+      size: 78526747
       nfiles: 11
