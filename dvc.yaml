@@ -12,7 +12,7 @@ stages:
     - datasets/val:
        persist: true
     - datasets/watch-faces-local.json
-  generate-detection-dataset:
+  detection-generate-dataset:
     cmd: >-
       python watch_recognition/watch_recognition/datasets/generate_detection_tf_records.py 
       datasets/watch-faces-local.json 
@@ -30,7 +30,7 @@ stages:
       - datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
       - datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
       - datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
-  train-detector:
+  detection-train:
     cmd: >- 
       python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
       "train-configs/tf-model-garden/watch-face-detector/"
@@ -48,7 +48,7 @@ stages:
           persist: true
       - models/detector/:
           persist: false
-  export-detector:
+  detection-export:
     cmd: >-
       python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
     deps:
@@ -78,7 +78,7 @@ stages:
           persist: true
     plots:
       - example_predictions/detector/IMG_0040.jpg
-  eval-detector:
+  detection-eval:
     cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
     deps:
       - exported_models/detector/serving/
@@ -131,7 +131,7 @@ stages:
       - example_predictions/detector/val_0.jpg
       - example_predictions/detector/val_1.jpg
       - example_predictions/detector/val_2.jpg
-  train-keypoint:
+  keypoint-train:
     cmd: >-
       python watch_recognition/watch_recognition/train/heatmap_regression_task.py
       --epochs ${keypoint.epochs}
@@ -161,7 +161,7 @@ stages:
           persist: true
       - debug/keypoint/:
           persist: true
-  eval-keypoint:
+  keypoint-eval:
     cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py --kp-confidence-threshold ${keypoint.confidence-threshold}
     deps:
       - models/keypoint/
@@ -183,7 +183,7 @@ stages:
       - example_predictions/keypoint/val_2.jpg
       - example_predictions/keypoint/val_3.jpg
       - example_predictions/keypoint/val_4.jpg
-  generate-watch-hands-dataset:
+  segmentation-generate-dataset:
     cmd: >-
       python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
       datasets/watch-faces-local.json 
@@ -200,7 +200,7 @@ stages:
     outs:
       - datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
       - datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-  train-segmentation:
+  segmentation-train:
     cmd: >-
       python watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
       --seed ${seed}
@@ -224,8 +224,7 @@ stages:
     outs:
       - models/segmentation/:
           persist: false
-
-  export-segmentation:
+  segmentation-export:
     cmd: >-
       python watch_recognition/watch_recognition/export/export_segmentation.py models/segmentation train-configs/tf-model-garden/watch-hands-segmentation/
     deps:
@@ -237,7 +236,7 @@ stages:
     outs:
       - exported_models/segmentation/hands/:
           persist: true
-  eval-segmentation:
+  segmentation-eval:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold ${segmentation.confidence-threshold} --save-per-image-metrics
     deps:
       - exported_models/segmentation/hands
@@ -259,7 +258,7 @@ stages:
     metrics:
       - metrics/segmentation/hands/train/segmentation.json
       - metrics/segmentation/hands/val/segmentation.json
-  eval-end-2-end:
+  end-2-end-eval:
     cmd: python watch_recognition/watch_recognition/eval/end_to_end_eval.py --run-concurrently --split=val
     deps:
       - watch_recognition/watch_recognition/eval/end_to_end_eval.py
