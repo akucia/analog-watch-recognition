@@ -13,7 +13,7 @@ losses:
   class_weights: []
   gt_is_matting_map: false
   ignore_label: 255
-  l2_weight_decay: 0
+  l2_weight_decay: 0.0001
   loss_weight: 1.0
   top_k_percent_pixels: 0.5
   use_groundtruth_dimension: true
@@ -28,12 +28,12 @@ model:
     type: mobilenet
   decoder:
     aspp:
-      dilation_rates: [1, 2, 3]
-      dropout_rate: 0.0
+      dilation_rates: [2, 4, 8, 16]
+      dropout_rate: 0.1
       level: 4
       num_filters: 256
       output_tensor: false
-      pool_kernel_size: []
+      pool_kernel_size: null
       spp_layer_version: v1
       use_depthwise_convolution: false
     type: aspp
