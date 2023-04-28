@@ -564,8 +564,8 @@ stages:
       md5: faada53f00d6a608b291ca6e873afbb5
       size: 2730084
     - path: train-configs/tf-model-garden/watch-hands-segmentation
-      md5: 18dffc1f07c5ff01ade5f9a2efc30dff.dir
-      size: 9335
+      md5: bf6308b7886b8ee70e1ec45cfde46406.dir
+      size: 9579
       nfiles: 5
     params:
       params.yaml:
@@ -580,20 +580,20 @@ stages:
           - WatchFace
     outs:
     - path: debug/segmentation/train_data_0.png
-      md5: 802221619fb84dfa6c85f3323f28db02
-      size: 730260
+      md5: ac719beb7ac41cadd8407863d3fc8207
+      size: 647071
     - path: debug/segmentation/train_data_1.png
-      md5: 883078d16c63752b36d8a1d2fe0031e8
-      size: 829562
+      md5: bdb39cc746c9f6c37014b2e71a71861d
+      size: 678503
     - path: debug/segmentation/train_data_2.png
-      md5: 8ced3a77e90e3dc8349de971052e4741
-      size: 700572
+      md5: f61ac1dd1e92f653ff5cc617941fedee
+      size: 823633
     - path: debug/segmentation/train_data_predict_0.png
-      md5: 022104a4d5fc9e4134c21b3b1b54bed9
-      size: 202956
+      md5: 0d226f970be042d838b5479432bfcde8
+      size: 203667
     - path: models/segmentation/
-      md5: f5a6526c518da20b24ad6c077537307b.dir
-      size: 98884232
+      md5: 8f933039221bef2b873d5993fd1ff9ef.dir
+      size: 6559466339
       nfiles: 5
   segmentation-export:
     cmd: python watch_recognition/watch_recognition/export/export_segmentation.py

@@ -29,7 +29,7 @@ model:
   decoder:
     aspp:
       dilation_rates: [2, 4, 8, 16]
-      dropout_rate: 0.1
+      dropout_rate: 0.2
       level: 4
       num_filters: 256
       output_tensor: false
@@ -59,8 +59,14 @@ model:
     activation: relu
     norm_epsilon: 0.001
     norm_momentum: 0.99
-    use_sync_bn: true
+    use_sync_bn: false
   num_classes: 2
+  mask_scoring_head:
+    num_convs: 4
+    num_filters: 128
+    fc_input_size: [64, 64]
+    num_fcs: 2
+    fc_dims: 1024
 name: null
 train_data:
   apply_tf_data_service_before_batching: false
@@ -83,7 +89,7 @@ train_data:
   enable_shared_tf_data_service_between_parallel_trainers: false
   enable_tf_data_service: false
   file_type: tfrecord
-  global_batch_size: 32
+  global_batch_size: 16
   groundtruth_padded_size: []
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
   is_training: true
@@ -124,7 +130,7 @@ validation_data:
   enable_shared_tf_data_service_between_parallel_trainers: false
   enable_tf_data_service: false
   file_type: tfrecord
-  global_batch_size: 32
+  global_batch_size: 16
   groundtruth_padded_size: [320, 320]
   input_path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
   is_training: false
