@@ -523,7 +523,7 @@ stages:
   segmentation-generate-dataset:
     cmd: python watch_recognition/watch_recognition/datasets/generate_segmentation_tf_records.py
       datasets/watch-faces-local.json  datasets/tf-records/segmentation/watch-hands/  --num-shards=1
-      --run-concurrently
+      --run-concurrently --add-border-class
     deps:
     - path: datasets/test
       md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
@@ -544,11 +544,11 @@ stages:
           Hands: 1
     outs:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 06e3aa85a8201ba5b9ed4a5b2e03a4df
-      size: 27822573
+      md5: 4cd9ed2b43a93097abc521abc346741d
+      size: 27931511
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: faada53f00d6a608b291ca6e873afbb5
-      size: 2730084
+      md5: b295027a05bb9b07e8980f95bb8a37b0
+      size: 2747867
   segmentation-train:
     cmd: python watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
       --seed 42

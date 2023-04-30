@@ -4,6 +4,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import tensorflow as tf
 from official.vision.data.tfrecord_lib import convert_to_feature
+from skimage.morphology import dilation, square
 
 from watch_recognition.utilities import Polygon
 
@@ -83,8 +84,18 @@ def mask_annotations_to_feature_dict(
     return feature_dict
 
 
+def generate_border(
+    mask: np.ndarray, border_class: int = 1, border_width: int = 1
+) -> np.ndarray:
+    binary_mask = (mask > 0).astype("uint8").squeeze()
+    footprint = square(border_width)
+    border = (dilation(binary_mask, footprint=footprint) - binary_mask) > 0
+    mask[border] = border_class
+    return mask
+
+
 def encode_polygons_to_label_mask(
-    polygons: List[Polygon], mask_size: Tuple[int, int]
+    polygons: List[Polygon], mask_size: Tuple[int, int], border_class: int = -1
 ) -> np.ndarray:
     mask = np.zeros((*mask_size, 1))
     for polygon in polygons:
@@ -92,16 +103,30 @@ def encode_polygons_to_label_mask(
             raise ValueError(f"polygon label is required, got {polygon.label}")
         poly_mask = polygon.to_mask(width=mask_size[1], height=mask_size[0])
         poly_mask = np.where(poly_mask, polygon.label, 0)
+        if border_class > 0:
+            border_width = np.sqrt(mask_size[0] * mask_size[1]).astype(int) // 100
+            border_width = max(border_width, 3)
+            poly_mask = generate_border(
+                poly_mask,
+                border_class,
+                border_width=border_width,
+            )
         mask[:, :] = np.expand_dims(poly_mask, axis=-1)
     return mask.astype("uint8")
 
 
-def polygon_annotations_to_feature_dict(polygon_annotations: List[Polygon], image_size):
+def polygon_annotations_to_feature_dict(
+    polygon_annotations: List[Polygon],
+    image_size: Tuple[int, int],
+    border_class: int = -1,
+):
     """Convert COCO annotations to an encoded feature dict."""
     feature_dict = {
         "image/segmentation/class/encoded": convert_to_feature(
             tf.io.encode_png(
-                encode_polygons_to_label_mask(polygon_annotations, image_size)
+                encode_polygons_to_label_mask(
+                    polygon_annotations, image_size, border_class
+                )
             ).numpy()
         ),
         "image/segmentation/class/format": convert_to_feature(b"png"),

@@ -27,10 +27,15 @@ def _create_tf_example(
     image_id: int,
     image_np: np.ndarray,
     polygons: List[Polygon],
+    border_class: int = -1,
 ):
     """Converts image and annotations to a tf.Example proto.
 
     Args:
+        image_id: Unique id for the image.
+        image_np: Numpy array containing the image.
+        polygons: List of polygons for the image.
+        border_class: Class to use for the border around the segmentation mask. If -1, no border is added.
 
     Returns:
       example: The converted tf.Example
@@ -51,7 +56,7 @@ def _create_tf_example(
         image_height, image_width, f"{image_id}.jpg", image_id, encoded_jpg, "jpg"
     )
     mask_feature_dict = polygon_annotations_to_feature_dict(
-        polygons, (image_height, image_width)
+        polygons, (image_height, image_width), border_class=border_class
     )
     feature_dict.update(mask_feature_dict)
 
@@ -68,6 +73,11 @@ def _create_tf_example(
 @click.option(
     "--dataset-split", type=click.Choice(DATASET_SPLIT_OPTIONS, case_sensitive=True)
 )
+@click.option(
+    "--add-border-class",
+    is_flag=True,
+    help="Adds a border around segmentation mask as additional class",
+)
 def main(
     input_file: str,
     output_dir: str,
@@ -75,6 +85,7 @@ def main(
     run_concurrently: bool,
     max_images: Optional[int] = None,
     dataset_split: Optional[str] = None,
+    add_border_class: bool = False,
 ):
     dataset_path = Path(input_file)
     output_dir = Path(output_dir)
@@ -84,6 +95,11 @@ def main(
 
     label_to_cls = {"Hands": 1}
     bbox_labels = params["segmentation"]["bbox_labels"]
+    if add_border_class:
+        border_class = max(label_to_cls.values()) + 1
+        print(f"Adding border class with id {border_class}")
+    else:
+        border_class = -1
 
     output_name = "watch-hands"
     if dataset_split is None:
@@ -114,7 +130,11 @@ def main(
                 try:
                     for id_, image_np, polygons in dataset_gen:
                         future = executor.submit(
-                            _create_tf_example, id_, image_np, polygons
+                            _create_tf_example,
+                            id_,
+                            image_np,
+                            polygons,
+                            border_class,
                         )
                         task_futures.append(future)
                     for idx, future in enumerate(
@@ -133,7 +153,7 @@ def main(
         else:
             pbar = tqdm(dataset_gen)
             for idx, (id_, image_np, polygons) in enumerate(pbar):
-                tf_example = _create_tf_example(id_, image_np, polygons)
+                tf_example = _create_tf_example(id_, image_np, polygons, border_class)
                 writers[idx % num_shards].write(tf_example.SerializeToString())
 
         for writer in writers:
