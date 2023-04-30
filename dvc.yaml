@@ -131,7 +131,7 @@ stages:
       - example_predictions/detector/val_0.jpg
       - example_predictions/detector/val_1.jpg
       - example_predictions/detector/val_2.jpg
-  keypoint-train:
+  train-keypoint:
     cmd: >-
       python watch_recognition/watch_recognition/train/heatmap_regression_task.py
       --epochs ${keypoint.epochs}
@@ -161,7 +161,7 @@ stages:
           persist: true
       - debug/keypoint/:
           persist: true
-  keypoint-eval:
+  eval-keypoint:
     cmd: python watch_recognition/watch_recognition/eval/keypoint_detection_eval.py --kp-confidence-threshold ${keypoint.confidence-threshold}
     deps:
       - models/keypoint/
