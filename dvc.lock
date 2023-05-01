@@ -4,27 +4,27 @@ stages:
     cmd: python scripts/download-images.py datasets/watch-faces.json --concurrent
     deps:
     - path: datasets/watch-faces.json
-      md5: 2c0225783b5826919aae6741991d6707
-      size: 1985860
+      md5: 32892d7a7c5102db60938951ff189903
+      size: 2320904
     - path: scripts/download-images.py
       md5: a037cfab1a482a356f1d7d62804041d3
       size: 3961
     outs:
     - path: datasets/test
-      md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
-      size: 18869343
-      nfiles: 55
+      md5: 83c8f03071d62b59f80f3932de0cd01b.dir
+      size: 19171059
+      nfiles: 57
     - path: datasets/train
-      md5: 8ebd2ff2b038cbe916ec2f1eb4675695.dir
-      size: 226534711
-      nfiles: 730
+      md5: d86bc21cf0dd43e6ddd1bf694961730a.dir
+      size: 231416419
+      nfiles: 738
     - path: datasets/val
-      md5: c2e5983ceddfc4ca034e7992c059f2fd.dir
-      size: 20206227
-      nfiles: 42
+      md5: a92d0ff545c47ed5c22cd97dc73e5957.dir
+      size: 21867102
+      nfiles: 43
     - path: datasets/watch-faces-local.json
-      md5: 83b09292eed6c32fab729a7b606f158c
-      size: 1966908
+      md5: 58b0f36a7c610507073ccc2dc3d20290
+      size: 2301699
   train-detector:
     cmd: python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
       "train-configs/tf-model-garden/watch-face-detector/" --seed 42
