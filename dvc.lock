@@ -492,14 +492,25 @@ stages:
     - path: example_data/IMG_1200_720p.mov
       md5: 5dfad65d6cb1231b1dc70d24153ef52a
       size: 12545634
+    - path: exported_models/detector
+      md5: 7fc9b7e863d197568080c354352f4985.dir
+      size: 293320455
+      nfiles: 14
+    - path: exported_models/segmentation/hands
+      md5: 75cdc6bcd06e0e161e91c4e0a2169986.dir
+      size: 4385089974
+      nfiles: 11
+    - path: models/keypoint
+      md5: 4a34792d0d5209c621c38464f1614818.dir
+      size: 35988621
+      nfiles: 6
     - path: scripts/render-demo-movie.py
       md5: 593f9b82a46a183471f4e061473520f5
       size: 4455
-      isexec: true
     outs:
     - path: demo/demo.mp4
-      md5: 75308c67ad03ab69c9fb3ddbfb2484fd
-      size: 8993493
+      md5: 640daf05552d320f0ef1809d376962fa
+      size: 8978442
   export-segmentation:
     cmd: python watch_recognition/watch_recognition/export/export_segmentation.py
       models/segmentation train-configs/tf-model-garden/watch-hands-segmentation/
