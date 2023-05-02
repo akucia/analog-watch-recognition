@@ -526,16 +526,16 @@ stages:
       --run-concurrently
     deps:
     - path: datasets/test
-      md5: c3b9fc1ebd7a05cbf2dfe0c54f2fe397.dir
-      size: 18869343
-      nfiles: 55
+      md5: 83c8f03071d62b59f80f3932de0cd01b.dir
+      size: 19171059
+      nfiles: 57
     - path: datasets/val
-      md5: c2e5983ceddfc4ca034e7992c059f2fd.dir
-      size: 20206227
-      nfiles: 42
+      md5: a92d0ff545c47ed5c22cd97dc73e5957.dir
+      size: 21867102
+      nfiles: 43
     - path: datasets/watch-faces-local.json
-      md5: 83b09292eed6c32fab729a7b606f158c
-      size: 1966908
+      md5: 58b0f36a7c610507073ccc2dc3d20290
+      size: 2301699
     params:
       params.yaml:
         segmentation.bbox_labels:
@@ -544,11 +544,11 @@ stages:
           Hands: 1
     outs:
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 06e3aa85a8201ba5b9ed4a5b2e03a4df
-      size: 27822573
+      md5: f22ace72dab4a6bbc0c0ce5d79610582
+      size: 28553595
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: faada53f00d6a608b291ca6e873afbb5
-      size: 2730084
+      md5: cdb0ac719732f4ba771e948fc3845ae3
+      size: 3007009
   segmentation-train:
     cmd: python watch_recognition/watch_recognition/train/segmentation_tf_model_garden.py
       --seed 42
@@ -558,15 +558,15 @@ stages:
       size: 29628857
       nfiles: 2
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-train-00001-of-00001.tfrecord
-      md5: 06e3aa85a8201ba5b9ed4a5b2e03a4df
-      size: 27822573
+      md5: f22ace72dab4a6bbc0c0ce5d79610582
+      size: 28553595
     - path: datasets/tf-records/segmentation/watch-hands/watch-hands-val-00001-of-00001.tfrecord
-      md5: faada53f00d6a608b291ca6e873afbb5
-      size: 2730084
+      md5: cdb0ac719732f4ba771e948fc3845ae3
+      size: 3007009
     - path: train-configs/tf-model-garden/watch-hands-segmentation
-      md5: bf6308b7886b8ee70e1ec45cfde46406.dir
-      size: 9579
-      nfiles: 5
+      md5: b8de89278388faf78ecb40db91ad8e7e.dir
+      size: 4995
+      nfiles: 3
     params:
       params.yaml:
         seed: 42
@@ -580,40 +580,40 @@ stages:
           - WatchFace
     outs:
     - path: debug/segmentation/train_data_0.png
-      md5: ac719beb7ac41cadd8407863d3fc8207
-      size: 647071
+      md5: badfad1fcf3b17efc25a809be44f8a73
+      size: 752966
     - path: debug/segmentation/train_data_1.png
-      md5: bdb39cc746c9f6c37014b2e71a71861d
-      size: 678503
+      md5: c1dc4b20cc2c30af04cf2dead586ff0b
+      size: 827853
     - path: debug/segmentation/train_data_2.png
-      md5: f61ac1dd1e92f653ff5cc617941fedee
-      size: 823633
+      md5: 28bfae89c915d1e70d89dd5b50d3cd2f
+      size: 806549
     - path: debug/segmentation/train_data_predict_0.png
-      md5: 0d226f970be042d838b5479432bfcde8
-      size: 203667
+      md5: d8672798705d35c902cb52da2a92792d
+      size: 246022
     - path: models/segmentation/
-      md5: 8f933039221bef2b873d5993fd1ff9ef.dir
-      size: 6559466339
+      md5: ed11e4dbe25ada08faa68fe49a603c54.dir
+      size: 6559431200
       nfiles: 5
   segmentation-export:
     cmd: python watch_recognition/watch_recognition/export/export_segmentation.py
       models/segmentation train-configs/tf-model-garden/watch-hands-segmentation/
     deps:
     - path: models/segmentation/
-      md5: 8f933039221bef2b873d5993fd1ff9ef.dir
-      size: 6559466339
+      md5: ed11e4dbe25ada08faa68fe49a603c54.dir
+      size: 6559431200
       nfiles: 5
     - path: train-configs/tf-model-garden/watch-hands-segmentation
-      md5: 96ad1c839be6efecd26035b7d5c4949c.dir
-      size: 4992
+      md5: b8de89278388faf78ecb40db91ad8e7e.dir
+      size: 4995
       nfiles: 3
     outs:
     - path: example_predictions/segmentation/hands/example-1.jpg
-      md5: 937daa1975fd8f6a4da154ea875c644b
-      size: 60136
+      md5: 17f7aeb20c93c3f2776207ea8f441907
+      size: 60098
     - path: exported_models/segmentation/hands/
-      md5: a4f23bd760779ae14a3ef853ef9808f7.dir
-      size: 4385086547
+      md5: 75cdc6bcd06e0e161e91c4e0a2169986.dir
+      size: 4385089974
       nfiles: 11
   segmentation-eval:
     cmd: python watch_recognition/watch_recognition/eval/segmentation_eval.py --confidence-threshold
@@ -669,3 +669,189 @@ stages:
     - path: metrics/segmentation/hands/val/segmentation_eval_per_image.csv
       md5: 9443977f110e5bb83102a2419aa1e213
       size: 2946
+  detection-generate-dataset:
+    cmd: python watch_recognition/watch_recognition/datasets/generate_detection_tf_records.py  datasets/watch-faces-local.json  datasets/tf-records/object-detection/watch-faces/  --num-shards=1
+      --run-concurrently
+    deps:
+    - path: datasets/test
+      md5: 83c8f03071d62b59f80f3932de0cd01b.dir
+      size: 19171059
+      nfiles: 57
+    - path: datasets/train
+      md5: d86bc21cf0dd43e6ddd1bf694961730a.dir
+      size: 231416419
+      nfiles: 738
+    - path: datasets/val
+      md5: a92d0ff545c47ed5c22cd97dc73e5957.dir
+      size: 21867102
+      nfiles: 43
+    - path: datasets/watch-faces-local.json
+      md5: 58b0f36a7c610507073ccc2dc3d20290
+      size: 2301699
+    params:
+      params.yaml:
+        detector.label_to_cls:
+          WatchFace: 1
+    outs:
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-test-00001-of-00001.tfrecord
+      md5: e906c57568a6a9663ed161da3a4a07db
+      size: 19197638
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
+      md5: 50172c7a83f3656110e6f077babfd812
+      size: 231714428
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-val-00001-of-00001.tfrecord
+      md5: 7468baea57796d30310d3f7eb061baf6
+      size: 21883157
+  detection-train:
+    cmd: python watch_recognition/watch_recognition/train/object_detection_tf_model_garden.py
+      "train-configs/tf-model-garden/watch-face-detector/" --seed 42
+    deps:
+    - path: datasets/tf-records/object-detection/watch-faces/
+      md5: 68a1e50b280f617796369b368c9fff56.dir
+      size: 272795979
+      nfiles: 4
+    - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
+      md5: 4cc3a22904a608cb4a5e0bc19f2bdfad
+      size: 3247
+    - path: train-configs/tf-model-garden/watch-face-detector/runtime.yaml
+      md5: 71503a0285b578c4ccd9b2cbea2f4a74
+      size: 405
+    - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
+      md5: d6a17c825eeee10d90ca143bb4604f69
+      size: 845
+    params:
+      params.yaml:
+        detector:
+          epochs: 100
+          batch-size: 1
+          confidence-threshold: 0.5
+          label_to_cls:
+            WatchFace: 1
+        seed: 42
+    outs:
+    - path: debug/detector/
+      md5: 673c37de9e18b881ab41b86b8a6b4a73.dir
+      size: 146107
+      nfiles: 1
+    - path: models/detector/
+      md5: e049636e3b8756ab9edf15bc9434f814.dir
+      size: 321639161
+      nfiles: 5
+  detection-export:
+    cmd: python watch_recognition/watch_recognition/export/export_retinanet.py models/detector/
+    deps:
+    - path: datasets/tf-records/object-detection/watch-faces/watch-faces-train-00001-of-00001.tfrecord
+      md5: 50172c7a83f3656110e6f077babfd812
+      size: 231714428
+    - path: models/detector/
+      md5: e049636e3b8756ab9edf15bc9434f814.dir
+      size: 321639161
+      nfiles: 5
+    - path: train-configs/tf-model-garden/watch-face-detector/retinanet_task.yaml
+      md5: 4cc3a22904a608cb4a5e0bc19f2bdfad
+      size: 3247
+    - path: train-configs/tf-model-garden/watch-face-detector/runtime.yaml
+      md5: 71503a0285b578c4ccd9b2cbea2f4a74
+      size: 405
+    - path: train-configs/tf-model-garden/watch-face-detector/trainer.yaml
+      md5: d6a17c825eeee10d90ca143bb4604f69
+      size: 845
+    outs:
+    - path: example_predictions/detector/IMG_0040.jpg
+      md5: 0d9f8d67eed95c3264a87502d8b19f8e
+      size: 95866
+    - path: exported_models/detector/lite16/assets.extra/tf_serving_warmup_requests
+      md5: 8c7059090db70976a01dfc2e8dd1c968
+      size: 1769557
+    - path: exported_models/detector/lite16/model.tflite
+      md5: 2544844213b291017cf598760e528036
+      size: 54973072
+    - path: exported_models/detector/lite8/assets.extra/tf_serving_warmup_requests
+      md5: 8c7059090db70976a01dfc2e8dd1c968
+      size: 1769557
+    - path: exported_models/detector/lite8/model.tflite
+      md5: 377121906f65d376ce3963e64e186bd4
+      size: 91696144
+    - path: exported_models/detector/serving/assets.extra/tf_serving_warmup_requests
+      md5: 783b65cb6c06d334aaf972183d2c4409
+      size: 11520090
+    - path: exported_models/detector/serving/fingerprint.pb
+      md5: 41d571b3fb5dd07fcf402ad335590d75
+      size: 55
+    - path: exported_models/detector/serving/saved_model.pb
+      md5: 2f9213275429c2749c2fa78107328df9
+      size: 23869403
+    - path: exported_models/detector/serving/variables/variables.data-00000-of-00001
+      md5: adc1a58b12e7d9a93b2f77337518c39d
+      size: 107671904
+    - path: exported_models/detector/serving/variables/variables.index
+      md5: 04571198a69a0ce78757e3d41f986328
+      size: 50501
+  detection-eval:
+    cmd: python watch_recognition/watch_recognition/eval/object_detection_eval.py
+    deps:
+    - path: datasets/test
+      md5: 83c8f03071d62b59f80f3932de0cd01b.dir
+      size: 19171059
+      nfiles: 57
+    - path: datasets/train
+      md5: d86bc21cf0dd43e6ddd1bf694961730a.dir
+      size: 231416419
+      nfiles: 738
+    - path: datasets/val
+      md5: a92d0ff545c47ed5c22cd97dc73e5957.dir
+      size: 21867102
+      nfiles: 43
+    - path: exported_models/detector/serving/
+      md5: d1cace8c8ed53b94574319128cf30e81.dir
+      size: 143112069
+      nfiles: 8
+    outs:
+    - path: example_predictions/detector/train_0.jpg
+      md5: 69f9e57f2b4a7c2cd11dd4ee57461a8e
+      size: 36402
+    - path: example_predictions/detector/train_1.jpg
+      md5: 7460089acf4348613f63be023ed7d332
+      size: 23419
+    - path: example_predictions/detector/train_2.jpg
+      md5: 0fc35b3df48f0397683e284cb2962985
+      size: 24223
+    - path: example_predictions/detector/val_0.jpg
+      md5: aea48accbcfd0d53939fb61d4fcb4ce7
+      size: 17557
+    - path: example_predictions/detector/val_1.jpg
+      md5: 99964f7a2a4e0617eee0273c58ba186d
+      size: 23501
+    - path: example_predictions/detector/val_2.jpg
+      md5: c1ab5162dd45b62d09f83a26411b3ee4
+      size: 14633
+    - path: metrics/detector/train/PR-IoU@0.50.tsv
+      md5: be633215eef36b9ff6514e8a6eb85eab
+      size: 2401
+    - path: metrics/detector/train/PR-IoU@0.75.tsv
+      md5: 43a7e0fc1655f53c4a24b93ab758d611
+      size: 2387
+    - path: metrics/detector/train/PR-IoU@0.95.tsv
+      md5: 8e8d535ed80433d85c0a9e9869a9e309
+      size: 1373
+    - path: metrics/detector/train/coco.json
+      md5: 14de9fe621396d3db19fbef63723c35b
+      size: 286
+    - path: metrics/detector/train/detection.json
+      md5: 99fc69fff66fa5866b6af83914e914b1
+      size: 135
+    - path: metrics/detector/val/PR-IoU@0.50.tsv
+      md5: a94e38bcc918294ed893aa8ed7a49d25
+      size: 1830
+    - path: metrics/detector/val/PR-IoU@0.75.tsv
+      md5: cd6007615b730e2e134a88ca9c5b04a1
+      size: 1480
+    - path: metrics/detector/val/PR-IoU@0.95.tsv
+      md5: 765da750316116833188323b2d88731a
+      size: 1119
+    - path: metrics/detector/val/coco.json
+      md5: 23802039607978f633d762b9ee369676
+      size: 286
+    - path: metrics/detector/val/detection.json
+      md5: a742ede3aa83c7a5d89b24fb896a861c
+      size: 121
