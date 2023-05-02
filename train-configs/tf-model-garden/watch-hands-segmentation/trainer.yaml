@@ -28,11 +28,11 @@ optimizer_config:
     type: linear
 recovery_begin_steps: 0
 recovery_max_trials: 0
-steps_per_loop: 50
-summary_interval: 50
+steps_per_loop: 100
+summary_interval: 100
 train_steps: 5000
 train_tf_function: true
 train_tf_while_loop: true
-validation_interval: 50
+validation_interval: 100
 validation_steps: -1
 validation_summary_subdir: validation
